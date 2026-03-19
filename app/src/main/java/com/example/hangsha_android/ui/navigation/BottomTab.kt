@@ -1,19 +1,15 @@
 package com.example.hangsha_android.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.DrawableRes
+import com.example.hangsha_android.R
 
 enum class BottomTab(
     val route: String,
     val label: String,
-    val icon: ImageVector
+    @DrawableRes val iconResId: Int
 ) {
-    Calendar("calendar", "캘린더", Icons.Filled.CalendarMonth),
-    Timetable("timetable", "시간표", Icons.AutoMirrored.Filled.List),
-    Bookmarks("bookmarks", "북마크", Icons.Filled.Bookmarks),
-    MyPage("mypage", "마이", Icons.Filled.Person)
+    Calendar("calendar", "캘린더", R.drawable.ic_bottombar_calender),
+    Timetable("timetable", "시간표", R.drawable.ic_bottombar_timetable),
+    Bookmarks("bookmarks", "북마크", R.drawable.ic_bottombar_bookmark),
+    MyPage("mypage", "마이", R.drawable.ic_bottombar_mypage)
 }

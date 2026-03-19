@@ -39,6 +39,7 @@ fun HangshaNavHost(
     }
 }
 
+// 여기서 밖에 안 쓰는 임시 Composable
 @Composable
 fun SimplePageText(text: String) {
     Box(
