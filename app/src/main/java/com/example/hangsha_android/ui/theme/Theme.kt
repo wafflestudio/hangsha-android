@@ -15,11 +15,11 @@ private val LightColors = lightColorScheme(
     onSecondary = Cream5,
     secondaryContainer = Peach20,
     onSecondaryContainer = Ink90,
-    background = Cream10,
+    background = PureWhite,
     onBackground = Ink90,
-    surface = Cream5,
+    surface = PureWhite,
     onSurface = Ink90,
-    surfaceVariant = Sand30,
+    surfaceVariant = PureWhite,
     onSurfaceVariant = Ink60
 )
 
