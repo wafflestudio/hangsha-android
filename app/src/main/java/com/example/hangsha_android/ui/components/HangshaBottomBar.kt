@@ -1,11 +1,14 @@
 package com.example.hangsha_android.ui.components
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.example.hangsha_android.ui.navigation.BottomTab
@@ -26,7 +29,9 @@ fun HangshaBottomBar(
                     Icon(
                         painter = painterResource(id = tab.iconResId),
                         contentDescription = tab.label,
-                        tint = Color.Unspecified                    )
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(30.dp)
+                    )
                 }
             )
         }
