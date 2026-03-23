@@ -10,9 +10,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navigation
+import com.example.hangsha_android.ui.view.login.LoginScreen
+
+sealed class HangshaDestinations(val route: String) {
+    data object Login : HangshaDestinations("login")
+    data object Main : HangshaDestinations("main")
+}
 
 @Composable
 fun HangshaNavHost(
@@ -21,8 +29,28 @@ fun HangshaNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = BottomTab.Calendar.route,
+        startDestination = HangshaDestinations.Login.route,
         modifier = Modifier.padding(innerPadding)
+    ) {
+        loginGraph(navController = navController)
+        mainGraph(navController = navController)
+    }
+}
+
+fun NavGraphBuilder.loginGraph(navController: NavHostController) {
+    composable(HangshaDestinations.Login.route) {
+        LoginScreen(onLoginClick = {
+            navController.navigate(HangshaDestinations.Main.route) {
+                popUpTo(HangshaDestinations.Login.route) { inclusive = true }
+            }
+        })
+    }
+}
+
+fun NavGraphBuilder.mainGraph(navController: NavHostController) {
+    navigation(
+        startDestination = BottomTab.Calendar.route,
+        route = HangshaDestinations.Main.route
     ) {
         composable(BottomTab.Calendar.route) {
             SimplePageText("calendar")
@@ -39,7 +67,6 @@ fun HangshaNavHost(
     }
 }
 
-// 여기서 밖에 안 쓰는 임시 Composable
 @Composable
 fun SimplePageText(text: String) {
     Box(
