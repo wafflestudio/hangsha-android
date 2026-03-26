@@ -15,10 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.components.CheckServerButton
 
 @Composable
 fun LoginScreen(
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    onCheckServerClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -38,6 +40,8 @@ fun LoginScreen(
             ) {
                 Text(text = "Login")
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            CheckServerButton(onClick = onCheckServerClick)
         }
     }
 }

@@ -39,11 +39,14 @@ fun HangshaNavHost(
 
 fun NavGraphBuilder.loginGraph(navController: NavHostController) {
     composable(HangshaDestinations.Login.route) {
-        LoginScreen(onLoginClick = {
-            navController.navigate(HangshaDestinations.Main.route) {
-                popUpTo(HangshaDestinations.Login.route) { inclusive = true }
-            }
-        })
+        LoginScreen(
+            onLoginClick = {
+                navController.navigate(HangshaDestinations.Main.route) {
+                    popUpTo(HangshaDestinations.Login.route) { inclusive = true }
+                }
+            },
+            onCheckServerClick = {}
+        )
     }
 }
 
