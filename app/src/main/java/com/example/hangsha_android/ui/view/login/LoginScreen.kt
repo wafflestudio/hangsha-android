@@ -16,11 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.components.CheckServerButton
+import com.example.hangsha_android.ui.view.serverhealth.ServerHealthUiState
 
 @Composable
 fun LoginScreen(
     onLoginClick: () -> Unit,
-    onCheckServerClick: () -> Unit
+    onCheckServerClick: () -> Unit,
+    serverHealthUiState: ServerHealthUiState
 ) {
     Box(
         modifier = Modifier
@@ -41,7 +43,17 @@ fun LoginScreen(
                 Text(text = "Login")
             }
             Spacer(modifier = Modifier.height(12.dp))
-            CheckServerButton(onClick = onCheckServerClick)
+            CheckServerButton(
+                onClick = onCheckServerClick,
+                isLoading = serverHealthUiState.isCheckingServer
+            )
+            serverHealthUiState.serverCheckMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }

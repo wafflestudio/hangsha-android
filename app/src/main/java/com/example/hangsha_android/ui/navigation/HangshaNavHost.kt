@@ -8,14 +8,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.navigation
 import com.example.hangsha_android.ui.view.login.LoginScreen
+import com.example.hangsha_android.ui.view.login.LoginViewModel
+import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
 
 sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
@@ -39,13 +44,17 @@ fun HangshaNavHost(
 
 fun NavGraphBuilder.loginGraph(navController: NavHostController) {
     composable(HangshaDestinations.Login.route) {
+        hiltViewModel<LoginViewModel>()
+        val serverHealthViewModel: ServerHealthViewModel = hiltViewModel()
+        val serverHealthUiState by serverHealthViewModel.uiState.collectAsState()
         LoginScreen(
             onLoginClick = {
                 navController.navigate(HangshaDestinations.Main.route) {
                     popUpTo(HangshaDestinations.Login.route) { inclusive = true }
                 }
             },
-            onCheckServerClick = {}
+            onCheckServerClick = serverHealthViewModel::checkServer,
+            serverHealthUiState = serverHealthUiState
         )
     }
 }
