@@ -44,7 +44,8 @@ fun HangshaNavHost(
 
 fun NavGraphBuilder.loginGraph(navController: NavHostController) {
     composable(HangshaDestinations.Login.route) {
-        hiltViewModel<LoginViewModel>()
+        val loginViewModel: LoginViewModel = hiltViewModel()
+        val loginUiState by loginViewModel.uiState.collectAsState()
         val serverHealthViewModel: ServerHealthViewModel = hiltViewModel()
         val serverHealthUiState by serverHealthViewModel.uiState.collectAsState()
         LoginScreen(
@@ -53,7 +54,9 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     popUpTo(HangshaDestinations.Login.route) { inclusive = true }
                 }
             },
+            onGoogleLoginClick = loginViewModel::onGoogleLoginClick,
             onCheckServerClick = serverHealthViewModel::checkServer,
+            loginUiState = loginUiState,
             serverHealthUiState = serverHealthUiState
         )
     }

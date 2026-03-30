@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,7 +22,9 @@ import com.example.hangsha_android.ui.view.serverhealth.ServerHealthUiState
 @Composable
 fun LoginScreen(
     onLoginClick: () -> Unit,
+    onGoogleLoginClick: () -> Unit,
     onCheckServerClick: () -> Unit,
+    loginUiState: LoginUiState,
     serverHealthUiState: ServerHealthUiState
 ) {
     Box(
@@ -41,6 +44,20 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "Login")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onGoogleLoginClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Continue with Google")
+            }
+            loginUiState.loginMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
             CheckServerButton(
