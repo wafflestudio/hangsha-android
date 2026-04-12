@@ -9,20 +9,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.components.CheckServerButton
+import com.example.hangsha_android.ui.components.ClearGoogleLoginHistoryButton
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthUiState
 
 @Composable
 fun LoginScreen(
     onLoginClick: () -> Unit,
     onGoogleLoginClick: () -> Unit,
+    onClearGoogleLoginHistoryClick: () -> Unit,
     onCheckServerClick: () -> Unit,
     loginUiState: LoginUiState,
     serverHealthUiState: ServerHealthUiState
@@ -48,10 +52,20 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = onGoogleLoginClick,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !loginUiState.isGoogleLoginLoading
             ) {
-                Text(text = "Continue with Google")
+                if (loginUiState.isGoogleLoginLoading) {
+                    GoogleLoginProgressIndicator(size = 18.dp)
+                } else {
+                    Text(text = "Continue with Google")
+                }
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            ClearGoogleLoginHistoryButton(
+                onClick = onClearGoogleLoginHistoryClick,
+                enabled = !loginUiState.isGoogleLoginLoading && !loginUiState.isGoogleHistoryClearing
+            )
             loginUiState.loginMessage?.let { message ->
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -73,4 +87,12 @@ fun LoginScreen(
             }
         }
     }
+}
+
+@Composable
+private fun GoogleLoginProgressIndicator(size: Dp) {
+    CircularProgressIndicator(
+        modifier = Modifier.height(size),
+        strokeWidth = 2.dp
+    )
 }

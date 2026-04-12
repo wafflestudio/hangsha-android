@@ -1,6 +1,7 @@
 package com.example.hangsha_android.di
 
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
 import dagger.Module
 import dagger.Provides
@@ -52,5 +53,13 @@ object NetworkModule {
         retrofit: Retrofit
     ): ServerHealthApi {
         return retrofit.create(ServerHealthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(
+        retrofit: Retrofit
+    ): AuthApi {
+        return retrofit.create(AuthApi::class.java)
     }
 }

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,25 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.kotlin.android)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun readBuildConfigString(name: String): String {
+    return (
+        localProperties.getProperty(name)
+            ?: providers.gradleProperty(name).orNull
+            ?: ""
+        ).trim()
+}
+
+fun String.escapeForBuildConfig(): String {
+    return replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
 android {
@@ -26,6 +47,11 @@ android {
         versionCode = 1
         versionName = "1.0"
         buildConfigField("String", "SERVER_BASE_URL", "\"http://13.125.246.220:8080/\"")
+        buildConfigField(
+            "String",
+            "GOOGLE_SERVER_CLIENT_ID",
+            "\"${readBuildConfigString("GOOGLE_SERVER_CLIENT_ID").escapeForBuildConfig()}\""
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,6 +108,7 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.android.gms:play-services-auth:21.5.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.coil.compose)
     implementation("androidx.emoji2:emoji2-emojipicker:1.4.0")
