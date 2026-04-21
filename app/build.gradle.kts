@@ -46,7 +46,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "SERVER_BASE_URL", "\"http://13.125.246.220:8080/\"")
+        buildConfigField("String", "SERVER_BASE_URL", "\"http://hangsha-api-dev.wafflestudio.com/\"")
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",
