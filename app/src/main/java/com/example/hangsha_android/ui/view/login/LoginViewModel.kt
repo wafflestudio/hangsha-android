@@ -40,20 +40,36 @@ class LoginViewModel @Inject constructor(
 
     fun loginWithCredentials() {
         val currentState = _uiState.value
-        val username = currentState.username.trim()
+        val email = currentState.username.trim()
         val password = currentState.password
 
         when {
-            username.isBlank() -> onAuthFailure("Please enter your ID.")
+            email.isBlank() -> onAuthFailure("Please enter your email.")
             password.isBlank() -> onAuthFailure("Please enter your password.")
-            else -> {
-                _uiState.update {
-                    it.copy(
-                        isCredentialLoginLoading = false,
-                        isLoginSuccessful = false,
-                        loginMessage = "Server login is not connected yet. UI and ViewModel are now wired."
-                    )
+            else -> viewModelScope.launch {
+                onCredentialLoginStarted()
+
+                val result = runCatching {
+                    val response = authRepository.login(email = email, password = password)
+
+                    if (!response.isSuccessful) {
+                        error("Login failed with code ${response.code()}")
+                    }
+
+                    val accessToken = response.body()?.accessToken
+                    if (accessToken.isNullOrBlank()) {
+                        error("Login succeeded but access token was missing.")
+                    }
                 }
+
+                result.fold(
+                    onSuccess = {
+                        onAuthSuccess("Login succeeded.")
+                    },
+                    onFailure = { error ->
+                        onAuthFailure(error.message ?: "Login failed.")
+                    }
+                )
             }
         }
     }
@@ -131,6 +147,17 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isGoogleLoginLoading = true,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = null
+            )
+        }
+    }
+
+    private fun onCredentialLoginStarted() {
+        _uiState.update {
+            it.copy(
+                isCredentialLoginLoading = true,
                 isGoogleHistoryClearing = false,
                 isLoginSuccessful = false,
                 loginMessage = null
