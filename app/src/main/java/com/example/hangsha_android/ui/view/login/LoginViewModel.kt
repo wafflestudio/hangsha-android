@@ -21,6 +21,44 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    fun onUsernameChanged(username: String) {
+        _uiState.update {
+            it.copy(
+                username = username,
+                loginMessage = null
+            )
+        }
+    }
+
+    fun onPasswordChanged(password: String) {
+        _uiState.update {
+            it.copy(
+                password = password,
+                loginMessage = null
+            )
+        }
+    }
+
+    fun loginWithCredentials() {
+        val currentState = _uiState.value
+        val username = currentState.username.trim()
+        val password = currentState.password
+
+        when {
+            username.isBlank() -> onAuthFailure("Please enter your ID.")
+            password.isBlank() -> onAuthFailure("Please enter your password.")
+            else -> {
+                _uiState.update {
+                    it.copy(
+                        isCredentialLoginLoading = false,
+                        isLoginSuccessful = false,
+                        loginMessage = "Server login is not connected yet. UI and ViewModel are now wired."
+                    )
+                }
+            }
+        }
+    }
+
     fun onGoogleLoginConfigMissing() {
         onAuthFailure("GOOGLE_SERVER_CLIENT_ID is not configured.")
     }

@@ -1,6 +1,8 @@
 package com.example.hangsha_android.ui.view.login
 
 data class LoginUiState(
+    val username: String = "",
+    val password: String = "",
     val isCredentialLoginLoading: Boolean = false,
     val isGoogleLoginLoading: Boolean = false,
     val isGoogleHistoryClearing: Boolean = false,

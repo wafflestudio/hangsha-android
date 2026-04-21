@@ -109,11 +109,9 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         }
 
         LoginScreen(
-            onLoginClick = {
-                navController.navigate(HangshaDestinations.Main.route) {
-                    popUpTo(HangshaDestinations.Login.route) { inclusive = true }
-                }
-            },
+            onLoginClick = loginViewModel::loginWithCredentials,
+            onUsernameChanged = loginViewModel::onUsernameChanged,
+            onPasswordChanged = loginViewModel::onPasswordChanged,
             onGoogleLoginClick = {
                 if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isBlank()) {
                     loginViewModel.onGoogleLoginConfigMissing()
