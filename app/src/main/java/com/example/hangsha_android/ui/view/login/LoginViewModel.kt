@@ -3,8 +3,7 @@ package com.example.hangsha_android.ui.view.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
-import com.example.hangsha_android.data.network.api.AuthApi
-import com.example.hangsha_android.data.network.model.SocialLoginRequest
+import com.example.hangsha_android.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +14,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authApi: AuthApi
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -104,13 +103,7 @@ class LoginViewModel @Inject constructor(
             onGoogleLoginStarted()
 
             val result = runCatching {
-                val response = authApi.loginWithSocial(
-                    SocialLoginRequest(
-                        provider = GOOGLE_PROVIDER,
-                        code = serverAuthCode,
-                        codeVerifier = null
-                    )
-                )
+                val response = authRepository.loginWithGoogle(serverAuthCode)
 
                 if (!response.isSuccessful) {
                     error("Google login failed with code ${response.code()}")
@@ -166,9 +159,5 @@ class LoginViewModel @Inject constructor(
                 loginMessage = message
             )
         }
-    }
-
-    companion object {
-        private const val GOOGLE_PROVIDER = "GOOGLE"
     }
 }
