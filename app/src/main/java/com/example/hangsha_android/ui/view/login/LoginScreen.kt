@@ -53,7 +53,7 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !loginUiState.isAnyLoginLoading,
                 singleLine = true,
-                label = { Text(text = "ID") }
+                label = { Text(text = "Email") }
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
