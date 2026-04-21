@@ -22,33 +22,15 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun onGoogleLoginConfigMissing() {
-        _uiState.update {
-            it.copy(
-                isGoogleLoginLoading = false,
-                isGoogleHistoryClearing = false,
-                loginMessage = "GOOGLE_SERVER_CLIENT_ID is not configured."
-            )
-        }
+        onAuthFailure("GOOGLE_SERVER_CLIENT_ID is not configured.")
     }
 
     fun onGoogleLoginCancelled() {
-        _uiState.update {
-            it.copy(
-                isGoogleLoginLoading = false,
-                isGoogleHistoryClearing = false,
-                loginMessage = "Google login was cancelled."
-            )
-        }
+        onAuthFailure("Google login was cancelled.")
     }
 
     fun onGoogleLoginError(message: String) {
-        _uiState.update {
-            it.copy(
-                isGoogleLoginLoading = false,
-                isGoogleHistoryClearing = false,
-                loginMessage = message
-            )
-        }
+        onAuthFailure(message)
     }
 
     fun onGoogleHistoryClearStarted() {
@@ -69,7 +51,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun onGoogleAuthCodeReceived(serverAuthCode: String?) {
+    fun loginWithGoogle(serverAuthCode: String?) {
         if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isBlank()) {
             onGoogleLoginConfigMissing()
             return
@@ -81,14 +63,7 @@ class LoginViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isGoogleLoginLoading = true,
-                    isGoogleHistoryClearing = false,
-                    isLoginSuccessful = false,
-                    loginMessage = null
-                )
-            }
+            onGoogleLoginStarted()
 
             val result = runCatching {
                 val response = authApi.loginWithSocial(
@@ -104,22 +79,54 @@ class LoginViewModel @Inject constructor(
                 }
             }
 
-            _uiState.update {
-                it.copy(
-                    isGoogleLoginLoading = false,
-                    isLoginSuccessful = result.isSuccess,
-                    loginMessage = result.fold(
-                        onSuccess = { "Google login succeeded." },
-                        onFailure = { error -> error.message ?: "Google login failed." }
-                    )
-                )
-            }
+            result.fold(
+                onSuccess = {
+                    onAuthSuccess("Google login succeeded.")
+                },
+                onFailure = { error ->
+                    onAuthFailure(error.message ?: "Google login failed.")
+                }
+            )
         }
     }
 
     fun onLoginSuccessConsumed() {
         _uiState.update {
             it.copy(isLoginSuccessful = false)
+        }
+    }
+
+    private fun onGoogleLoginStarted() {
+        _uiState.update {
+            it.copy(
+                isGoogleLoginLoading = true,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = null
+            )
+        }
+    }
+
+    private fun onAuthSuccess(message: String) {
+        _uiState.update {
+            it.copy(
+                isCredentialLoginLoading = false,
+                isGoogleLoginLoading = false,
+                isLoginSuccessful = true,
+                loginMessage = message
+            )
+        }
+    }
+
+    private fun onAuthFailure(message: String) {
+        _uiState.update {
+            it.copy(
+                isCredentialLoginLoading = false,
+                isGoogleLoginLoading = false,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = message
+            )
         }
     }
 

@@ -53,7 +53,7 @@ fun LoginScreen(
             OutlinedButton(
                 onClick = onGoogleLoginClick,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !loginUiState.isGoogleLoginLoading
+                enabled = !loginUiState.isAnyLoginLoading
             ) {
                 if (loginUiState.isGoogleLoginLoading) {
                     GoogleLoginProgressIndicator(size = 18.dp)
@@ -64,7 +64,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
             ClearGoogleLoginHistoryButton(
                 onClick = onClearGoogleLoginHistoryClick,
-                enabled = !loginUiState.isGoogleLoginLoading && !loginUiState.isGoogleHistoryClearing
+                enabled = !loginUiState.isAnyLoginLoading && !loginUiState.isGoogleHistoryClearing
             )
             loginUiState.loginMessage?.let { message ->
                 Spacer(modifier = Modifier.height(12.dp))

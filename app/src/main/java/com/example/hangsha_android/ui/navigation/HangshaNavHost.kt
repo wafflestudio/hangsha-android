@@ -94,7 +94,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 return@rememberLauncherForActivityResult
             }
 
-            loginViewModel.onGoogleAuthCodeReceived(serverAuthCode)
+            loginViewModel.loginWithGoogle(serverAuthCode)
         }
 
         LaunchedEffect(loginUiState.isLoginSuccessful) {
