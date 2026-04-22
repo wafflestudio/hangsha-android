@@ -1,6 +1,7 @@
 package com.example.hangsha_android.ui.navigation
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -19,16 +20,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.navigation
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
+import com.example.hangsha_android.ui.view.signup.SignUpScreen
+import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -37,6 +40,7 @@ import kotlinx.coroutines.tasks.await
 
 sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
+    data object SignUp : HangshaDestinations("sign_up")
     data object Main : HangshaDestinations("main")
 }
 
@@ -51,6 +55,7 @@ fun HangshaNavHost(
         modifier = Modifier.padding(innerPadding)
     ) {
         loginGraph(navController = navController)
+        signUpGraph(navController = navController)
         mainGraph(navController = navController)
     }
 }
@@ -110,6 +115,9 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
 
         LoginScreen(
             onLoginClick = loginViewModel::loginWithCredentials,
+            onSignUpClick = {
+                navController.navigate(HangshaDestinations.SignUp.route)
+            },
             onUsernameChanged = loginViewModel::onUsernameChanged,
             onPasswordChanged = loginViewModel::onPasswordChanged,
             onGoogleLoginClick = {
@@ -139,6 +147,28 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
             onCheckServerClick = serverHealthViewModel::checkServer,
             loginUiState = loginUiState,
             serverHealthUiState = serverHealthUiState
+        )
+    }
+}
+
+fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
+    composable(HangshaDestinations.SignUp.route) {
+        val signUpViewModel: SignUpViewModel = hiltViewModel()
+        val signUpUiState by signUpViewModel.uiState.collectAsState()
+        val context = LocalContext.current
+
+        SignUpScreen(
+            uiState = signUpUiState,
+            onEmailChanged = signUpViewModel::onEmailChanged,
+            onPasswordChanged = signUpViewModel::onPasswordChanged,
+            onPasswordConfirmationChanged = signUpViewModel::onPasswordConfirmationChanged,
+            onSignUpClick = {
+                Toast.makeText(context, "Sign up succeeded.", Toast.LENGTH_SHORT).show()
+                navController.popBackStack()
+            },
+            onNavigateBack = {
+                navController.popBackStack()
+            }
         )
     }
 }

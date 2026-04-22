@@ -27,6 +27,7 @@ import com.example.hangsha_android.ui.view.serverhealth.ServerHealthUiState
 @Composable
 fun LoginScreen(
     onLoginClick: () -> Unit,
+    onSignUpClick: () -> Unit,
     onUsernameChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onGoogleLoginClick: () -> Unit,
@@ -76,6 +77,14 @@ fun LoginScreen(
                 } else {
                     Text(text = "Login")
                 }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onSignUpClick,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !loginUiState.isAnyLoginLoading
+            ) {
+                Text(text = "Sign Up")
             }
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
