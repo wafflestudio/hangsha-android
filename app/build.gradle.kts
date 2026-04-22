@@ -112,4 +112,5 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.coil.compose)
     implementation("androidx.emoji2:emoji2-emojipicker:1.4.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

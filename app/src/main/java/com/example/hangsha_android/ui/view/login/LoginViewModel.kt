@@ -3,6 +3,7 @@ package com.example.hangsha_android.ui.view.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val authTokenStorage: AuthTokenStorage
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -51,15 +53,12 @@ class LoginViewModel @Inject constructor(
 
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
-
-                    if (!response.isSuccessful) {
-                        error("Login failed with code ${response.code()}")
-                    }
-
-                    val accessToken = response.body()?.accessToken
-                    if (accessToken.isNullOrBlank()) {
-                        error("Login succeeded but access token was missing.")
-                    }
+                    saveAccessTokenFromResponse(
+                        isSuccessful = response.isSuccessful,
+                        code = response.code(),
+                        accessToken = response.body()?.accessToken,
+                        failureMessage = "Login failed"
+                    )
                 }
 
                 result.fold(
@@ -120,10 +119,12 @@ class LoginViewModel @Inject constructor(
 
             val result = runCatching {
                 val response = authRepository.loginWithGoogle(serverAuthCode)
-
-                if (!response.isSuccessful) {
-                    error("Google login failed with code ${response.code()}")
-                }
+                saveAccessTokenFromResponse(
+                    isSuccessful = response.isSuccessful,
+                    code = response.code(),
+                    accessToken = response.body()?.accessToken,
+                    failureMessage = "Google login failed"
+                )
             }
 
             result.fold(
@@ -163,6 +164,23 @@ class LoginViewModel @Inject constructor(
                 loginMessage = null
             )
         }
+    }
+
+    private fun saveAccessTokenFromResponse(
+        isSuccessful: Boolean,
+        code: Int,
+        accessToken: String?,
+        failureMessage: String
+    ) {
+        if (!isSuccessful) {
+            error("$failureMessage with code $code")
+        }
+
+        if (accessToken.isNullOrBlank()) {
+            error("$failureMessage because access token was missing.")
+        }
+
+        authTokenStorage.saveAccessToken(accessToken)
     }
 
     private fun onAuthSuccess(message: String) {
