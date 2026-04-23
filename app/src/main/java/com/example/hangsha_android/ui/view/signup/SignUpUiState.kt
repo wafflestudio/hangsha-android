@@ -5,7 +5,8 @@ data class SignUpUiState(
     val password: String = "",
     val passwordConfirmation: String = "",
     val signUpMessage: String? = null,
-    val isSignUpLoading: Boolean = false
+    val isSignUpLoading: Boolean = false,
+    val isSignUpSuccessful: Boolean = false
 ) {
     val isSubmitEnabled: Boolean
         get() = email.isNotBlank() &&

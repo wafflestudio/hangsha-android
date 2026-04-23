@@ -114,12 +114,12 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         }
 
         LoginScreen(
-            onLoginClick = loginViewModel::loginWithCredentials,
+            onLoginClick = { loginViewModel.loginWithCredentials() },
             onSignUpClick = {
                 navController.navigate(HangshaDestinations.SignUp.route)
             },
-            onUsernameChanged = loginViewModel::onUsernameChanged,
-            onPasswordChanged = loginViewModel::onPasswordChanged,
+            onUsernameChanged = { value -> loginViewModel.onUsernameChanged(value) },
+            onPasswordChanged = { value -> loginViewModel.onPasswordChanged(value) },
             onGoogleLoginClick = {
                 if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isBlank()) {
                     loginViewModel.onGoogleLoginConfigMissing()
@@ -144,7 +144,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     )
                 }
             },
-            onCheckServerClick = serverHealthViewModel::checkServer,
+            onCheckServerClick = { serverHealthViewModel.checkServer() },
             loginUiState = loginUiState,
             serverHealthUiState = serverHealthUiState
         )
@@ -157,15 +157,29 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
         val signUpUiState by signUpViewModel.uiState.collectAsState()
         val context = LocalContext.current
 
+        LaunchedEffect(signUpUiState.signUpMessage) {
+            val message = signUpUiState.signUpMessage ?: return@LaunchedEffect
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            signUpViewModel.onSignUpMessageConsumed()
+        }
+
+        LaunchedEffect(signUpUiState.isSignUpSuccessful) {
+            if (!signUpUiState.isSignUpSuccessful) {
+                return@LaunchedEffect
+            }
+
+            navController.popBackStack()
+            signUpViewModel.onSignUpSuccessConsumed()
+        }
+
         SignUpScreen(
             uiState = signUpUiState,
-            onEmailChanged = signUpViewModel::onEmailChanged,
-            onPasswordChanged = signUpViewModel::onPasswordChanged,
-            onPasswordConfirmationChanged = signUpViewModel::onPasswordConfirmationChanged,
-            onSignUpClick = {
-                Toast.makeText(context, "Sign up succeeded.", Toast.LENGTH_SHORT).show()
-                navController.popBackStack()
+            onEmailChanged = { value -> signUpViewModel.onEmailChanged(value) },
+            onPasswordChanged = { value -> signUpViewModel.onPasswordChanged(value) },
+            onPasswordConfirmationChanged = { value ->
+                signUpViewModel.onPasswordConfirmationChanged(value)
             },
+            onSignUpClick = { signUpViewModel.signUp() },
             onNavigateBack = {
                 navController.popBackStack()
             }
