@@ -3,6 +3,7 @@ package com.example.hangsha_android.data.repository
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.model.LoginRequest
 import com.example.hangsha_android.data.network.model.LoginResponse
+import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
 import javax.inject.Inject
 import retrofit2.Response
@@ -10,6 +11,7 @@ import retrofit2.Response
 class AuthRepository @Inject constructor(
     private val authApi: AuthApi
 ) {
+    // 로그인
     suspend fun login(email: String, password: String): Response<LoginResponse> {
         return authApi.login(
             LoginRequest(
@@ -25,6 +27,17 @@ class AuthRepository @Inject constructor(
                 provider = GOOGLE_PROVIDER,
                 code = serverAuthCode,
                 codeVerifier = null
+            )
+        )
+    }
+
+    // 회원가입
+    suspend fun register(email: String, password: String): Response<LoginResponse> {
+        return authApi.register(
+            RegisterRequest(
+                email = email,
+                password = password,
+                username = "username" // TODO: username이 가야되긴 하는데, 웹에서도 입력받는 부분이 없어서 임시로 고정값 넣어둠. 나중에 수정 필요
             )
         )
     }
