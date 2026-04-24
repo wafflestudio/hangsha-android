@@ -29,6 +29,8 @@ import androidx.navigation.navigation
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
+import com.example.hangsha_android.ui.view.mypage.MyPageScreen
+import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
@@ -202,7 +204,10 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             SimplePageText("bookmark events")
         }
         composable(BottomTab.MyPage.route) {
-            SimplePageText("my page")
+            val myPageViewModel: MyPageViewModel = hiltViewModel()
+            val myPageUiState by myPageViewModel.uiState.collectAsState()
+
+            MyPageScreen(uiState = myPageUiState)
         }
     }
 }
