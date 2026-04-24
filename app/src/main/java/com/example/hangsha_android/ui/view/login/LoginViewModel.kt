@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.repository.AuthRepository
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -53,12 +57,7 @@ class LoginViewModel @Inject constructor(
 
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
-                    saveAccessTokenFromResponse(
-                        isSuccessful = response.isSuccessful,
-                        code = response.code(),
-                        accessToken = response.body()?.accessToken,
-                        failureMessage = "Login failed"
-                    )
+                    saveAccessTokenFromResponse(response, "login")
                 }
 
                 result.fold(
@@ -66,7 +65,7 @@ class LoginViewModel @Inject constructor(
                         onAuthSuccess("Login succeeded.")
                     },
                     onFailure = { error ->
-                        onAuthFailure(error.message ?: "Login failed.")
+                        onAuthFailure(error, "login")
                     }
                 )
             }
@@ -119,12 +118,7 @@ class LoginViewModel @Inject constructor(
 
             val result = runCatching {
                 val response = authRepository.loginWithGoogle(serverAuthCode)
-                saveAccessTokenFromResponse(
-                    isSuccessful = response.isSuccessful,
-                    code = response.code(),
-                    accessToken = response.body()?.accessToken,
-                    failureMessage = "Google login failed"
-                )
+                saveAccessTokenFromResponse(response, "Google login")
             }
 
             result.fold(
@@ -132,7 +126,7 @@ class LoginViewModel @Inject constructor(
                     onAuthSuccess("Google login succeeded.")
                 },
                 onFailure = { error ->
-                    onAuthFailure(error.message ?: "Google login failed.")
+                    onAuthFailure(error, "Google login")
                 }
             )
         }
@@ -167,17 +161,16 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun saveAccessTokenFromResponse(
-        isSuccessful: Boolean,
-        code: Int,
-        accessToken: String?,
-        failureMessage: String
+        response: retrofit2.Response<com.example.hangsha_android.data.network.model.LoginResponse>,
+        actionLabel: String
     ) {
-        if (!isSuccessful) {
-            error("$failureMessage with code $code")
+        if (!response.isSuccessful) {
+            throw HttpException(response)
         }
 
+        val accessToken = response.body()?.accessToken
         if (accessToken.isNullOrBlank()) {
-            error("$failureMessage because access token was missing.")
+            throw IllegalStateException("$actionLabel succeeded but access token was missing.")
         }
 
         authTokenStorage.saveAccessToken(accessToken)
@@ -204,5 +197,26 @@ class LoginViewModel @Inject constructor(
                 loginMessage = message
             )
         }
+    }
+
+    private fun onAuthFailure(error: Throwable, actionLabel: String) {
+        val message = when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid $actionLabel request."
+                401 -> "Incorrect email or password."
+                403 -> "You do not have permission to continue."
+                404 -> "Account information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "${actionLabel.replaceFirstChar(Char::titlecase)} failed with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message
+                ?: "${actionLabel.replaceFirstChar(Char::titlecase)} failed."
+            else -> error.message ?: "${actionLabel.replaceFirstChar(Char::titlecase)} failed."
+        }
+
+        onAuthFailure(message)
     }
 }
