@@ -207,11 +207,15 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val myPageViewModel: MyPageViewModel = hiltViewModel()
             val myPageUiState by myPageViewModel.uiState.collectAsState()
 
-            MyPageScreen(uiState = myPageUiState)
+            MyPageScreen(
+                uiState = myPageUiState,
+                onRetryClick = { myPageViewModel.loadMyProfile() }
+            )
         }
     }
 }
 
+// 그냥 임시로 페이지 만들어주는 거.
 @Composable
 fun SimplePageText(text: String) {
     Box(

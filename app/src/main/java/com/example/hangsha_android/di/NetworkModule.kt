@@ -1,13 +1,16 @@
 package com.example.hangsha_android.di
 
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
+import com.example.hangsha_android.data.network.api.UserApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -28,9 +31,23 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
+        loggingInterceptor: HttpLoggingInterceptor,
+        authTokenStorage: AuthTokenStorage
     ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val accessToken = authTokenStorage.getAccessToken()
+                val request = if (accessToken.isNullOrBlank()) {
+                    chain.request()
+                } else {
+                    chain.request()
+                        .newBuilder()
+                        .header("Authorization", "Bearer $accessToken")
+                        .build()
+                }
+
+                chain.proceed(request)
+            }
             .addInterceptor(loggingInterceptor)
             .build()
     }
@@ -61,5 +78,13 @@ object NetworkModule {
         retrofit: Retrofit
     ): AuthApi {
         return retrofit.create(AuthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserApi(
+        retrofit: Retrofit
+    ): UserApi {
+        return retrofit.create(UserApi::class.java)
     }
 }
