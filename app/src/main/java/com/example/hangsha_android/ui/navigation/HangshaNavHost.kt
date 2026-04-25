@@ -29,6 +29,8 @@ import androidx.navigation.navigation
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
+import com.example.hangsha_android.ui.view.calendar.CalendarScreen
+import com.example.hangsha_android.ui.view.calendar.CalendarViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
@@ -195,7 +197,19 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         route = HangshaDestinations.Main.route
     ) {
         composable(BottomTab.Calendar.route) {
-            SimplePageText("calendar")
+            val calendarViewModel: CalendarViewModel = hiltViewModel()
+            val calendarUiState by calendarViewModel.uiState.collectAsState()
+
+            CalendarScreen(
+                uiState = calendarUiState,
+                onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
+                onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onOpenFilterClick = { calendarViewModel.openFilterSheet() },
+                onDismissFilterSheet = { calendarViewModel.dismissFilterSheet() },
+                onApplyFilters = { calendarViewModel.applyDraftFilters() },
+                onClearFilters = { calendarViewModel.clearDraftFilters() },
+                onRetryClick = { calendarViewModel.retry() }
+            )
         }
         composable(BottomTab.Timetable.route) {
             SimplePageText("timetable")
