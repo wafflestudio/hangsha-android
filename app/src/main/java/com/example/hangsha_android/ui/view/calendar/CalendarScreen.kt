@@ -1,8 +1,11 @@
 package com.example.hangsha_android.ui.view.calendar
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,12 +34,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
@@ -47,15 +57,17 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val DayCardShadow = Color(0x1C1E2329)
+private val DayCardShadow = Color(0x16000000)
 private val DayDivider = Color(0xFFF0F1F3)
+private val DayCellBorder = Color(0xFFE6E8EB)
 private val OutOfMonthText = Color(0xFFC9CDD3)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
 private const val MaxVisibleEventMarkers = 4
-private val ScreenHorizontalPadding = 14.dp
+private val ScreenHorizontalPadding = 15.dp
 private val ScreenVerticalPadding = 30.dp
+private val DayCellCornerRadius = 3.dp
 
 private data class CalendarHeaderState(
     val currentMonth: YearMonth,
@@ -124,6 +136,8 @@ private fun CalendarScreenContent(
                 vertical = ScreenVerticalPadding
             )
     ) {
+        Spacer(modifier = Modifier.height(35.dp))
+        Spacer(modifier = Modifier.weight(1f))
         // "2026년 3월", 좌우 화살표, 필터 버튼
         CalendarHeader(
             state = CalendarHeaderState(
@@ -135,17 +149,17 @@ private fun CalendarScreenContent(
             onNextMonthClick = onNextMonthClick,
             onOpenFilterClick = onOpenFilterClick
         )
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(15.dp))
 
         // "일 월 화 수 목 금 토"
         WeekdayHeader()
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
         if (uiState.errorMessage != null) {
             ErrorState(
                 message = uiState.errorMessage,
                 onRetryClick = onRetryClick,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
         } else {
             // 월간 달력 카드들
@@ -154,9 +168,10 @@ private fun CalendarScreenContent(
                 currentMonth = uiState.currentMonth,
                 eventsByDate = uiState.eventsByDate,
                 isLoading = uiState.isLoading,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
         }
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -174,7 +189,8 @@ private fun CalendarHeader(
         // 연, 월 텍스트
         Text(
             text = state.currentMonth.format(KoreanMonthFormatter),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.labelLarge,
+            fontSize = 15.sp, // 필요에 따라 14.sp
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -341,14 +357,12 @@ private fun CalendarMonthGrid(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         weeks.forEach { week ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 // 각 Row가 스크린샷의 한 줄, 즉 한 주를 의미
                 week.forEach { date ->
@@ -379,26 +393,63 @@ private fun CalendarDayCell(
 
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(10.dp),
-                ambientColor = DayCardShadow,
-                spotColor = DayCardShadow
+            .aspectRatio(0.5f)
+            .drawBehind {
+                val radius = DayCellCornerRadius.toPx()
+                val offset = 4.dp.toPx() // 그림자 길이
+                val blurRadius = 2.dp.toPx() // 블러의 퍼짐 정도 (값을 키울수록 더 부드럽게 퍼짐)
+
+                drawIntoCanvas { canvas ->
+                    val paint = Paint()
+                    val frameworkPaint = paint.asFrameworkPaint()
+
+                    // 그림자 색상 설정
+                    frameworkPaint.color = DayCardShadow.toArgb()
+
+                    // 블러 필터 적용
+                    frameworkPaint.maskFilter = BlurMaskFilter(
+                        blurRadius,
+                        BlurMaskFilter.Blur.NORMAL
+                    )
+
+                    // 캔버스에 모서리가 둥근 사각형(그림자) 그리기
+                    canvas.drawRoundRect(
+                        left = offset,
+                        top = offset,
+                        right = size.width + offset,
+                        bottom = size.height + offset,
+                        radiusX = radius,
+                        radiusY = radius,
+                        paint = paint
+                    )
+                }
+            }
+            .background(
+                color = PureWhite,
+                shape = RoundedCornerShape(DayCellCornerRadius)
             )
-            .clip(RoundedCornerShape(10.dp))
-            .background(PureWhite)
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .border( // 선
+                width = 0.dp, // 일단 피그마에는 선이 없음...
+                color = DayCellBorder,
+                shape = RoundedCornerShape(DayCellCornerRadius)
+            )
+            .padding(horizontal = 3.dp, vertical = 3.dp) // 내부 여백
     ) {
         // 날짜 숫자
-        Text(
-            text = date.dayOfMonth.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = dayModel.dayTextColor
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier.size(width = 20.dp, height = 21.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = date.dayOfMonth.toString(),
+                fontSize = 14.sp, // 폰트 크기 14.sp 고정
+                color = dayModel.dayTextColor
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
         Column(
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             // 날짜 카드 안의 노랑, 보라, 파랑, 초록 일정 막대
             dayModel.markerColors.forEach { color ->
@@ -409,6 +460,7 @@ private fun CalendarDayCell(
             }
         }
         Spacer(modifier = Modifier.weight(1f))
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -455,8 +507,8 @@ private fun EventMarkerBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(9.dp)
-            .clip(RoundedCornerShape(2.dp))
+            .height(10.dp)
+            .clip(RoundedCornerShape(0.dp))
             .background(color.copy(alpha = alpha))
     )
 }
