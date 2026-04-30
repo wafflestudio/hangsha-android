@@ -414,11 +414,13 @@ private fun ExcludeKeywordSection(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             placeholder = { Text("제외 키워드 입력") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = null
-                )
+            trailingIcon = {
+                androidx.compose.material3.IconButton(onClick = onAdd) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "제외 키워드 추가"
+                    )
+                }
             },
             keyboardActions = KeyboardActions(onDone = { onAdd() }),
             maxLines = 1

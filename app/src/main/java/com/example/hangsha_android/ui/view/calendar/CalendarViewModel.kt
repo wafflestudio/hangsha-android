@@ -205,7 +205,10 @@ class CalendarViewModel @Inject constructor(
 
         loadJob = viewModelScope.launch {
             runCatching {
-                val response = eventRepository.getEvents(visibleRange)
+                val response = eventRepository.getEvents(
+                    range = visibleRange,
+                    filters = filters
+                )
                 if (!response.isSuccessful) {
                     throw HttpException(response)
                 }
@@ -213,11 +216,13 @@ class CalendarViewModel @Inject constructor(
                 response.body() ?: throw IllegalStateException("Events response was empty.")
             }.fold(
                 onSuccess = { response ->
-                    val eventsByDate = response.toCalendarEventsByDate()
-                    val filterOptions = buildFilterOptions(eventsByDate)
+                    val allEventsByDate = response.toCalendarEventsByDate()
+                    val filterOptions = buildFilterOptions(allEventsByDate)
+                    val filteredEventsByDate = allEventsByDate.applyFilters(filters)
                     _uiState.update {
                         it.copy(
-                            eventsByDate = eventsByDate,
+                            allEventsByDate = allEventsByDate,
+                            eventsByDate = filteredEventsByDate,
                             availableFilterOptions = filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -227,6 +232,7 @@ class CalendarViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
+                            allEventsByDate = emptyMap(),
                             eventsByDate = emptyMap(),
                             availableFilterOptions = CalendarFilterOptions(),
                             isLoading = false,

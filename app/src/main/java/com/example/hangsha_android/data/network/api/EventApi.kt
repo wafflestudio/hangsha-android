@@ -9,6 +9,12 @@ interface EventApi {
     @GET("api/v1/events/month")
     suspend fun getEvents(
         @Query("from") from: String,
-        @Query("to") to: String
+        @Query("to") to: String,
+        @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
+        @Query("interestedOnly") interestedOnly: Boolean? = null,
+        @Query("orgIds") orgIds: List<Long>? = null,
+        @Query("statusIds") statusIds: List<Long>? = null,
+        @Query("eventTypeIds") eventTypeIds: List<Long>? = null,
+        @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<MonthlyEventsResponse>
 }
