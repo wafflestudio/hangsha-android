@@ -12,10 +12,16 @@ data class CalendarUiState(
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
+    val selectedFilterTab: CalendarFilterTab = CalendarFilterTab.EVENT_TYPE,
+    val excludeKeywordInput: String = "",
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
     val hasActiveFilters: Boolean
         get() = appliedFilters.hasActiveFilters
+
+    // 총 행사 개수
+    val filteredEventCount: Int
+        get() = eventsByDate.values.sumOf { it.size }
 }
