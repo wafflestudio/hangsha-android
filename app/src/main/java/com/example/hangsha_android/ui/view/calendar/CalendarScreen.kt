@@ -190,7 +190,7 @@ private fun CalendarHeader(
         Text(
             text = state.currentMonth.format(KoreanMonthFormatter),
             style = MaterialTheme.typography.labelLarge,
-            fontSize = 15.sp, // 필요에 따라 14.sp
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.width(8.dp))
