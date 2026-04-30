@@ -30,7 +30,6 @@ class CalendarViewModel @Inject constructor(
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
-    private var allEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap()
 
     init {
         loadMonth(_uiState.value.currentMonth)
@@ -52,7 +51,9 @@ class CalendarViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = true,
-                draftFilters = it.appliedFilters
+                draftFilters = it.appliedFilters,
+                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
             )
         }
     }
@@ -61,15 +62,24 @@ class CalendarViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = false,
-                draftFilters = it.appliedFilters
+                draftFilters = it.appliedFilters,
+                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
             )
         }
     }
 
     fun clearDraftFilters() {
         _uiState.update {
-            it.copy(draftFilters = CalendarFilterState())
+            it.copy(
+                draftFilters = CalendarFilterState(),
+                excludeKeywordInput = ""
+            )
         }
+    }
+
+    fun selectFilterTab(tab: CalendarFilterTab) {
+        _uiState.update { it.copy(selectedFilterTab = tab) }
     }
 
     fun setDraftBookmarkedOnly(enabled: Boolean) {
@@ -88,11 +98,11 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun toggleDraftOperationMode(operationMode: String) {
+    fun toggleDraftOrgId(orgId: Long) {
         _uiState.update {
             it.copy(
                 draftFilters = it.draftFilters.copy(
-                    operationModes = it.draftFilters.operationModes.toggle(operationMode)
+                    orgIds = it.draftFilters.orgIds.toggle(orgId)
                 )
             )
         }
@@ -118,22 +128,64 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun applyDraftFilters() {
+    fun updateExcludeKeywordInput(value: String) {
+        _uiState.update { it.copy(excludeKeywordInput = value) }
+    }
+
+    fun addDraftExcludeKeyword() {
+        val keyword = _uiState.value.excludeKeywordInput.trim()
+        if (keyword.isBlank()) return
+
         _uiState.update { state ->
-            val appliedFilters = state.draftFilters
-            state.copy(
-                appliedFilters = appliedFilters,
-                eventsByDate = applyFilters(allEventsByDate, appliedFilters),
-                isFilterSheetVisible = false,
-                errorMessage = null
+            if (keyword in state.draftFilters.excludedKeywords) {
+                state.copy(excludeKeywordInput = "")
+            } else {
+                state.copy(
+                    draftFilters = state.draftFilters.copy(
+                        excludedKeywords = state.draftFilters.excludedKeywords + keyword
+                    ),
+                    excludeKeywordInput = ""
+                )
+            }
+        }
+    }
+
+    fun removeDraftExcludeKeyword(keyword: String) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(
+                    excludedKeywords = it.draftFilters.excludedKeywords - keyword
+                )
             )
         }
     }
 
-    private fun loadMonth(month: YearMonth) {
+    fun applyDraftFilters() {
+        val state = _uiState.value
+        val appliedFilters = state.draftFilters
+        _uiState.update {
+            it.copy(
+                // 사용자가 시트에서 고른 draft를 실제 적용 상태로 승격
+                appliedFilters = appliedFilters,
+                draftFilters = appliedFilters,
+                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = "",
+                isFilterSheetVisible = false,
+                errorMessage = null
+            )
+        }
+        loadMonth(
+            month = state.currentMonth,
+            filters = appliedFilters
+        )
+    }
+
+    private fun loadMonth(
+        month: YearMonth,
+        filters: CalendarFilterState = _uiState.value.appliedFilters
+    ) {
         val visibleRange = month.toCalendarGridRange()
         val visibleDates = visibleRange.toDateList()
-        val appliedFilters = _uiState.value.appliedFilters
 
         loadJob?.cancel()
         _uiState.update {
@@ -141,10 +193,13 @@ class CalendarViewModel @Inject constructor(
                 currentMonth = month,
                 visibleRange = visibleRange,
                 visibleDates = visibleDates,
+                appliedFilters = filters,
                 isLoading = true,
                 errorMessage = null,
                 isFilterSheetVisible = false,
-                draftFilters = appliedFilters
+                draftFilters = filters,
+                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
             )
         }
 
@@ -158,11 +213,11 @@ class CalendarViewModel @Inject constructor(
                 response.body() ?: throw IllegalStateException("Events response was empty.")
             }.fold(
                 onSuccess = { response ->
-                    allEventsByDate = response.toCalendarEventsByDate()
-                    val filterOptions = buildFilterOptions(allEventsByDate)
+                    val eventsByDate = response.toCalendarEventsByDate()
+                    val filterOptions = buildFilterOptions(eventsByDate)
                     _uiState.update {
                         it.copy(
-                            eventsByDate = applyFilters(allEventsByDate, appliedFilters),
+                            eventsByDate = eventsByDate,
                             availableFilterOptions = filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -170,7 +225,6 @@ class CalendarViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    allEventsByDate = emptyMap()
                     _uiState.update {
                         it.copy(
                             eventsByDate = emptyMap(),
@@ -189,7 +243,7 @@ class CalendarViewModel @Inject constructor(
     ): CalendarFilterOptions {
         val events = eventsByDate.values.flatten()
         return CalendarFilterOptions(
-            operationModes = events.map { it.operationMode }
+            orgIds = events.map { it.orgId }
                 .distinct()
                 .sorted(),
             statusIds = events.map { it.statusId }
@@ -199,24 +253,6 @@ class CalendarViewModel @Inject constructor(
                 .distinct()
                 .sorted()
         )
-    }
-
-    private fun applyFilters(
-        eventsByDate: Map<LocalDate, List<CalendarEvent>>,
-        filters: CalendarFilterState
-    ): Map<LocalDate, List<CalendarEvent>> {
-        if (!filters.hasActiveFilters) {
-            return eventsByDate
-        }
-
-        return buildMap {
-            eventsByDate.toSortedMap().forEach { (date, events) ->
-                val filteredEvents = events.filter(filters::matches)
-                if (filteredEvents.isNotEmpty()) {
-                    put(date, filteredEvents)
-                }
-            }
-        }
     }
 
     private fun mapErrorMessage(error: Throwable): String {

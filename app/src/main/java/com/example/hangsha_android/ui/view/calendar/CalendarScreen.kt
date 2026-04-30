@@ -92,6 +92,15 @@ fun CalendarScreen(
     onNextMonthClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
+    onSelectFilterTab: (CalendarFilterTab) -> Unit,
+    onBookmarkedOnlyChange: (Boolean) -> Unit,
+    onInterestedOnlyChange: (Boolean) -> Unit,
+    onToggleOrgId: (Long) -> Unit,
+    onToggleStatus: (Long) -> Unit,
+    onToggleEventType: (Long) -> Unit,
+    onExcludeKeywordInputChange: (String) -> Unit,
+    onAddExcludeKeyword: () -> Unit,
+    onRemoveExcludeKeyword: (String) -> Unit,
     onApplyFilters: () -> Unit,
     onClearFilters: () -> Unit,
     onRetryClick: () -> Unit
@@ -102,6 +111,15 @@ fun CalendarScreen(
         onNextMonthClick = onNextMonthClick,
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
+        onSelectFilterTab = onSelectFilterTab,
+        onBookmarkedOnlyChange = onBookmarkedOnlyChange,
+        onInterestedOnlyChange = onInterestedOnlyChange,
+        onToggleOrgId = onToggleOrgId,
+        onToggleStatus = onToggleStatus,
+        onToggleEventType = onToggleEventType,
+        onExcludeKeywordInputChange = onExcludeKeywordInputChange,
+        onAddExcludeKeyword = onAddExcludeKeyword,
+        onRemoveExcludeKeyword = onRemoveExcludeKeyword,
         onApplyFilters = onApplyFilters,
         onClearFilters = onClearFilters,
         onRetryClick = onRetryClick
@@ -115,15 +133,33 @@ private fun CalendarScreenContent(
     onNextMonthClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
+    onSelectFilterTab: (CalendarFilterTab) -> Unit,
+    onBookmarkedOnlyChange: (Boolean) -> Unit,
+    onInterestedOnlyChange: (Boolean) -> Unit,
+    onToggleOrgId: (Long) -> Unit,
+    onToggleStatus: (Long) -> Unit,
+    onToggleEventType: (Long) -> Unit,
+    onExcludeKeywordInputChange: (String) -> Unit,
+    onAddExcludeKeyword: () -> Unit,
+    onRemoveExcludeKeyword: (String) -> Unit,
     onApplyFilters: () -> Unit,
     onClearFilters: () -> Unit,
     onRetryClick: () -> Unit
 ) {
     if (uiState.isFilterSheetVisible) {
         // 우측 상단 슬라이더 버튼 - 필터 시트
-        FilterSheet(
+        CalendarFilterBottomSheet(
             uiState = uiState,
             onDismiss = onDismissFilterSheet,
+            onSelectTab = onSelectFilterTab,
+            onBookmarkedOnlyChange = onBookmarkedOnlyChange,
+            onInterestedOnlyChange = onInterestedOnlyChange,
+            onToggleOrgId = onToggleOrgId,
+            onToggleStatus = onToggleStatus,
+            onToggleEventType = onToggleEventType,
+            onExcludeKeywordInputChange = onExcludeKeywordInputChange,
+            onAddExcludeKeyword = onAddExcludeKeyword,
+            onRemoveExcludeKeyword = onRemoveExcludeKeyword,
             onApply = onApplyFilters,
             onClear = onClearFilters
         )
@@ -680,8 +716,8 @@ private fun buildFilterSummary(uiState: CalendarUiState): String {
     return buildList {
         if (uiState.appliedFilters.bookmarkedOnly) add("북마크만")
         if (uiState.appliedFilters.interestedOnly) add("관심 일정만")
-        if (uiState.appliedFilters.operationModes.isNotEmpty()) {
-            add("운영 방식 ${uiState.appliedFilters.operationModes.size}개")
+        if (uiState.appliedFilters.orgIds.isNotEmpty()) {
+            add("운영 방식 ${uiState.appliedFilters.orgIds.size}개")
         }
         if (uiState.appliedFilters.statusIds.isNotEmpty()) {
             add("상태 ${uiState.appliedFilters.statusIds.size}개")
