@@ -51,6 +51,7 @@ import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.calendar.CalendarEventColorMapper.dayRed
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -66,7 +67,7 @@ private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
 private const val MaxVisibleEventMarkers = 4
 private val ScreenHorizontalPadding = 15.dp
-private val ScreenVerticalPadding = 30.dp
+private val ScreenVerticalPadding = 15.dp
 private val DayCellCornerRadius = 3.dp
 
 private data class CalendarHeaderState(
@@ -77,6 +78,7 @@ private data class CalendarHeaderState(
 
 private data class CalendarDayUiModel(
     val isCurrentMonth: Boolean,
+    val contentAlpha: Float,
     val dayTextColor: Color,
     val markerColors: List<Color>,
     val footerColor: Color
@@ -136,7 +138,7 @@ private fun CalendarScreenContent(
                 vertical = ScreenVerticalPadding
             )
     ) {
-        Spacer(modifier = Modifier.height(35.dp))
+        Spacer(modifier = Modifier.height(25.dp))
         Spacer(modifier = Modifier.weight(1f))
         // "2026년 3월", 좌우 화살표, 필터 버튼
         CalendarHeader(
@@ -340,21 +342,41 @@ private fun HeaderCircleButton(
 
 @Composable
 private fun WeekdayHeader() {
+    val todayIndex = when (LocalDate.now().dayOfWeek) {
+        DayOfWeek.SUNDAY -> 0
+        DayOfWeek.MONDAY -> 1
+        DayOfWeek.TUESDAY -> 2
+        DayOfWeek.WEDNESDAY -> 3
+        DayOfWeek.THURSDAY -> 4
+        DayOfWeek.FRIDAY -> 5
+        DayOfWeek.SATURDAY -> 6
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
         WeekdayLabels.forEachIndexed { index, label ->
+            val isToday = index == todayIndex
+            val isSunday = index == 0
+
+            // 조건에 따른 알파값 설정
+            val textAlpha = when {
+                isToday -> 1f    // 오늘: 투명도 0% (완전 불투명)
+                isSunday -> 0.5f // 일요일: 투명도 50%
+                else -> 0.3f // 나머지: 투명도 70%
+            }
+
+            val baseColor = if (isSunday) dayRed else MaterialTheme.colorScheme.onSurface
+
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                // 일요일만 붉게, 나머지는 옅은 회색으로
-                // TODO: 오늘 날짜는 진하게 표현 (예: 2026년 4월 27일이 오늘이라면 "27" 숫자와 "월" 요일을 강조)
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (index == 0) Coral60 else OutOfMonthText
+                    color = baseColor.copy(alpha = textAlpha)
                 )
             }
         }
@@ -457,8 +479,8 @@ private fun CalendarDayCell(
         ) {
             Text(
                 text = date.dayOfMonth.toString(),
-                fontSize = 14.sp, // 폰트 크기 14.sp 고정
-                color = dayModel.dayTextColor
+                style = MaterialTheme.typography.bodyMedium, // 폰트 크기 14.sp 고정
+                color = dayModel.dayTextColor.copy(alpha = dayModel.contentAlpha)
             )
         }
 
@@ -470,7 +492,7 @@ private fun CalendarDayCell(
             dayModel.markerColors.forEach { color ->
                 EventMarkerBar(
                     color = color,
-                    alpha = if (dayModel.isCurrentMonth) 1f else 0.45f
+                    alpha = 1f
                 )
             }
         }
@@ -495,10 +517,17 @@ private fun buildCalendarDayUiModel(
     currentMonth: YearMonth,
     events: List<CalendarEvent>
 ): CalendarDayUiModel {
+    val today = LocalDate.now()
     val isCurrentMonth = YearMonth.from(date) == currentMonth
+    val isToday = date == today
+    val contentAlpha = when {                  // 날짜 조건에 맞춰 알파값 수정
+        isToday -> 1f                          // 오늘: 투명도 0% (최우선)
+        date.dayOfWeek == DayOfWeek.SUNDAY -> 0.5f // 일요일: 투명도 50%
+        else -> 0.3f                             // 나머지 평일 날짜: 투명도 70%
+    }
     val dayTextColor = when {
         !isCurrentMonth -> OutOfMonthText
-        date.dayOfWeek == DayOfWeek.SUNDAY -> Coral60
+        date.dayOfWeek == DayOfWeek.SUNDAY -> dayRed
         else -> MaterialTheme.colorScheme.onSurface
     }
     val markerColors = events
@@ -507,6 +536,7 @@ private fun buildCalendarDayUiModel(
 
     return CalendarDayUiModel(
         isCurrentMonth = isCurrentMonth,
+        contentAlpha = contentAlpha,
         dayTextColor = dayTextColor,
         markerColors = markerColors,
         footerColor = markerColors.lastOrNull() ?: DayDivider
