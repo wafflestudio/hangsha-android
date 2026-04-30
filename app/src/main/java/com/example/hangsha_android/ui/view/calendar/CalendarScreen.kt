@@ -200,7 +200,7 @@ private fun CalendarHeader(
             onPreviousMonthClick = onPreviousMonthClick,
             onNextMonthClick = onNextMonthClick
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         // 필터 버튼
         FilterButton(
             isLoading = state.isLoading,
@@ -228,7 +228,7 @@ private fun HeaderNavigationButtons(
             tint = Ink60
         )
     }
-    Spacer(modifier = Modifier.width(4.dp))
+    Spacer(modifier = Modifier.width(1.dp))
 
     // 다음 달로 이동
     HeaderCircleButton(
@@ -252,7 +252,8 @@ private fun FilterButton(
     Box {
         HeaderCircleButton(
             enabled = !isLoading,
-            onClick = onOpenFilterClick
+            onClick = onOpenFilterClick,
+            isElevated = true
         ) {
             Icon(
                 imageVector = Icons.Rounded.Tune,
@@ -304,17 +305,30 @@ private fun CalendarBody(
 private fun HeaderCircleButton(
     enabled: Boolean,
     onClick: () -> Unit,
+    isElevated: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.size(28.dp),
-        shape = RoundedCornerShape(9.dp),
-        color = PureWhite,
-        shadowElevation = 2.dp
-    ) {
+    if (isElevated) {
+        Surface(
+            modifier = Modifier.size(28.dp),
+            shape = RoundedCornerShape(9.dp),
+            color = PureWhite,
+            shadowElevation = 2.dp // Apply shadow
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(enabled = enabled, onClick = onClick),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
+        }
+    } else {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .size(28.dp)
+                .clip(CircleShape)
                 .clickable(enabled = enabled, onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
@@ -322,6 +336,7 @@ private fun HeaderCircleButton(
         }
     }
 }
+
 
 @Composable
 private fun WeekdayHeader() {
