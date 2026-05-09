@@ -243,21 +243,41 @@ private fun FilterButton(
 ) {
     Box {
         Surface(
-            onClick = onOpenFilterClick,
-            enabled = !isLoading,
-            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.size(28.dp),
+            shape = RoundedCornerShape(9.dp),
             color = PureWhite,
             shadowElevation = 2.dp
         ) {
             Box(
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(PureWhite)
+                    .let {
+                        if (isLoading) {
+                            it
+                        } else {
+                            it
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Tune,
-                    contentDescription = "Filter",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+                Surface(
+                    onClick = onOpenFilterClick,
+                    enabled = !isLoading,
+                    color = Color.Transparent
+                ) {
+                    Box(
+                        modifier = Modifier.size(28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tune,
+                            contentDescription = "Filter",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
         }
 

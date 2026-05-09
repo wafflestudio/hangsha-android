@@ -29,10 +29,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import androidx.navigation.navArgument
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarScreen
 import com.example.hangsha_android.ui.view.calendar.CalendarViewModel
+import com.example.hangsha_android.ui.view.dailyevents.DailyEventsFilterState
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
@@ -53,6 +55,13 @@ sealed class HangshaDestinations(val route: String) {
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
+        const val bookmarkedOnlyKey = "daily_events_bookmarked_only"
+        const val interestedOnlyKey = "daily_events_interested_only"
+        const val orgIdsKey = "daily_events_org_ids"
+        const val statusIdsKey = "daily_events_status_ids"
+        const val eventTypeIdsKey = "daily_events_event_type_ids"
+        const val excludedKeywordsKey = "daily_events_excluded_keywords"
+        const val hasAppliedServerFiltersKey = "daily_events_has_applied_server_filters"
 
         fun createRoute(date: String): String = "$baseRoute/$date"
     }
@@ -215,6 +224,12 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
                 onNextMonthClick = { calendarViewModel.showNextMonth() },
                 onDateClick = { date ->
+                    navController.currentBackStackEntry?.savedStateHandle?.apply {
+                        setDailyEventsFilters(
+                            filters = calendarUiState.appliedFilters,
+                            hasAppliedServerFilters = calendarUiState.hasAppliedServerFilters
+                        )
+                    }
                     navController.navigate(HangshaDestinations.DailyEvents.createRoute(date.toString()))
                 },
                 onOpenFilterClick = { calendarViewModel.openFilterSheet() },
@@ -243,6 +258,20 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) {
             val dailyEventsViewModel: DailyEventsViewModel = hiltViewModel()
             val dailyEventsUiState by dailyEventsViewModel.uiState.collectAsState()
+            val previousSavedStateHandle = navController.previousBackStackEntry?.savedStateHandle
+            val initialDailyFilters = previousSavedStateHandle?.toDailyEventsFilterState()
+            val initialHasAppliedServerFilters = previousSavedStateHandle
+                ?.get<Boolean>(HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey)
+                ?: false
+
+            LaunchedEffect(initialDailyFilters, initialHasAppliedServerFilters) {
+                if (initialDailyFilters != null) {
+                    dailyEventsViewModel.syncInitialFilters(
+                        filters = initialDailyFilters,
+                        hasAppliedServerFilters = initialHasAppliedServerFilters
+                    )
+                }
+            }
 
             DailyEventsScreen(
                 uiState = dailyEventsUiState,
@@ -297,4 +326,40 @@ fun SimplePageText(text: String) {
     ) {
         Text(text = text, style = MaterialTheme.typography.bodyLarge)
     }
+}
+
+private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
+    filters: CalendarFilterState,
+    hasAppliedServerFilters: Boolean
+) {
+    set(HangshaDestinations.DailyEvents.bookmarkedOnlyKey, filters.bookmarkedOnly)
+    set(HangshaDestinations.DailyEvents.interestedOnlyKey, filters.interestedOnly)
+    set(HangshaDestinations.DailyEvents.orgIdsKey, ArrayList(filters.orgIds))
+    set(HangshaDestinations.DailyEvents.statusIdsKey, ArrayList(filters.statusIds))
+    set(HangshaDestinations.DailyEvents.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
+    set(HangshaDestinations.DailyEvents.excludedKeywordsKey, ArrayList(filters.excludedKeywords))
+    set(
+        HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey,
+        hasAppliedServerFilters
+    )
+}
+
+private fun androidx.lifecycle.SavedStateHandle.toDailyEventsFilterState(): DailyEventsFilterState? {
+    if (!contains(HangshaDestinations.DailyEvents.statusIdsKey)) {
+        return null
+    }
+
+    return DailyEventsFilterState(
+        bookmarkedOnly = get<Boolean>(HangshaDestinations.DailyEvents.bookmarkedOnlyKey) ?: false,
+        interestedOnly = get<Boolean>(HangshaDestinations.DailyEvents.interestedOnlyKey) ?: false,
+        orgIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.orgIdsKey)?.toSet()
+            ?: emptySet(),
+        statusIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.statusIdsKey)?.toSet()
+            ?: emptySet(),
+        eventTypeIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.eventTypeIdsKey)?.toSet()
+            ?: emptySet(),
+        excludedKeywords = get<ArrayList<String>>(HangshaDestinations.DailyEvents.excludedKeywordsKey)
+            ?.toList()
+            ?: emptyList()
+    )
 }

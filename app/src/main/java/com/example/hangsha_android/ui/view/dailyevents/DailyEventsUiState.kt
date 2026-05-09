@@ -18,7 +18,7 @@ data class DailyEventsUiState(
     val errorMessage: String? = null
 ) {
     val hasActiveFilters: Boolean
-        get() = hasAppliedServerFilters && appliedFilters.hasActiveFilters
+        get() = appliedFilters.hasActiveFilters
 
     val filteredItemCount: Int
         get() = previewItems.size

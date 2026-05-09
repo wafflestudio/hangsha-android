@@ -30,6 +30,7 @@ class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    private var hasSyncedInitialFilters = false
 
     private val _uiState = MutableStateFlow(
         DailyEventsUiState(
@@ -59,6 +60,31 @@ class DailyEventsViewModel @Inject constructor(
             date = _uiState.value.selectedDate,
             filters = _uiState.value.appliedFilters,
             hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        )
+    }
+
+    // 캘린더에서 넘어온 적용 필터를 최초 진입 시점에 한 번만 동기화한다.
+    fun syncInitialFilters(
+        filters: DailyEventsFilterState,
+        hasAppliedServerFilters: Boolean
+    ) {
+        if (hasSyncedInitialFilters) {
+            return
+        }
+        hasSyncedInitialFilters = true
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = filters,
+                draftFilters = filters,
+                hasAppliedServerFilters = hasAppliedServerFilters
+            )
+        }
+
+        loadDate(
+            date = _uiState.value.selectedDate,
+            filters = filters,
+            hasAppliedServerFilters = hasAppliedServerFilters
         )
     }
 
@@ -196,7 +222,8 @@ class DailyEventsViewModel @Inject constructor(
         )
     }
 
-    // 현재 날짜의 전체 source 데이터를 먼저 가져오고, 그다음 화면에 보여줄 리스트만 별도로 결정한다.
+    // 현재 날짜의 전체 source 데이터를 먼저 가져오고
+    // 그다음 화면에 보여줄 리스트만 별도로 결정
     private fun loadDate(
         date: LocalDate,
         filters: DailyEventsFilterState = _uiState.value.appliedFilters,
@@ -275,7 +302,7 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 
-    // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 한 번만 추출한다.
+    // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
     private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
         return DailyEventsFilterOptions(
             orgIds = items.map { it.orgId }
@@ -354,8 +381,6 @@ private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
         tags = tags
     )
 }
-
-// 서버가 내려준 기본 상태 우선순서를 전체 source 데이터에 덧씌워, 필터 전 리스트도 원하는 순서로 보여준다.
 private fun List<DailyEventItem>.reorderedBy(
     prioritizedItems: List<DailyEventItem>
 ): List<DailyEventItem> {

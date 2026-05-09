@@ -21,7 +21,7 @@ data class CalendarUiState(
     val errorMessage: String? = null
 ) {
     val hasActiveFilters: Boolean
-        get() = hasAppliedServerFilters && appliedFilters.hasActiveFilters
+        get() = appliedFilters.hasActiveFilters
 
     val filteredEventCount: Int
         get() = previewEventsByDate.values.sumOf { it.size }

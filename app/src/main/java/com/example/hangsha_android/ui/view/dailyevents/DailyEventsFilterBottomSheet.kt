@@ -213,6 +213,7 @@ private fun EventTypeSection(
         groupedOptions.forEach { (label, eventTypeIds) ->
             val representativeId = eventTypeIds.first()
             val isSelected = eventTypeIds.all { it in selected }
+            val baseColor = eventTypeColor(representativeId)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -222,8 +223,8 @@ private fun EventTypeSection(
                         }
                     }
                     .background(
-                        color = eventTypeColor(representativeId).copy(
-                            alpha = if (isSelected) 0.95f else 0.72f
+                        color = baseColor.copy(
+                            alpha = baseColor.alpha * if (isSelected) 1f else 0.75f
                         ),
                         shape = RoundedCornerShape(0.dp)
                     )

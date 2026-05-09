@@ -186,7 +186,8 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
-    // 현재 월의 전체 source 데이터를 먼저 가져오고, 그다음 화면 표시용 데이터만 분기해서 구성한다.
+    // 현재 월의 전체 source 데이터를 먼저 가져오고,
+    // 그다음 화면 표시용 데이터만 분기해서 구성한다.
     private fun loadMonth(
         month: YearMonth,
         filters: CalendarFilterState = _uiState.value.appliedFilters,
@@ -268,7 +269,7 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    // 전체 source 데이터에서 현재 월에 노출 가능한 필터 항목을 한 번만 추출한다.
+    // 전체 source 데이터에서 현재 월에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
     private fun buildFilterOptions(
         eventsByDate: Map<LocalDate, List<CalendarEvent>>
     ): CalendarFilterOptions {
@@ -352,7 +353,6 @@ private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent
         )
 }
 
-// 서버가 내려준 기본 상태 우선순서를 전체 source 데이터에 덧씌워, 필터 전 데이터도 원하는 순서로 보여준다.
 private fun Map<LocalDate, List<CalendarEvent>>.reorderedBy(
     prioritizedEventsByDate: Map<LocalDate, List<CalendarEvent>>
 ): Map<LocalDate, List<CalendarEvent>> {
