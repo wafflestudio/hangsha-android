@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.dailyevents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,11 +45,10 @@ private val FilterDivider = Color(0xFFE7E5E1)
 private val FilterActionGray = Color(0xFFE1E1DF)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-// 캘린더 필터 바텀시트 전체와 탭별 본문 구성을 담당한다.
-fun CalendarFilterBottomSheet(
-    uiState: CalendarUiState,
+fun DailyEventsFilterBottomSheet(
+    uiState: DailyEventsUiState,
     onDismiss: () -> Unit,
-    onSelectTab: (CalendarFilterTab) -> Unit,
+    onSelectTab: (DailyEventsFilterTab) -> Unit,
     onBookmarkedOnlyChange: (Boolean) -> Unit,
     onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
@@ -74,8 +72,6 @@ fun CalendarFilterBottomSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 24.dp)
         ) {
-
-            // top bar
             FilterTabRow(
                 selectedTab = uiState.selectedFilterTab,
                 onSelectTab = onSelectTab
@@ -87,21 +83,7 @@ fun CalendarFilterBottomSheet(
                     .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
                 when (uiState.selectedFilterTab) {
-                    CalendarFilterTab.EVENT_TYPE -> {
-                        /**
-                        FilterSwitchRow(
-                            title = "북마크만",
-                            checked = draft.bookmarkedOnly,
-                            onCheckedChange = onBookmarkedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        FilterSwitchRow(
-                            title = "관심 일정만",
-                            checked = draft.interestedOnly,
-                            onCheckedChange = onInterestedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(18.dp)) **/
-                        // 행사 종류 탭
+                    DailyEventsFilterTab.EVENT_TYPE -> {
                         EventTypeSection(
                             selected = draft.eventTypeIds,
                             options = uiState.availableFilterOptions.eventTypeIds,
@@ -109,8 +91,7 @@ fun CalendarFilterBottomSheet(
                         )
                     }
 
-                    CalendarFilterTab.ORGANIZER -> {
-                        // 주최 기관 탭
+                    DailyEventsFilterTab.ORGANIZER -> {
                         FilterChecklistSection(
                             allLabel = "주최 기관 전체",
                             title = "주최 기관",
@@ -122,13 +103,11 @@ fun CalendarFilterBottomSheet(
                         )
                     }
 
-                    CalendarFilterTab.RECRUITMENT_STATUS -> {
-                        // statusId가 1, 2, 3인 경우로 filter
+                    DailyEventsFilterTab.RECRUITMENT_STATUS -> {
                         val validStatusIds = uiState.availableFilterOptions.statusIds.filter { statusId ->
                             statusId in listOf(1L, 2L, 3L)
                         }
 
-                        // 모집 현황 탭
                         FilterChecklistSection(
                             allLabel = "모집 현황 전체",
                             title = "모집 현황",
@@ -140,8 +119,7 @@ fun CalendarFilterBottomSheet(
                         )
                     }
 
-                    CalendarFilterTab.EXCLUDE -> {
-                        // 제외 탭
+                    DailyEventsFilterTab.EXCLUDE -> {
                         ExcludeKeywordSection(
                             input = uiState.excludeKeywordInput,
                             keywords = draft.excludedKeywords,
@@ -153,9 +131,8 @@ fun CalendarFilterBottomSheet(
                 }
             }
 
-            // 초기화, 필터 버튼
             FilterFooter(
-                resultCount = uiState.filteredEventCount,
+                resultCount = uiState.filteredItemCount,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply
@@ -165,10 +142,9 @@ fun CalendarFilterBottomSheet(
 }
 
 @Composable
-// 상단 4개 탭
 private fun FilterTabRow(
-    selectedTab: CalendarFilterTab,
-    onSelectTab: (CalendarFilterTab) -> Unit
+    selectedTab: DailyEventsFilterTab,
+    onSelectTab: (DailyEventsFilterTab) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -176,7 +152,7 @@ private fun FilterTabRow(
             .background(PureWhite)
             .padding(horizontal = 20.dp)
     ) {
-        CalendarFilterTab.entries.forEach { tab ->
+        DailyEventsFilterTab.entries.forEach { tab ->
             val isSelected = tab == selectedTab
             Column(
                 modifier = Modifier
@@ -214,30 +190,6 @@ private fun FilterTabRow(
 }
 
 @Composable
-// 북마크, 관심 일정 같은 단일 토글 행 UI : 일단 지금은 삭제한 상태.
-private fun FilterSwitchRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
-
-@Composable
-// 행사 종류 탭
 private fun EventTypeSection(
     selected: Set<Long>,
     options: List<Long>,
@@ -292,7 +244,6 @@ private fun EventTypeSection(
 }
 
 @Composable
-// 주최 기관, 모집 현황
 private fun <T> FilterChecklistSection(
     allLabel: String,
     title: String,
@@ -354,7 +305,6 @@ private fun <T> FilterChecklistSection(
 }
 
 @Composable
-// 체크형 목록의 개별 한 줄 UI
 private fun FilterChecklistRow(
     text: String,
     selected: Boolean,
@@ -377,7 +327,6 @@ private fun FilterChecklistRow(
 }
 
 @Composable
-// 체크 사각형 UI
 private fun SelectionSquare(selected: Boolean) {
     Box(
         modifier = Modifier
@@ -391,7 +340,6 @@ private fun SelectionSquare(selected: Boolean) {
 }
 
 @Composable
-// 제외 키워드 입력창
 private fun ExcludeKeywordSection(
     input: String,
     keywords: List<String>,
@@ -401,7 +349,7 @@ private fun ExcludeKeywordSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
-            text = "해당 단어를 포함하는 행사는 표시되지 않습니다.",
+            text = "해당 단어를 포함하는 행사는 표시하지 않습니다.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -450,7 +398,6 @@ private fun ExcludeKeywordSection(
 }
 
 @Composable
-// 하단 초기화 버튼과 적용 버튼
 private fun FilterFooter(
     resultCount: Int,
     isLoading: Boolean,
@@ -514,19 +461,16 @@ private fun statusLabel(statusId: Long): String {
 }
 
 private fun orgLabel(orgId: Long): String {
-    return when (orgId) {
-        // 추후 API나 기획에서 매핑 리스트를 전달받으면 여기에 추가 (예: 26L -> "총학생회")
-        else -> "orgID: $orgId"
-    }
+    return "orgID: $orgId"
 }
 
 private fun eventTypeLabel(eventTypeId: Long): String {
     return when (eventTypeId) {
         4L -> "교육(특강/세미나)"
         5L -> "공모전/경진대회"
-        6L -> "현장학습/인턴"
+        6L -> "인턴십/현장실습"
         7L -> "사회공헌(봉사)"
-        8L -> "학습/진로상담"
+        8L -> "취업/진로상담"
         39L -> "OpenLNL"
         else -> "기타"
     }

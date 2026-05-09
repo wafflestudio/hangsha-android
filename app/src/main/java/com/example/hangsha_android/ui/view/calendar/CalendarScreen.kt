@@ -51,7 +51,7 @@ import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
-import com.example.hangsha_android.ui.view.calendar.CalendarEventColorMapper.dayRed
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -62,6 +62,7 @@ private val DayCardShadow = Color(0x16000000)
 private val DayDivider = Color(0xFFF0F1F3)
 private val DayCellBorder = Color(0xFFE6E8EB)
 private val OutOfMonthText = Color(0xFFC9CDD3)
+private val DayRed = Color(0xFFFF2D55)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
@@ -90,6 +91,7 @@ fun CalendarScreen(
     uiState: CalendarUiState,
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
+    onDateClick: (LocalDate) -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -109,6 +111,7 @@ fun CalendarScreen(
         uiState = uiState,
         onPreviousMonthClick = onPreviousMonthClick,
         onNextMonthClick = onNextMonthClick,
+        onDateClick = onDateClick,
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
         onSelectFilterTab = onSelectFilterTab,
@@ -131,6 +134,7 @@ private fun CalendarScreenContent(
     uiState: CalendarUiState,
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
+    onDateClick: (LocalDate) -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -205,6 +209,7 @@ private fun CalendarScreenContent(
                 visibleDates = uiState.visibleDates,
                 currentMonth = uiState.currentMonth,
                 eventsByDate = uiState.eventsByDate,
+                onDateClick = onDateClick,
                 isLoading = uiState.isLoading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -319,6 +324,7 @@ private fun CalendarBody(
     visibleDates: List<LocalDate>,
     currentMonth: YearMonth,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDateClick: (LocalDate) -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -330,6 +336,7 @@ private fun CalendarBody(
             visibleDates = visibleDates,
             currentMonth = currentMonth,
             eventsByDate = eventsByDate,
+            onDateClick = onDateClick,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -402,7 +409,7 @@ private fun WeekdayHeader() {
                 else -> 0.3f // 나머지: 투명도 70%
             }
 
-            val baseColor = if (isSunday) dayRed else MaterialTheme.colorScheme.onSurface
+            val baseColor = if (isSunday) DayRed else MaterialTheme.colorScheme.onSurface
 
             Box(
                 modifier = Modifier.weight(1f),
@@ -424,6 +431,7 @@ private fun CalendarMonthGrid(
     visibleDates: List<LocalDate>,
     currentMonth: YearMonth,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDateClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val weeks = visibleDates.chunked(size = 7)
@@ -443,6 +451,7 @@ private fun CalendarMonthGrid(
                         date = date,
                         currentMonth = currentMonth,
                         events = eventsByDate[date].orEmpty(),
+                        onClick = { onDateClick(date) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -456,6 +465,7 @@ private fun CalendarDayCell(
     date: LocalDate,
     currentMonth: YearMonth,
     events: List<CalendarEvent>,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dayModel = buildCalendarDayUiModel(
@@ -467,6 +477,7 @@ private fun CalendarDayCell(
     Column(
         modifier = modifier
             .aspectRatio(0.5f)
+            .clickable(onClick = onClick)
             .drawBehind {
                 val radius = DayCellCornerRadius.toPx()
                 val offset = 4.dp.toPx() // 그림자 길이
@@ -563,12 +574,12 @@ private fun buildCalendarDayUiModel(
     }
     val dayTextColor = when {
         !isCurrentMonth -> OutOfMonthText
-        date.dayOfWeek == DayOfWeek.SUNDAY -> dayRed
+        date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
         else -> MaterialTheme.colorScheme.onSurface
     }
     val markerColors = events
         .take(MaxVisibleEventMarkers)
-        .map(CalendarEventColorMapper::colorFor)
+        .map { event -> eventTypeColor(event.eventTypeId) }
 
     return CalendarDayUiModel(
         isCurrentMonth = isCurrentMonth,
@@ -590,7 +601,7 @@ private fun EventMarkerBar(
             .fillMaxWidth()
             .height(10.dp)
             .clip(RoundedCornerShape(0.dp))
-            .background(color.copy(alpha = alpha))
+            .background(color.copy(alpha = color.alpha * alpha))
     )
 }
 

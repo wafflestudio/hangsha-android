@@ -12,15 +12,22 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.example.hangsha_android.ui.navigation.BottomTab
+import com.example.hangsha_android.ui.navigation.HangshaDestinations
 
 @Composable
 fun HangshaBottomBar(
     currentDestination: NavDestination?,
     onNavigateToDestination: (BottomTab) -> Unit
 ) {
+    val currentRoute = currentDestination?.route
+
     NavigationBar {
         BottomTab.entries.forEach { tab ->
-            val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
+            val selected = when {
+                tab == BottomTab.Calendar &&
+                    currentRoute?.startsWith(HangshaDestinations.DailyEvents.baseRoute) == true -> true
+                else -> currentDestination?.hierarchy?.any { it.route == tab.route } == true
+            }
             NavigationBarItem(
                 selected = selected,
                 onClick = { onNavigateToDestination(tab) },

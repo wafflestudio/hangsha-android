@@ -1,17 +1,19 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.dailyevents
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
-import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.EventRepository
-import com.example.hangsha_android.data.repository.model.EventDateRange
+import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
-import java.time.YearMonth
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,36 +21,70 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 import retrofit2.HttpException
 import retrofit2.Response
 
 @HiltViewModel
-class CalendarViewModel @Inject constructor(
-    private val eventRepository: EventRepository
+class DailyEventsViewModel @Inject constructor(
+    private val eventRepository: EventRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    private var hasSyncedInitialFilters = false
 
-    private val _uiState = MutableStateFlow(CalendarUiState())
-    val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(
+        DailyEventsUiState(
+            selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
+                ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                ?: LocalDate.now()
+        )
+    )
+    val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
 
     init {
-        loadMonth(_uiState.value.currentMonth)
+        loadDate(_uiState.value.selectedDate)
     }
 
-    fun showPreviousMonth() {
-        loadMonth(_uiState.value.currentMonth.minusMonths(1))
+    fun showPreviousDay() {
+        loadDate(_uiState.value.selectedDate.minusDays(1))
     }
 
-    fun showNextMonth() {
-        loadMonth(_uiState.value.currentMonth.plusMonths(1))
+    fun showNextDay() {
+        loadDate(_uiState.value.selectedDate.plusDays(1))
     }
 
     fun retry() {
-        loadMonth(
-            month = _uiState.value.currentMonth,
+        loadDate(
+            date = _uiState.value.selectedDate,
             filters = _uiState.value.appliedFilters,
             hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        )
+    }
+
+    // 캘린더에서 넘어온 적용 필터를 최초 진입 시점에 한 번만 동기화한다.
+    fun syncInitialFilters(
+        filters: DailyEventsFilterState,
+        hasAppliedServerFilters: Boolean
+    ) {
+        if (hasSyncedInitialFilters) {
+            return
+        }
+        hasSyncedInitialFilters = true
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = filters,
+                draftFilters = filters,
+                hasAppliedServerFilters = hasAppliedServerFilters
+            )
+        }
+
+        loadDate(
+            date = _uiState.value.selectedDate,
+            filters = filters,
+            hasAppliedServerFilters = hasAppliedServerFilters
         )
     }
 
@@ -57,7 +93,7 @@ class CalendarViewModel @Inject constructor(
             it.copy(
                 isFilterSheetVisible = true,
                 draftFilters = it.appliedFilters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
         }
@@ -68,7 +104,7 @@ class CalendarViewModel @Inject constructor(
             it.copy(
                 isFilterSheetVisible = false,
                 draftFilters = it.appliedFilters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
         }
@@ -77,13 +113,13 @@ class CalendarViewModel @Inject constructor(
     fun clearDraftFilters() {
         _uiState.update {
             it.copy(
-                draftFilters = CalendarFilterState(),
+                draftFilters = DailyEventsFilterState(),
                 excludeKeywordInput = ""
             )
         }
     }
 
-    fun selectFilterTab(tab: CalendarFilterTab) {
+    fun selectFilterTab(tab: DailyEventsFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
     }
 
@@ -173,81 +209,78 @@ class CalendarViewModel @Inject constructor(
                 appliedFilters = appliedFilters,
                 draftFilters = appliedFilters,
                 hasAppliedServerFilters = true,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = state.currentMonth,
+        loadDate(
+            date = state.selectedDate,
             filters = appliedFilters,
             hasAppliedServerFilters = true
         )
     }
 
-    // 현재 월의 전체 source 데이터를 먼저 가져오고,
-    // 그다음 화면 표시용 데이터만 분기해서 구성한다.
-    private fun loadMonth(
-        month: YearMonth,
-        filters: CalendarFilterState = _uiState.value.appliedFilters,
+    // 현재 날짜의 전체 source 데이터를 먼저 가져오고
+    // 그다음 화면에 보여줄 리스트만 별도로 결정
+    private fun loadDate(
+        date: LocalDate,
+        filters: DailyEventsFilterState = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
     ) {
-        val visibleRange = month.toCalendarGridRange()
-        val visibleDates = visibleRange.toDateList()
-
         loadJob?.cancel()
         _uiState.update {
             it.copy(
-                currentMonth = month,
-                visibleRange = visibleRange,
-                visibleDates = visibleDates,
+                selectedDate = date,
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
                 isFilterSheetVisible = false,
                 draftFilters = filters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
         }
 
         loadJob = viewModelScope.launch {
             runCatching {
-                val sourceResponse = eventRepository.getAllEvents(visibleRange)
-                val sourceBody = sourceResponse.requireBody("Events response was empty.")
-                val sourceEventsByDate = sourceBody.toCalendarEventsByDate()
-                val filterOptions = buildFilterOptions(sourceEventsByDate)
-                val visibleEventsByDate = if (hasAppliedServerFilters) {
-                    val filteredResponse = eventRepository.getEvents(
-                        range = visibleRange,
-                        filters = filters
-                    )
-                    filteredResponse.requireBody("Filtered events response was empty.")
-                        .toCalendarEventsByDate()
+                val sourceResponse = eventRepository.getAllDayEvents(date)
+                val sourceItems = sourceResponse
+                    .requireBody("Daily events response was empty.")
+                    .items
+                    .orEmpty()
+                    .toDailyEventItems()
+                val filterOptions = buildFilterOptions(sourceItems)
+                val visibleItems = if (hasAppliedServerFilters) {
+                    eventRepository.getDayEvents(date, filters)
+                        .requireBody("Filtered daily events response was empty.")
+                        .items
+                        .orEmpty()
+                        .toDailyEventItems()
                 } else {
-                    val prioritizedResponse = eventRepository.getEvents(
-                        range = visibleRange,
-                        filters = CalendarFilterState()
-                    )
-                    val prioritizedEventsByDate = prioritizedResponse
-                        .requireBody("Prioritized events response was empty.")
-                        .toCalendarEventsByDate()
-                    sourceEventsByDate.reorderedBy(prioritizedEventsByDate)
+                    val prioritizedItems = eventRepository.getDayEvents(
+                        date = date,
+                        filters = DailyEventsFilterState()
+                    ).requireBody("Prioritized daily events response was empty.")
+                        .items
+                        .orEmpty()
+                        .toDailyEventItems()
+                    sourceItems.reorderedBy(prioritizedItems)
                 }
 
-                CalendarMonthLoadResult(
-                    filterSourceEventsByDate = sourceEventsByDate,
-                    visibleEventsByDate = visibleEventsByDate,
+                DailyEventsLoadResult(
+                    filterSourceItems = sourceItems,
+                    visibleItems = visibleItems,
                     filterOptions = filterOptions
                 )
             }.fold(
                 onSuccess = { result ->
                     _uiState.update {
                         it.copy(
-                            filterSourceEventsByDate = result.filterSourceEventsByDate,
-                            eventsByDate = result.visibleEventsByDate,
+                            filterSourceItems = result.filterSourceItems,
+                            items = result.visibleItems,
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -257,9 +290,9 @@ class CalendarViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
-                            filterSourceEventsByDate = emptyMap(),
-                            eventsByDate = emptyMap(),
-                            availableFilterOptions = CalendarFilterOptions(),
+                            filterSourceItems = emptyList(),
+                            items = emptyList(),
+                            availableFilterOptions = DailyEventsFilterOptions(),
                             isLoading = false,
                             errorMessage = mapErrorMessage(error)
                         )
@@ -269,19 +302,16 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    // 전체 source 데이터에서 현재 월에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
-    private fun buildFilterOptions(
-        eventsByDate: Map<LocalDate, List<CalendarEvent>>
-    ): CalendarFilterOptions {
-        val events = eventsByDate.values.flatten()
-        return CalendarFilterOptions(
-            orgIds = events.map { it.orgId }
+    // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
+    private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
+        return DailyEventsFilterOptions(
+            orgIds = items.map { it.orgId }
                 .distinct()
                 .sorted(),
-            statusIds = events.map { it.statusId }
+            statusIds = items.map { it.statusId }
                 .distinct()
                 .sorted(),
-            eventTypeIds = events.map { it.eventTypeId }
+            eventTypeIds = items.map { it.eventTypeId }
                 .distinct()
                 .sorted()
         )
@@ -306,70 +336,61 @@ class CalendarViewModel @Inject constructor(
     }
 }
 
-private data class CalendarMonthLoadResult(
-    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>,
-    val visibleEventsByDate: Map<LocalDate, List<CalendarEvent>>,
-    val filterOptions: CalendarFilterOptions
+private data class DailyEventsLoadResult(
+    val filterSourceItems: List<DailyEventItem>,
+    val visibleItems: List<DailyEventItem>,
+    val filterOptions: DailyEventsFilterOptions
 )
 
-private fun MonthlyEventsResponse.toCalendarEventsByDate(): Map<LocalDate, List<CalendarEvent>> {
-    return byDate.entries
-        .mapNotNull { (dateString, response) ->
-            val date = runCatching { LocalDate.parse(dateString) }.getOrNull()
-                ?: return@mapNotNull null
+private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
-            date to response.events.map { event ->
-                event.toCalendarEvent(date)
-            }
-        }
-        .sortedBy { it.first }
-        .toMap(linkedMapOf())
-}
-
-private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent {
-    return CalendarEvent(
-        id = id,
-        date = date,
-        title = title,
-        imageUrl = imageUrl,
-        operationMode = operationMode,
-        statusId = statusId,
-        eventTypeId = eventTypeId,
-        orgId = orgId,
-        applyStart = applyStart,
-        applyEnd = applyEnd,
-        eventStart = eventStart,
-        eventEnd = eventEnd,
-        isPeriodEvent = isPeriodEvent,
-        capacity = capacity,
-        applyCount = applyCount,
-        organization = organization,
-        location = location,
-        applyLink = applyLink,
-        tags = tags,
-        isInterested = isInterested,
-        matchedInterestPriority = matchedInterestPriority,
-        isBookmarked = isBookmarked
-        )
-}
-
-private fun Map<LocalDate, List<CalendarEvent>>.reorderedBy(
-    prioritizedEventsByDate: Map<LocalDate, List<CalendarEvent>>
-): Map<LocalDate, List<CalendarEvent>> {
-    return entries.associate { (date, events) ->
-        val prioritizedIds = prioritizedEventsByDate[date].orEmpty()
-            .mapIndexed { index, event -> event.id to index }
-            .toMap()
-        date to events.withStablePriority(prioritizedIds)
+private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
+    return map { event ->
+        event.toDailyEventItem()
     }
 }
 
-private fun List<CalendarEvent>.withStablePriority(
-    prioritizedIds: Map<Long, Int>
-): List<CalendarEvent> {
+private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
+    val baseDate = parseEventDate(applyEnd)
+        ?: parseEventDate(eventStart)
+        ?: parseEventDate(eventEnd)
+        ?: parseEventDate(applyStart)
+    val dDayLabel = baseDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        when {
+            diff == 0L -> "D-Day"
+            diff > 0L -> "D-$diff"
+            else -> "D+${-diff}"
+        }
+    } ?: "Recruiting"
+    val displayDate = baseDate?.format(ItemDateFormatter) ?: "-"
+
+    return DailyEventItem(
+        id = id,
+        title = title,
+        organization = organization,
+        displayDate = displayDate,
+        dDayLabel = dDayLabel,
+        accentColor = eventTypeColor(eventTypeId),
+        isBookmarked = isBookmarked,
+        isInterested = isInterested,
+        orgId = orgId,
+        statusId = statusId,
+        eventTypeId = eventTypeId,
+        location = location,
+        tags = tags
+    )
+}
+private fun List<DailyEventItem>.reorderedBy(
+    prioritizedItems: List<DailyEventItem>
+): List<DailyEventItem> {
+    val prioritizedIds = prioritizedItems
+        .mapIndexed { index, item -> item.id to index }
+        .toMap()
+
     return withIndex()
         .sortedWith(
-            compareBy<IndexedValue<CalendarEvent>>(
+            compareBy<IndexedValue<DailyEventItem>>(
                 { prioritizedIds[it.value.id] ?: Int.MAX_VALUE },
                 { it.index }
             )
@@ -377,9 +398,19 @@ private fun List<CalendarEvent>.withStablePriority(
         .map { it.value }
 }
 
-private fun Response<MonthlyEventsResponse>.requireBody(
+private fun parseEventDate(value: String?): LocalDate? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+        runCatching { LocalDate.parse(value) }.getOrNull()
+    }
+}
+
+private fun Response<com.example.hangsha_android.data.network.model.DayEventsResponse>.requireBody(
     emptyMessage: String
-): MonthlyEventsResponse {
+): com.example.hangsha_android.data.network.model.DayEventsResponse {
     if (!isSuccessful) {
         throw HttpException(this)
     }

@@ -1,5 +1,6 @@
 package com.example.hangsha_android.data.network.api
 
+import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import retrofit2.Response
 import retrofit2.http.GET
@@ -12,9 +13,20 @@ interface EventApi {
         @Query("to") to: String,
         @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
         @Query("interestedOnly") interestedOnly: Boolean? = null,
-        @Query("orgIds") orgIds: List<Long>? = null,
-        @Query("statusIds") statusIds: List<Long>? = null,
-        @Query("eventTypeIds") eventTypeIds: List<Long>? = null,
+        @Query("orgId") orgId: List<Long>? = null,
+        @Query("statusId") statusId: List<Long>? = null,
+        @Query("eventTypeId") eventTypeId: List<Long>? = null,
         @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<MonthlyEventsResponse>
+
+    @GET("api/v1/events/day")
+    suspend fun getDayEvents(
+        @Query("date") date: String,
+        @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
+        @Query("interestedOnly") interestedOnly: Boolean? = null,
+        @Query("orgId") orgId: List<Long>? = null,
+        @Query("statusId") statusId: List<Long>? = null,
+        @Query("eventTypeId") eventTypeId: List<Long>? = null,
+        @Query("excludedKeywords") excludedKeywords: List<String>? = null
+    ): Response<DayEventsResponse>
 }

@@ -8,13 +8,14 @@ data class CalendarUiState(
     val currentMonth: YearMonth = YearMonth.now(),
     val visibleRange: EventDateRange = currentMonth.toCalendarGridRange(),
     val visibleDates: List<LocalDate> = visibleRange.toDateList(),
-    val allEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
+    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
     val selectedFilterTab: CalendarFilterTab = CalendarFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
+    val hasAppliedServerFilters: Boolean = false,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
@@ -27,7 +28,7 @@ data class CalendarUiState(
 
     private val previewEventsByDate: Map<LocalDate, List<CalendarEvent>>
         get() = if (isFilterSheetVisible) {
-            allEventsByDate.applyFilters(draftFilters)
+            filterSourceEventsByDate.applyFilters(draftFilters)
         } else {
             eventsByDate
         }
