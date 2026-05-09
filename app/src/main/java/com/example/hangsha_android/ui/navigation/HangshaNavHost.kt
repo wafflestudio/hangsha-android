@@ -23,14 +23,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
+import androidx.navigation.navArgument
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarScreen
 import com.example.hangsha_android.ui.view.calendar.CalendarViewModel
+import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
+import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
@@ -46,6 +50,12 @@ sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
     data object SignUp : HangshaDestinations("sign_up")
     data object Main : HangshaDestinations("main")
+    data object DailyEvents : HangshaDestinations("daily_events/{date}") {
+        const val baseRoute = "daily_events"
+        const val dateArg = "date"
+
+        fun createRoute(date: String): String = "$baseRoute/$date"
+    }
 }
 
 @Composable
@@ -204,6 +214,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = calendarUiState,
                 onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
                 onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onDateClick = { date ->
+                    navController.navigate(HangshaDestinations.DailyEvents.createRoute(date.toString()))
+                },
                 onOpenFilterClick = { calendarViewModel.openFilterSheet() },
                 onDismissFilterSheet = { calendarViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { calendarViewModel.selectFilterTab(it) },
@@ -218,6 +231,24 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onApplyFilters = { calendarViewModel.applyDraftFilters() },
                 onClearFilters = { calendarViewModel.clearDraftFilters() },
                 onRetryClick = { calendarViewModel.retry() }
+            )
+        }
+        composable(
+            route = HangshaDestinations.DailyEvents.route,
+            arguments = listOf(
+                navArgument(HangshaDestinations.DailyEvents.dateArg) {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            val dailyEventsViewModel: DailyEventsViewModel = hiltViewModel()
+            val dailyEventsUiState by dailyEventsViewModel.uiState.collectAsState()
+
+            DailyEventsScreen(
+                uiState = dailyEventsUiState,
+                onPreviousDayClick = { dailyEventsViewModel.showPreviousDay() },
+                onNextDayClick = { dailyEventsViewModel.showNextDay() },
+                onRetryClick = { dailyEventsViewModel.retry() }
             )
         }
         composable(BottomTab.Timetable.route) {

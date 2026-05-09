@@ -308,6 +308,7 @@ private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent
         applyEnd = applyEnd,
         eventStart = eventStart,
         eventEnd = eventEnd,
+        isPeriodEvent = isPeriodEvent,
         capacity = capacity,
         applyCount = applyCount,
         organization = organization,

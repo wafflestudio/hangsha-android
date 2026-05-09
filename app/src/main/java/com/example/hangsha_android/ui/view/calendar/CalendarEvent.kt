@@ -15,6 +15,7 @@ data class CalendarEvent(
     val applyEnd: String?,
     val eventStart: String?,
     val eventEnd: String?,
+    val isPeriodEvent: Boolean,
     val capacity: Int?,
     val applyCount: Int?,
     val organization: String?,

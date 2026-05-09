@@ -1,5 +1,6 @@
 package com.example.hangsha_android.data.network.api
 
+import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import retrofit2.Response
 import retrofit2.http.GET
@@ -17,4 +18,10 @@ interface EventApi {
         @Query("eventTypeIds") eventTypeIds: List<Long>? = null,
         @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<MonthlyEventsResponse>
+
+    @GET("api/v1/events/day")
+    suspend fun getDayEvents(
+        @Query("date") date: String,
+        @Query("statusId[]") statusIds: List<Long>
+    ): Response<DayEventsResponse>
 }

@@ -90,6 +90,7 @@ fun CalendarScreen(
     uiState: CalendarUiState,
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
+    onDateClick: (LocalDate) -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -109,6 +110,7 @@ fun CalendarScreen(
         uiState = uiState,
         onPreviousMonthClick = onPreviousMonthClick,
         onNextMonthClick = onNextMonthClick,
+        onDateClick = onDateClick,
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
         onSelectFilterTab = onSelectFilterTab,
@@ -131,6 +133,7 @@ private fun CalendarScreenContent(
     uiState: CalendarUiState,
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
+    onDateClick: (LocalDate) -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -205,6 +208,7 @@ private fun CalendarScreenContent(
                 visibleDates = uiState.visibleDates,
                 currentMonth = uiState.currentMonth,
                 eventsByDate = uiState.eventsByDate,
+                onDateClick = onDateClick,
                 isLoading = uiState.isLoading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -319,6 +323,7 @@ private fun CalendarBody(
     visibleDates: List<LocalDate>,
     currentMonth: YearMonth,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDateClick: (LocalDate) -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -330,6 +335,7 @@ private fun CalendarBody(
             visibleDates = visibleDates,
             currentMonth = currentMonth,
             eventsByDate = eventsByDate,
+            onDateClick = onDateClick,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -424,6 +430,7 @@ private fun CalendarMonthGrid(
     visibleDates: List<LocalDate>,
     currentMonth: YearMonth,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    onDateClick: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val weeks = visibleDates.chunked(size = 7)
@@ -443,6 +450,7 @@ private fun CalendarMonthGrid(
                         date = date,
                         currentMonth = currentMonth,
                         events = eventsByDate[date].orEmpty(),
+                        onClick = { onDateClick(date) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -456,6 +464,7 @@ private fun CalendarDayCell(
     date: LocalDate,
     currentMonth: YearMonth,
     events: List<CalendarEvent>,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dayModel = buildCalendarDayUiModel(
@@ -467,6 +476,7 @@ private fun CalendarDayCell(
     Column(
         modifier = modifier
             .aspectRatio(0.5f)
+            .clickable(onClick = onClick)
             .drawBehind {
                 val radius = DayCellCornerRadius.toPx()
                 val offset = 4.dp.toPx() // 그림자 길이
