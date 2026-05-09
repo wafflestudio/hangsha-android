@@ -1,8 +1,6 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
 import androidx.compose.ui.graphics.Color
-import com.example.hangsha_android.ui.theme.Coral60
-import com.example.hangsha_android.ui.theme.Mint70
 import java.time.LocalDate
 
 data class DailyEventsUiState(
@@ -72,11 +70,3 @@ private fun DailyEventItem.matches(filters: DailyEventsFilterState): Boolean {
     }
     return true
 }
-
-internal val DailyEventAccentPalette = listOf(
-    Color(0xFF8FD3F4),
-    Color(0xFFFFDB6E),
-    Color(0xFFBDA2FF),
-    Mint70,
-    Coral60
-)

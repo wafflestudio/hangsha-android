@@ -51,7 +51,7 @@ import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
-import com.example.hangsha_android.ui.view.calendar.CalendarEventColorMapper.dayRed
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -62,6 +62,7 @@ private val DayCardShadow = Color(0x16000000)
 private val DayDivider = Color(0xFFF0F1F3)
 private val DayCellBorder = Color(0xFFE6E8EB)
 private val OutOfMonthText = Color(0xFFC9CDD3)
+private val DayRed = Color(0xFFFF2D55)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
@@ -408,7 +409,7 @@ private fun WeekdayHeader() {
                 else -> 0.3f // 나머지: 투명도 70%
             }
 
-            val baseColor = if (isSunday) dayRed else MaterialTheme.colorScheme.onSurface
+            val baseColor = if (isSunday) DayRed else MaterialTheme.colorScheme.onSurface
 
             Box(
                 modifier = Modifier.weight(1f),
@@ -573,12 +574,12 @@ private fun buildCalendarDayUiModel(
     }
     val dayTextColor = when {
         !isCurrentMonth -> OutOfMonthText
-        date.dayOfWeek == DayOfWeek.SUNDAY -> dayRed
+        date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
         else -> MaterialTheme.colorScheme.onSurface
     }
     val markerColors = events
         .take(MaxVisibleEventMarkers)
-        .map(CalendarEventColorMapper::colorFor)
+        .map { event -> eventTypeColor(event.eventTypeId) }
 
     return CalendarDayUiModel(
         isCurrentMonth = isCurrentMonth,
@@ -600,7 +601,7 @@ private fun EventMarkerBar(
             .fillMaxWidth()
             .height(10.dp)
             .clip(RoundedCornerShape(0.dp))
-            .background(color.copy(alpha = alpha))
+            .background(color.copy(alpha = color.alpha * alpha))
     )
 }
 

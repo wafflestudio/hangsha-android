@@ -165,7 +165,6 @@ class CalendarViewModel @Inject constructor(
         val appliedFilters = state.draftFilters
         _uiState.update {
             it.copy(
-                // Promote the draft filters selected in the sheet to the applied state.
                 appliedFilters = appliedFilters,
                 draftFilters = appliedFilters,
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,

@@ -39,20 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
 private val FilterDivider = Color(0xFFE7E5E1)
 private val FilterActionGray = Color(0xFFE1E1DF)
-private val EventTypeColors = listOf(
-    Color(0xFFF7DB72),
-    Color(0xFF8FDBBF),
-    Color(0xFF80CBE8),
-    Color(0xFF67A7EE),
-    Color(0xFFB28EF0),
-    Color(0xFFEF8FA6),
-    Color(0xFFFFFFFF)
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 // 캘린더 필터 바텀시트 전체와 탭별 본문 구성을 담당한다.
@@ -266,14 +257,14 @@ private fun EventTypeSection(
             if (eventTypeLabel(eventTypeId) == "기타") 1 else 0
         }
 
-        sortedOptions.forEachIndexed { index, eventTypeId ->
+        sortedOptions.forEach { eventTypeId ->
             val isSelected = eventTypeId in selected
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onToggle(eventTypeId) }
                     .background(
-                        color = EventTypeColors[index % EventTypeColors.size].copy(
+                        color = eventTypeColor(eventTypeId).copy(
                             alpha = if (isSelected) 0.95f else 0.72f
                         ),
                         shape = RoundedCornerShape(0.dp)

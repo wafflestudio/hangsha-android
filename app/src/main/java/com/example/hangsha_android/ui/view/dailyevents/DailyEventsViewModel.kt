@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 import retrofit2.HttpException
 
 @HiltViewModel
@@ -283,12 +284,12 @@ class DailyEventsViewModel @Inject constructor(
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
 private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
-    return mapIndexed { index, event ->
-        event.toDailyEventItem(index)
+    return map { event ->
+        event.toDailyEventItem()
     }
 }
 
-private fun EventSummaryResponse.toDailyEventItem(index: Int): DailyEventItem {
+private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     val baseDate = parseEventDate(applyEnd)
         ?: parseEventDate(eventStart)
         ?: parseEventDate(eventEnd)
@@ -309,7 +310,7 @@ private fun EventSummaryResponse.toDailyEventItem(index: Int): DailyEventItem {
         organization = organization,
         displayDate = displayDate,
         dDayLabel = dDayLabel,
-        accentColor = DailyEventAccentPalette[index % DailyEventAccentPalette.size],
+        accentColor = eventTypeColor(eventTypeId),
         isBookmarked = isBookmarked,
         isInterested = isInterested,
         orgId = orgId,

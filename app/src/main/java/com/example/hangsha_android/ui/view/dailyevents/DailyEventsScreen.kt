@@ -103,7 +103,7 @@ fun DailyEventsScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(28.dp))
-
+            // "2026년 n월 n일", 좌우 화살표, 필터 버튼
             DailyEventsHeader(
                 state = DailyEventsHeaderState(
                     selectedDate = uiState.selectedDate,
@@ -155,6 +155,7 @@ fun DailyEventsScreen(
     }
 }
 
+// "2026년 n월 n일", 좌우 화살표, 필터 버튼
 @Composable
 private fun DailyEventsHeader(
     state: DailyEventsHeaderState,
@@ -174,6 +175,7 @@ private fun DailyEventsHeader(
         )
         Spacer(modifier = Modifier.width(8.dp))
 
+        // 이전 버튼
         HeaderArrowButton(
             enabled = !state.isLoading,
             onClick = onPreviousDayClick
@@ -185,6 +187,8 @@ private fun DailyEventsHeader(
             )
         }
         Spacer(modifier = Modifier.width(1.dp))
+
+        // 다음 버튼
         HeaderArrowButton(
             enabled = !state.isLoading,
             onClick = onNextDayClick
@@ -196,6 +200,8 @@ private fun DailyEventsHeader(
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
+
+        // 필터 버튼
         FilterButton(
             isLoading = state.isLoading,
             hasActiveFilters = state.hasActiveFilters,
@@ -205,6 +211,7 @@ private fun DailyEventsHeader(
     }
 }
 
+// 이전 버튼, 다음 버튼
 @Composable
 private fun HeaderArrowButton(
     enabled: Boolean,
@@ -227,6 +234,7 @@ private fun HeaderArrowButton(
     }
 }
 
+// 필터 버튼
 @Composable
 private fun FilterButton(
     isLoading: Boolean,
