@@ -6,12 +6,12 @@ import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.model.EventDateRange
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
 import java.time.YearMonth
-import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -165,7 +165,7 @@ class CalendarViewModel @Inject constructor(
         val appliedFilters = state.draftFilters
         _uiState.update {
             it.copy(
-                // 사용자가 시트에서 고른 draft를 실제 적용 상태로 승격
+                // Promote the draft filters selected in the sheet to the applied state.
                 appliedFilters = appliedFilters,
                 draftFilters = appliedFilters,
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,

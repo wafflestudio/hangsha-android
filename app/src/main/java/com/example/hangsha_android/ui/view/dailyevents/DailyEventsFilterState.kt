@@ -1,8 +1,8 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.dailyevents
 
 import com.example.hangsha_android.data.repository.model.RECRUITING_STATUS_ID
 
-data class CalendarFilterState(
+data class DailyEventsFilterState(
     val bookmarkedOnly: Boolean = false,
     val interestedOnly: Boolean = false,
     val orgIds: Set<Long> = emptySet(),
@@ -19,13 +19,13 @@ data class CalendarFilterState(
             excludedKeywords.isNotEmpty()
 }
 
-data class CalendarFilterOptions(
+data class DailyEventsFilterOptions(
     val orgIds: List<Long> = emptyList(),
     val statusIds: List<Long> = emptyList(),
     val eventTypeIds: List<Long> = emptyList()
 )
 
-enum class CalendarFilterTab(val label: String) {
+enum class DailyEventsFilterTab(val label: String) {
     EVENT_TYPE("행사 종류"),
     ORGANIZER("주최 기관"),
     RECRUITMENT_STATUS("모집 현황"),

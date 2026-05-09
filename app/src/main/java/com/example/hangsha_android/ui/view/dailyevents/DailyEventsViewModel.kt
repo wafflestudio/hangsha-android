@@ -56,31 +56,177 @@ class DailyEventsViewModel @Inject constructor(
         loadDate(_uiState.value.selectedDate)
     }
 
-    private fun loadDate(date: LocalDate) {
+    fun openFilterSheet() {
+        _uiState.update {
+            it.copy(
+                isFilterSheetVisible = true,
+                draftFilters = it.appliedFilters,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
+            )
+        }
+    }
+
+    fun dismissFilterSheet() {
+        _uiState.update {
+            it.copy(
+                isFilterSheetVisible = false,
+                draftFilters = it.appliedFilters,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
+            )
+        }
+    }
+
+    fun clearDraftFilters() {
+        _uiState.update {
+            it.copy(
+                draftFilters = DailyEventsFilterState(),
+                excludeKeywordInput = ""
+            )
+        }
+    }
+
+    fun selectFilterTab(tab: DailyEventsFilterTab) {
+        _uiState.update { it.copy(selectedFilterTab = tab) }
+    }
+
+    fun setDraftBookmarkedOnly(enabled: Boolean) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(bookmarkedOnly = enabled)
+            )
+        }
+    }
+
+    fun setDraftInterestedOnly(enabled: Boolean) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(interestedOnly = enabled)
+            )
+        }
+    }
+
+    fun toggleDraftOrgId(orgId: Long) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(
+                    orgIds = it.draftFilters.orgIds.toggle(orgId)
+                )
+            )
+        }
+    }
+
+    fun toggleDraftStatus(statusId: Long) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(
+                    statusIds = it.draftFilters.statusIds.toggle(statusId)
+                )
+            )
+        }
+    }
+
+    fun toggleDraftEventType(eventTypeId: Long) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(
+                    eventTypeIds = it.draftFilters.eventTypeIds.toggle(eventTypeId)
+                )
+            )
+        }
+    }
+
+    fun updateExcludeKeywordInput(value: String) {
+        _uiState.update { it.copy(excludeKeywordInput = value) }
+    }
+
+    fun addDraftExcludeKeyword() {
+        val keyword = _uiState.value.excludeKeywordInput.trim()
+        if (keyword.isBlank()) return
+
+        _uiState.update { state ->
+            if (keyword in state.draftFilters.excludedKeywords) {
+                state.copy(excludeKeywordInput = "")
+            } else {
+                state.copy(
+                    draftFilters = state.draftFilters.copy(
+                        excludedKeywords = state.draftFilters.excludedKeywords + keyword
+                    ),
+                    excludeKeywordInput = ""
+                )
+            }
+        }
+    }
+
+    fun removeDraftExcludeKeyword(keyword: String) {
+        _uiState.update {
+            it.copy(
+                draftFilters = it.draftFilters.copy(
+                    excludedKeywords = it.draftFilters.excludedKeywords - keyword
+                )
+            )
+        }
+    }
+
+    fun applyDraftFilters() {
+        val state = _uiState.value
+        val appliedFilters = state.draftFilters
+        _uiState.update {
+            it.copy(
+                appliedFilters = appliedFilters,
+                draftFilters = appliedFilters,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = "",
+                isFilterSheetVisible = false,
+                errorMessage = null
+            )
+        }
+        loadDate(
+            date = state.selectedDate,
+            filters = appliedFilters
+        )
+    }
+
+    private fun loadDate(
+        date: LocalDate,
+        filters: DailyEventsFilterState = _uiState.value.appliedFilters
+    ) {
         loadJob?.cancel()
         _uiState.update {
             it.copy(
                 selectedDate = date,
+                appliedFilters = filters,
                 isLoading = true,
-                errorMessage = null
+                errorMessage = null,
+                isFilterSheetVisible = false,
+                draftFilters = filters,
+                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = ""
             )
         }
 
         loadJob = viewModelScope.launch {
             runCatching {
-                val response = eventRepository.getDayEvents(date)
+                val response = eventRepository.getDayEvents(date, filters)
                 if (!response.isSuccessful) {
                     throw HttpException(response)
                 }
 
-                response.body()?.items.orEmpty()
+                val body = response.body()
+                    ?: throw IllegalStateException("Daily events response was empty.")
+
+                body.items.orEmpty()
             }.fold(
                 onSuccess = { items ->
+                    val allItems = items.toDailyEventItems()
+                    val filterOptions = buildFilterOptions(allItems)
+                    val filteredItems = allItems.applyFilters(filters)
                     _uiState.update {
                         it.copy(
-                            items = items.mapIndexed { index, event ->
-                                event.toDailyEventItem(index)
-                            },
+                            allItems = allItems,
+                            items = filteredItems,
+                            availableFilterOptions = filterOptions,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -89,7 +235,9 @@ class DailyEventsViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
+                            allItems = emptyList(),
                             items = emptyList(),
+                            availableFilterOptions = DailyEventsFilterOptions(),
                             isLoading = false,
                             errorMessage = mapErrorMessage(error)
                         )
@@ -97,6 +245,20 @@ class DailyEventsViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
+        return DailyEventsFilterOptions(
+            orgIds = items.map { it.orgId }
+                .distinct()
+                .sorted(),
+            statusIds = items.map { it.statusId }
+                .distinct()
+                .sorted(),
+            eventTypeIds = items.map { it.eventTypeId }
+                .distinct()
+                .sorted()
+        )
     }
 
     private fun mapErrorMessage(error: Throwable): String {
@@ -112,6 +274,7 @@ class DailyEventsViewModel @Inject constructor(
                 else -> "Failed to load events with code ${error.code()}."
             }
             is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Failed to load events."
             else -> error.message ?: "Failed to load events."
         }
     }
@@ -119,12 +282,17 @@ class DailyEventsViewModel @Inject constructor(
 
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
+private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
+    return mapIndexed { index, event ->
+        event.toDailyEventItem(index)
+    }
+}
+
 private fun EventSummaryResponse.toDailyEventItem(index: Int): DailyEventItem {
     val baseDate = parseEventDate(applyEnd)
         ?: parseEventDate(eventStart)
         ?: parseEventDate(eventEnd)
         ?: parseEventDate(applyStart)
-
     val dDayLabel = baseDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
@@ -132,8 +300,7 @@ private fun EventSummaryResponse.toDailyEventItem(index: Int): DailyEventItem {
             diff > 0L -> "D-$diff"
             else -> "D+${-diff}"
         }
-    } ?: "모집중"
-
+    } ?: "Recruiting"
     val displayDate = baseDate?.format(ItemDateFormatter) ?: "-"
 
     return DailyEventItem(
@@ -143,7 +310,13 @@ private fun EventSummaryResponse.toDailyEventItem(index: Int): DailyEventItem {
         displayDate = displayDate,
         dDayLabel = dDayLabel,
         accentColor = DailyEventAccentPalette[index % DailyEventAccentPalette.size],
-        isBookmarked = isBookmarked
+        isBookmarked = isBookmarked,
+        isInterested = isInterested,
+        orgId = orgId,
+        statusId = statusId,
+        eventTypeId = eventTypeId,
+        location = location,
+        tags = tags
     )
 }
 
@@ -154,5 +327,13 @@ private fun parseEventDate(value: String?): LocalDate? {
 
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
         runCatching { LocalDate.parse(value) }.getOrNull()
+    }
+}
+
+private fun <T> Set<T>.toggle(value: T): Set<T> {
+    return if (value in this) {
+        this - value
+    } else {
+        this + value
     }
 }

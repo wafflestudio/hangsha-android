@@ -22,6 +22,11 @@ interface EventApi {
     @GET("api/v1/events/day")
     suspend fun getDayEvents(
         @Query("date") date: String,
-        @Query("statusId[]") statusIds: List<Long>
+        @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
+        @Query("interestedOnly") interestedOnly: Boolean? = null,
+        @Query("orgIds") orgIds: List<Long>? = null,
+        @Query("statusIds") statusIds: List<Long>? = null,
+        @Query("eventTypeIds") eventTypeIds: List<Long>? = null,
+        @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<DayEventsResponse>
 }

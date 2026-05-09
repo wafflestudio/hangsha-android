@@ -248,6 +248,23 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = dailyEventsUiState,
                 onPreviousDayClick = { dailyEventsViewModel.showPreviousDay() },
                 onNextDayClick = { dailyEventsViewModel.showNextDay() },
+                onOpenFilterClick = { dailyEventsViewModel.openFilterSheet() },
+                onDismissFilterSheet = { dailyEventsViewModel.dismissFilterSheet() },
+                onSelectFilterTab = { dailyEventsViewModel.selectFilterTab(it) },
+                onBookmarkedOnlyChange = { dailyEventsViewModel.setDraftBookmarkedOnly(it) },
+                onInterestedOnlyChange = { dailyEventsViewModel.setDraftInterestedOnly(it) },
+                onToggleOrgId = { dailyEventsViewModel.toggleDraftOrgId(it) },
+                onToggleStatus = { dailyEventsViewModel.toggleDraftStatus(it) },
+                onToggleEventType = { dailyEventsViewModel.toggleDraftEventType(it) },
+                onExcludeKeywordInputChange = {
+                    dailyEventsViewModel.updateExcludeKeywordInput(it)
+                },
+                onAddExcludeKeyword = { dailyEventsViewModel.addDraftExcludeKeyword() },
+                onRemoveExcludeKeyword = {
+                    dailyEventsViewModel.removeDraftExcludeKeyword(it)
+                },
+                onApplyFilters = { dailyEventsViewModel.applyDraftFilters() },
+                onClearFilters = { dailyEventsViewModel.clearDraftFilters() },
                 onRetryClick = { dailyEventsViewModel.retry() }
             )
         }

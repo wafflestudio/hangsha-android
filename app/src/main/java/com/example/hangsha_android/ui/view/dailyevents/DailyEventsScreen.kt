@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Cream5
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
@@ -46,13 +48,50 @@ import java.util.Locale
 private val DailyHeaderFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREA)
 private val DailyBookmarkTint = Color(0xFFB8BBC1)
 
+private data class DailyEventsHeaderState(
+    val selectedDate: LocalDate,
+    val hasActiveFilters: Boolean,
+    val isLoading: Boolean
+)
+
 @Composable
 fun DailyEventsScreen(
     uiState: DailyEventsUiState,
     onPreviousDayClick: () -> Unit,
     onNextDayClick: () -> Unit,
+    onOpenFilterClick: () -> Unit,
+    onDismissFilterSheet: () -> Unit,
+    onSelectFilterTab: (DailyEventsFilterTab) -> Unit,
+    onBookmarkedOnlyChange: (Boolean) -> Unit,
+    onInterestedOnlyChange: (Boolean) -> Unit,
+    onToggleOrgId: (Long) -> Unit,
+    onToggleStatus: (Long) -> Unit,
+    onToggleEventType: (Long) -> Unit,
+    onExcludeKeywordInputChange: (String) -> Unit,
+    onAddExcludeKeyword: () -> Unit,
+    onRemoveExcludeKeyword: (String) -> Unit,
+    onApplyFilters: () -> Unit,
+    onClearFilters: () -> Unit,
     onRetryClick: () -> Unit
 ) {
+    if (uiState.isFilterSheetVisible) {
+        DailyEventsFilterBottomSheet(
+            uiState = uiState,
+            onDismiss = onDismissFilterSheet,
+            onSelectTab = onSelectFilterTab,
+            onBookmarkedOnlyChange = onBookmarkedOnlyChange,
+            onInterestedOnlyChange = onInterestedOnlyChange,
+            onToggleOrgId = onToggleOrgId,
+            onToggleStatus = onToggleStatus,
+            onToggleEventType = onToggleEventType,
+            onExcludeKeywordInputChange = onExcludeKeywordInputChange,
+            onAddExcludeKeyword = onAddExcludeKeyword,
+            onRemoveExcludeKeyword = onRemoveExcludeKeyword,
+            onApply = onApplyFilters,
+            onClear = onClearFilters
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -64,10 +103,16 @@ fun DailyEventsScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(28.dp))
+
             DailyEventsHeader(
-                date = uiState.selectedDate,
+                state = DailyEventsHeaderState(
+                    selectedDate = uiState.selectedDate,
+                    hasActiveFilters = uiState.hasActiveFilters,
+                    isLoading = uiState.isLoading
+                ),
                 onPreviousDayClick = onPreviousDayClick,
-                onNextDayClick = onNextDayClick
+                onNextDayClick = onNextDayClick,
+                onOpenFilterClick = onOpenFilterClick
             )
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -112,45 +157,63 @@ fun DailyEventsScreen(
 
 @Composable
 private fun DailyEventsHeader(
-    date: LocalDate,
+    state: DailyEventsHeaderState,
     onPreviousDayClick: () -> Unit,
-    onNextDayClick: () -> Unit
+    onNextDayClick: () -> Unit,
+    onOpenFilterClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = date.format(DailyHeaderFormatter),
+            text = state.selectedDate.format(DailyHeaderFormatter),
             style = MaterialTheme.typography.labelLarge,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.width(8.dp))
-        HeaderArrowButton(onClick = onPreviousDayClick) {
+
+        HeaderArrowButton(
+            enabled = !state.isLoading,
+            onClick = onPreviousDayClick
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                 contentDescription = "Previous day",
                 tint = Ink60
             )
         }
-        HeaderArrowButton(onClick = onNextDayClick) {
+        Spacer(modifier = Modifier.width(1.dp))
+        HeaderArrowButton(
+            enabled = !state.isLoading,
+            onClick = onNextDayClick
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = "Next day",
                 tint = Ink60
             )
         }
+        Spacer(modifier = Modifier.width(8.dp))
+        FilterButton(
+            isLoading = state.isLoading,
+            hasActiveFilters = state.hasActiveFilters,
+            onOpenFilterClick = onOpenFilterClick
+        )
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun HeaderArrowButton(
+    enabled: Boolean,
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(14.dp),
         color = PureWhite,
         shadowElevation = 2.dp
@@ -160,6 +223,45 @@ private fun HeaderArrowButton(
             contentAlignment = Alignment.Center
         ) {
             content()
+        }
+    }
+}
+
+@Composable
+private fun FilterButton(
+    isLoading: Boolean,
+    hasActiveFilters: Boolean,
+    onOpenFilterClick: () -> Unit
+) {
+    Box {
+        Surface(
+            onClick = onOpenFilterClick,
+            enabled = !isLoading,
+            shape = RoundedCornerShape(14.dp),
+            color = PureWhite,
+            shadowElevation = 2.dp
+        ) {
+            Box(
+                modifier = Modifier.size(28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = "Filter",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        if (hasActiveFilters) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 4.dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Coral60)
+            )
         }
     }
 }
@@ -234,7 +336,7 @@ private fun DailyEmptyState() {
             color = Cream5
         ) {
             Text(
-                text = "해당 날짜에 모집중인 행사가 없습니다.",
+                text = "해당 날짜에 표시할 행사가 없습니다.",
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
