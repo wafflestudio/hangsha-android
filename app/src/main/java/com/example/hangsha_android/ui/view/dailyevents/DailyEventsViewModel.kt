@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import retrofit2.HttpException
+import retrofit2.Response
 
 @HiltViewModel
 class DailyEventsViewModel @Inject constructor(
@@ -54,7 +55,11 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun retry() {
-        loadDate(_uiState.value.selectedDate)
+        loadDate(
+            date = _uiState.value.selectedDate,
+            filters = _uiState.value.appliedFilters,
+            hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        )
     }
 
     fun openFilterSheet() {
@@ -177,6 +182,7 @@ class DailyEventsViewModel @Inject constructor(
             it.copy(
                 appliedFilters = appliedFilters,
                 draftFilters = appliedFilters,
+                hasAppliedServerFilters = true,
                 selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
@@ -185,19 +191,23 @@ class DailyEventsViewModel @Inject constructor(
         }
         loadDate(
             date = state.selectedDate,
-            filters = appliedFilters
+            filters = appliedFilters,
+            hasAppliedServerFilters = true
         )
     }
 
+    // 현재 날짜의 전체 source 데이터를 먼저 가져오고, 그다음 화면에 보여줄 리스트만 별도로 결정한다.
     private fun loadDate(
         date: LocalDate,
-        filters: DailyEventsFilterState = _uiState.value.appliedFilters
+        filters: DailyEventsFilterState = _uiState.value.appliedFilters,
+        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
     ) {
         loadJob?.cancel()
         _uiState.update {
             it.copy(
                 selectedDate = date,
                 appliedFilters = filters,
+                hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
                 isFilterSheetVisible = false,
@@ -209,25 +219,42 @@ class DailyEventsViewModel @Inject constructor(
 
         loadJob = viewModelScope.launch {
             runCatching {
-                val response = eventRepository.getDayEvents(date, filters)
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
+                val sourceResponse = eventRepository.getAllDayEvents(date)
+                val sourceItems = sourceResponse
+                    .requireBody("Daily events response was empty.")
+                    .items
+                    .orEmpty()
+                    .toDailyEventItems()
+                val filterOptions = buildFilterOptions(sourceItems)
+                val visibleItems = if (hasAppliedServerFilters) {
+                    eventRepository.getDayEvents(date, filters)
+                        .requireBody("Filtered daily events response was empty.")
+                        .items
+                        .orEmpty()
+                        .toDailyEventItems()
+                } else {
+                    val prioritizedItems = eventRepository.getDayEvents(
+                        date = date,
+                        filters = DailyEventsFilterState()
+                    ).requireBody("Prioritized daily events response was empty.")
+                        .items
+                        .orEmpty()
+                        .toDailyEventItems()
+                    sourceItems.reorderedBy(prioritizedItems)
                 }
 
-                val body = response.body()
-                    ?: throw IllegalStateException("Daily events response was empty.")
-
-                body.items.orEmpty()
+                DailyEventsLoadResult(
+                    filterSourceItems = sourceItems,
+                    visibleItems = visibleItems,
+                    filterOptions = filterOptions
+                )
             }.fold(
-                onSuccess = { items ->
-                    val allItems = items.toDailyEventItems()
-                    val filterOptions = buildFilterOptions(allItems)
-                    val filteredItems = allItems.applyFilters(filters)
+                onSuccess = { result ->
                     _uiState.update {
                         it.copy(
-                            allItems = allItems,
-                            items = filteredItems,
-                            availableFilterOptions = filterOptions,
+                            filterSourceItems = result.filterSourceItems,
+                            items = result.visibleItems,
+                            availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -236,7 +263,7 @@ class DailyEventsViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
-                            allItems = emptyList(),
+                            filterSourceItems = emptyList(),
                             items = emptyList(),
                             availableFilterOptions = DailyEventsFilterOptions(),
                             isLoading = false,
@@ -248,6 +275,7 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 
+    // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 한 번만 추출한다.
     private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
         return DailyEventsFilterOptions(
             orgIds = items.map { it.orgId }
@@ -280,6 +308,12 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 }
+
+private data class DailyEventsLoadResult(
+    val filterSourceItems: List<DailyEventItem>,
+    val visibleItems: List<DailyEventItem>,
+    val filterOptions: DailyEventsFilterOptions
+)
 
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
@@ -321,6 +355,24 @@ private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     )
 }
 
+// 서버가 내려준 기본 상태 우선순서를 전체 source 데이터에 덧씌워, 필터 전 리스트도 원하는 순서로 보여준다.
+private fun List<DailyEventItem>.reorderedBy(
+    prioritizedItems: List<DailyEventItem>
+): List<DailyEventItem> {
+    val prioritizedIds = prioritizedItems
+        .mapIndexed { index, item -> item.id to index }
+        .toMap()
+
+    return withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<DailyEventItem>>(
+                { prioritizedIds[it.value.id] ?: Int.MAX_VALUE },
+                { it.index }
+            )
+        )
+        .map { it.value }
+}
+
 private fun parseEventDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) {
         return null
@@ -329,6 +381,16 @@ private fun parseEventDate(value: String?): LocalDate? {
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
         runCatching { LocalDate.parse(value) }.getOrNull()
     }
+}
+
+private fun Response<com.example.hangsha_android.data.network.model.DayEventsResponse>.requireBody(
+    emptyMessage: String
+): com.example.hangsha_android.data.network.model.DayEventsResponse {
+    if (!isSuccessful) {
+        throw HttpException(this)
+    }
+
+    return body() ?: throw IllegalStateException(emptyMessage)
 }
 
 private fun <T> Set<T>.toggle(value: T): Set<T> {

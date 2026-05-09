@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import retrofit2.Response
 
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
@@ -44,7 +45,11 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun retry() {
-        loadMonth(_uiState.value.currentMonth)
+        loadMonth(
+            month = _uiState.value.currentMonth,
+            filters = _uiState.value.appliedFilters,
+            hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        )
     }
 
     fun openFilterSheet() {
@@ -167,6 +172,7 @@ class CalendarViewModel @Inject constructor(
             it.copy(
                 appliedFilters = appliedFilters,
                 draftFilters = appliedFilters,
+                hasAppliedServerFilters = true,
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
@@ -175,13 +181,16 @@ class CalendarViewModel @Inject constructor(
         }
         loadMonth(
             month = state.currentMonth,
-            filters = appliedFilters
+            filters = appliedFilters,
+            hasAppliedServerFilters = true
         )
     }
 
+    // 현재 월의 전체 source 데이터를 먼저 가져오고, 그다음 화면 표시용 데이터만 분기해서 구성한다.
     private fun loadMonth(
         month: YearMonth,
-        filters: CalendarFilterState = _uiState.value.appliedFilters
+        filters: CalendarFilterState = _uiState.value.appliedFilters,
+        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
     ) {
         val visibleRange = month.toCalendarGridRange()
         val visibleDates = visibleRange.toDateList()
@@ -193,6 +202,7 @@ class CalendarViewModel @Inject constructor(
                 visibleRange = visibleRange,
                 visibleDates = visibleDates,
                 appliedFilters = filters,
+                hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
                 isFilterSheetVisible = false,
@@ -204,25 +214,40 @@ class CalendarViewModel @Inject constructor(
 
         loadJob = viewModelScope.launch {
             runCatching {
-                val response = eventRepository.getEvents(
-                    range = visibleRange,
-                    filters = filters
-                )
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
+                val sourceResponse = eventRepository.getAllEvents(visibleRange)
+                val sourceBody = sourceResponse.requireBody("Events response was empty.")
+                val sourceEventsByDate = sourceBody.toCalendarEventsByDate()
+                val filterOptions = buildFilterOptions(sourceEventsByDate)
+                val visibleEventsByDate = if (hasAppliedServerFilters) {
+                    val filteredResponse = eventRepository.getEvents(
+                        range = visibleRange,
+                        filters = filters
+                    )
+                    filteredResponse.requireBody("Filtered events response was empty.")
+                        .toCalendarEventsByDate()
+                } else {
+                    val prioritizedResponse = eventRepository.getEvents(
+                        range = visibleRange,
+                        filters = CalendarFilterState()
+                    )
+                    val prioritizedEventsByDate = prioritizedResponse
+                        .requireBody("Prioritized events response was empty.")
+                        .toCalendarEventsByDate()
+                    sourceEventsByDate.reorderedBy(prioritizedEventsByDate)
                 }
 
-                response.body() ?: throw IllegalStateException("Events response was empty.")
+                CalendarMonthLoadResult(
+                    filterSourceEventsByDate = sourceEventsByDate,
+                    visibleEventsByDate = visibleEventsByDate,
+                    filterOptions = filterOptions
+                )
             }.fold(
-                onSuccess = { response ->
-                    val allEventsByDate = response.toCalendarEventsByDate()
-                    val filterOptions = buildFilterOptions(allEventsByDate)
-                    val filteredEventsByDate = allEventsByDate.applyFilters(filters)
+                onSuccess = { result ->
                     _uiState.update {
                         it.copy(
-                            allEventsByDate = allEventsByDate,
-                            eventsByDate = filteredEventsByDate,
-                            availableFilterOptions = filterOptions,
+                            filterSourceEventsByDate = result.filterSourceEventsByDate,
+                            eventsByDate = result.visibleEventsByDate,
+                            availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -231,7 +256,7 @@ class CalendarViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
-                            allEventsByDate = emptyMap(),
+                            filterSourceEventsByDate = emptyMap(),
                             eventsByDate = emptyMap(),
                             availableFilterOptions = CalendarFilterOptions(),
                             isLoading = false,
@@ -243,6 +268,7 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
+    // 전체 source 데이터에서 현재 월에 노출 가능한 필터 항목을 한 번만 추출한다.
     private fun buildFilterOptions(
         eventsByDate: Map<LocalDate, List<CalendarEvent>>
     ): CalendarFilterOptions {
@@ -278,6 +304,12 @@ class CalendarViewModel @Inject constructor(
         }
     }
 }
+
+private data class CalendarMonthLoadResult(
+    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    val visibleEventsByDate: Map<LocalDate, List<CalendarEvent>>,
+    val filterOptions: CalendarFilterOptions
+)
 
 private fun MonthlyEventsResponse.toCalendarEventsByDate(): Map<LocalDate, List<CalendarEvent>> {
     return byDate.entries
@@ -317,7 +349,42 @@ private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent
         isInterested = isInterested,
         matchedInterestPriority = matchedInterestPriority,
         isBookmarked = isBookmarked
-    )
+        )
+}
+
+// 서버가 내려준 기본 상태 우선순서를 전체 source 데이터에 덧씌워, 필터 전 데이터도 원하는 순서로 보여준다.
+private fun Map<LocalDate, List<CalendarEvent>>.reorderedBy(
+    prioritizedEventsByDate: Map<LocalDate, List<CalendarEvent>>
+): Map<LocalDate, List<CalendarEvent>> {
+    return entries.associate { (date, events) ->
+        val prioritizedIds = prioritizedEventsByDate[date].orEmpty()
+            .mapIndexed { index, event -> event.id to index }
+            .toMap()
+        date to events.withStablePriority(prioritizedIds)
+    }
+}
+
+private fun List<CalendarEvent>.withStablePriority(
+    prioritizedIds: Map<Long, Int>
+): List<CalendarEvent> {
+    return withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<CalendarEvent>>(
+                { prioritizedIds[it.value.id] ?: Int.MAX_VALUE },
+                { it.index }
+            )
+        )
+        .map { it.value }
+}
+
+private fun Response<MonthlyEventsResponse>.requireBody(
+    emptyMessage: String
+): MonthlyEventsResponse {
+    if (!isSuccessful) {
+        throw HttpException(this)
+    }
+
+    return body() ?: throw IllegalStateException(emptyMessage)
 }
 
 private fun <T> Set<T>.toggle(value: T): Set<T> {

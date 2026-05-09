@@ -5,26 +5,27 @@ import java.time.LocalDate
 
 data class DailyEventsUiState(
     val selectedDate: LocalDate = LocalDate.now(),
-    val allItems: List<DailyEventItem> = emptyList(),
+    val filterSourceItems: List<DailyEventItem> = emptyList(),
     val items: List<DailyEventItem> = emptyList(),
     val appliedFilters: DailyEventsFilterState = DailyEventsFilterState(),
     val draftFilters: DailyEventsFilterState = DailyEventsFilterState(),
     val availableFilterOptions: DailyEventsFilterOptions = DailyEventsFilterOptions(),
     val selectedFilterTab: DailyEventsFilterTab = DailyEventsFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
+    val hasAppliedServerFilters: Boolean = false,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
     val hasActiveFilters: Boolean
-        get() = appliedFilters.hasActiveFilters
+        get() = hasAppliedServerFilters && appliedFilters.hasActiveFilters
 
     val filteredItemCount: Int
         get() = previewItems.size
 
     private val previewItems: List<DailyEventItem>
         get() = if (isFilterSheetVisible) {
-            allItems.applyFilters(draftFilters)
+            filterSourceItems.applyFilters(draftFilters)
         } else {
             items
         }

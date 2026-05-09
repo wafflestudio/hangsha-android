@@ -253,18 +253,24 @@ private fun EventTypeSection(
             return
         }
 
-        val sortedOptions = options.sortedBy { eventTypeId ->
-            if (eventTypeLabel(eventTypeId) == "기타") 1 else 0
-        }
+        val groupedOptions = options
+            .groupBy(::eventTypeLabel)
+            .entries
+            .sortedBy { (label, _) -> if (label == "기타") 1 else 0 }
 
-        sortedOptions.forEach { eventTypeId ->
-            val isSelected = eventTypeId in selected
+        groupedOptions.forEach { (label, eventTypeIds) ->
+            val representativeId = eventTypeIds.first()
+            val isSelected = eventTypeIds.all { it in selected }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onToggle(eventTypeId) }
+                    .clickable {
+                        eventTypeIds.forEach { eventTypeId ->
+                            onToggle(eventTypeId)
+                        }
+                    }
                     .background(
-                        color = eventTypeColor(eventTypeId).copy(
+                        color = eventTypeColor(representativeId).copy(
                             alpha = if (isSelected) 0.95f else 0.72f
                         ),
                         shape = RoundedCornerShape(0.dp)
@@ -275,7 +281,7 @@ private fun EventTypeSection(
                 SelectionSquare(selected = isSelected)
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = eventTypeLabel(eventTypeId),
+                    text = label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -499,8 +505,8 @@ private fun FilterFooter(
 
 private fun statusLabel(statusId: Long): String {
     return when (statusId) {
-        1L -> "모집 중"
-        2L -> "모집 전"
+        1L -> "모집 대기"
+        2L -> "모집 중"
         3L -> "모집 마감"
         else -> "상태 $statusId"
     }
