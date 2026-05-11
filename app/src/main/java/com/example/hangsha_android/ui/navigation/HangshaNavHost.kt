@@ -262,15 +262,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val initialDailyFilters = previousSavedStateHandle?.toDailyEventsFilterState()
             val initialHasAppliedServerFilters = previousSavedStateHandle
                 ?.get<Boolean>(HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey)
-                ?: false
+                ?: initialDailyFilters?.hasActiveFilters
 
             LaunchedEffect(initialDailyFilters, initialHasAppliedServerFilters) {
-                if (initialDailyFilters != null) {
-                    dailyEventsViewModel.syncInitialFilters(
-                        filters = initialDailyFilters,
-                        hasAppliedServerFilters = initialHasAppliedServerFilters
-                    )
-                }
+                dailyEventsViewModel.initialize(
+                    filters = initialDailyFilters,
+                    hasAppliedServerFilters = initialHasAppliedServerFilters
+                )
             }
 
             DailyEventsScreen(

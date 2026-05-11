@@ -30,7 +30,7 @@ class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private var hasSyncedInitialFilters = false
+    private var hasInitialized = false
 
     private val _uiState = MutableStateFlow(
         DailyEventsUiState(
@@ -42,10 +42,6 @@ class DailyEventsViewModel @Inject constructor(
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
-
-    init {
-        loadDate(_uiState.value.selectedDate)
-    }
 
     fun showPreviousDay() {
         loadDate(_uiState.value.selectedDate.minusDays(1))
@@ -63,28 +59,32 @@ class DailyEventsViewModel @Inject constructor(
         )
     }
 
-    // 캘린더에서 넘어온 적용 필터를 최초 진입 시점에 한 번만 동기화한다.
-    fun syncInitialFilters(
-        filters: DailyEventsFilterState,
-        hasAppliedServerFilters: Boolean
+    // 캘린더에서 넘어온 적용 필터 동기화
+    fun initialize(
+        filters: DailyEventsFilterState?,
+        hasAppliedServerFilters: Boolean?
     ) {
-        if (hasSyncedInitialFilters) {
+        if (hasInitialized) {
             return
         }
-        hasSyncedInitialFilters = true
+        hasInitialized = true
+
+        val initialFilters = filters ?: _uiState.value.appliedFilters
+        val initialHasAppliedServerFilters =
+            hasAppliedServerFilters ?: initialFilters.hasActiveFilters
 
         _uiState.update {
             it.copy(
-                appliedFilters = filters,
-                draftFilters = filters,
-                hasAppliedServerFilters = hasAppliedServerFilters
+                appliedFilters = initialFilters,
+                draftFilters = initialFilters,
+                hasAppliedServerFilters = initialHasAppliedServerFilters
             )
         }
 
         loadDate(
             date = _uiState.value.selectedDate,
-            filters = filters,
-            hasAppliedServerFilters = hasAppliedServerFilters
+            filters = initialFilters,
+            hasAppliedServerFilters = initialHasAppliedServerFilters
         )
     }
 
