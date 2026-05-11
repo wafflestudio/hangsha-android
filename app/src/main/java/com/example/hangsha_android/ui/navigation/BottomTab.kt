@@ -6,10 +6,31 @@ import com.example.hangsha_android.R
 enum class BottomTab(
     val route: String,
     val label: String,
-    @DrawableRes val iconResId: Int
+    @DrawableRes val iconResId: Int,
+    @DrawableRes val activeIconResId: Int
 ) {
-    Calendar("calendar", "캘린더", R.drawable.ic_bottombar_calender),
-    Timetable("timetable", "시간표", R.drawable.ic_bottombar_timetable),
-    Bookmarks("bookmarks", "북마크", R.drawable.ic_bottombar_bookmark),
-    MyPage("mypage", "마이", R.drawable.ic_bottombar_mypage)
+    Calendar(
+        "calendar",
+        "캘린더",
+        R.drawable.ic_bottombar_calender,
+        R.drawable.ic_bottombar_calender_active
+    ),
+    Timetable(
+        "timetable",
+        "시간표",
+        R.drawable.ic_bottombar_timetable,
+        R.drawable.ic_bottombar_timetable_active
+    ),
+    Bookmarks(
+        "bookmarks",
+        "북마크",
+        R.drawable.ic_bottombar_bookmark,
+        R.drawable.ic_bottombar_bookmark_active
+    ),
+    MyPage(
+        "mypage",
+        "마이",
+        R.drawable.ic_bottombar_mypage,
+        R.drawable.ic_bottombar_mypage_active
+    )
 }
