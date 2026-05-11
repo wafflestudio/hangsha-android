@@ -15,7 +15,7 @@ data class CalendarUiState(
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
     val selectedFilterTab: CalendarFilterTab = CalendarFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
-    val hasAppliedServerFilters: Boolean = false,
+    val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null

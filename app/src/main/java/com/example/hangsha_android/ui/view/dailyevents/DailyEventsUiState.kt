@@ -12,7 +12,7 @@ data class DailyEventsUiState(
     val availableFilterOptions: DailyEventsFilterOptions = DailyEventsFilterOptions(),
     val selectedFilterTab: DailyEventsFilterTab = DailyEventsFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
-    val hasAppliedServerFilters: Boolean = false,
+    val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null

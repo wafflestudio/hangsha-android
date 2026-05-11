@@ -59,14 +59,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val DayCardShadow = Color(0x16000000)
-private val DayDivider = Color(0xFFF0F1F3)
 private val DayCellBorder = Color(0xFFE6E8EB)
 private val OutOfMonthText = Color(0xFFC9CDD3)
 private val DayRed = Color(0xFFFF2D55)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
-private const val MaxVisibleEventMarkers = 4
+private const val MaxVisibleEventsPerDay = 5
 private val ScreenHorizontalPadding = 15.dp
 private val ScreenVerticalPadding = 15.dp
 private val DayCellCornerRadius = 3.dp
@@ -81,8 +80,8 @@ private data class CalendarDayUiModel(
     val isCurrentMonth: Boolean,
     val contentAlpha: Float,
     val dayTextColor: Color,
-    val markerColors: List<Color>,
-    val footerColor: Color
+    val barColors: List<Color>,
+    val lineColors: List<Color>
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -536,7 +535,7 @@ private fun CalendarDayCell(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             // 날짜 카드 안의 노랑, 보라, 파랑, 초록 일정 막대
-            dayModel.markerColors.forEach { color ->
+            dayModel.barColors.forEach { color ->
                 EventMarkerBar(
                     color = color,
                     alpha = 1f
@@ -545,16 +544,14 @@ private fun CalendarDayCell(
         }
         Spacer(modifier = Modifier.weight(1f))
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(
-                    // 아래의 얇은 컬러 라인
-                    color = dayModel.footerColor,
-                    shape = RoundedCornerShape(99.dp)
-                )
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            dayModel.lineColors.forEach { color ->
+                EventMarkerLine(color = color)
+            }
+        }
     }
 }
 
@@ -577,16 +574,20 @@ private fun buildCalendarDayUiModel(
         date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
         else -> MaterialTheme.colorScheme.onSurface
     }
-    val markerColors = events
-        .take(MaxVisibleEventMarkers)
+    val visibleEvents = events.take(MaxVisibleEventsPerDay)
+    val barColors = visibleEvents
+        .filterNot { it.isPeriodEvent }
+        .map { event -> eventTypeColor(event.eventTypeId) }
+    val lineColors = visibleEvents
+        .filter { it.isPeriodEvent }
         .map { event -> eventTypeColor(event.eventTypeId) }
 
     return CalendarDayUiModel(
         isCurrentMonth = isCurrentMonth,
         contentAlpha = contentAlpha,
         dayTextColor = dayTextColor,
-        markerColors = markerColors,
-        footerColor = markerColors.lastOrNull() ?: DayDivider
+        barColors = barColors,
+        lineColors = lineColors
     )
 }
 
@@ -602,6 +603,21 @@ private fun EventMarkerBar(
             .height(10.dp)
             .clip(RoundedCornerShape(0.dp))
             .background(color.copy(alpha = color.alpha * alpha))
+    )
+}
+
+@Composable
+private fun EventMarkerLine(
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(2.dp)
+            .background(
+                color = color,
+                shape = RoundedCornerShape(99.dp)
+            )
     )
 }
 
