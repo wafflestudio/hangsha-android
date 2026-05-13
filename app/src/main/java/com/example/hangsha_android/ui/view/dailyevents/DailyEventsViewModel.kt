@@ -251,14 +251,14 @@ class DailyEventsViewModel @Inject constructor(
                     .requireBody("Daily events response was empty.")
                     .items
                     .orEmpty()
-                    .toDailyEventItems()
+                    .toDailyEventItems(date)
                 val filterOptions = buildFilterOptions(sourceItems)
                 val visibleItems = if (hasAppliedServerFilters) {
                     eventRepository.getDayEvents(date, filters)
                         .requireBody("Filtered daily events response was empty.")
                         .items
                         .orEmpty()
-                        .toDailyEventItems()
+                        .toDailyEventItems(date)
                 } else {
                     val prioritizedItems = eventRepository.getDayEvents(
                         date = date,
@@ -266,7 +266,7 @@ class DailyEventsViewModel @Inject constructor(
                     ).requireBody("Prioritized daily events response was empty.")
                         .items
                         .orEmpty()
-                        .toDailyEventItems()
+                        .toDailyEventItems(date)
                     sourceItems.reorderedBy(prioritizedItems)
                 }
 
@@ -342,34 +342,36 @@ private data class DailyEventsLoadResult(
     val filterOptions: DailyEventsFilterOptions
 )
 
+private val ItemDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
-private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
+private fun List<EventSummaryResponse>.toDailyEventItems(
+    selectedDate: LocalDate
+): List<DailyEventItem> {
     return map { event ->
-        event.toDailyEventItem()
+        event.toDailyEventItem(selectedDate)
     }
 }
 
-private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
-    val baseDate = parseEventDate(applyEnd)
-        ?: parseEventDate(eventStart)
-        ?: parseEventDate(eventEnd)
-        ?: parseEventDate(applyStart)
-    val dDayLabel = baseDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): DailyEventItem {
+    val eventEndDate = parseEventDate(eventEnd)
+    val dDayLabel = eventEndDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - selectedDate.toEpochDay()
         when {
-            diff == 0L -> "D-Day"
+            diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
-            else -> "D+${-diff}"
+            else -> "D$diff"
         }
-    } ?: "Recruiting"
-    val displayDate = baseDate?.format(ItemDateFormatter) ?: "-"
+    } ?: "-"
+    val eventEndDisplay = formatEventEnd(eventEnd)
+        ?: eventEndDate?.format(ItemDateFormatter)
+        ?: "-"
 
     return DailyEventItem(
         id = id,
         title = title,
         organization = organization,
-        displayDate = displayDate,
+        eventEndDisplay = eventEndDisplay,
         dDayLabel = dDayLabel,
         accentColor = eventTypeColor(eventTypeId),
         isBookmarked = isBookmarked,
@@ -405,6 +407,18 @@ private fun parseEventDate(value: String?): LocalDate? {
 
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
         runCatching { LocalDate.parse(value) }.getOrNull()
+    }
+}
+
+private fun formatEventEnd(value: String?): String? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching {
+        OffsetDateTime.parse(value).toLocalDateTime().format(ItemDateTimeFormatter)
+    }.getOrElse {
+        runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
     }
 }
 
