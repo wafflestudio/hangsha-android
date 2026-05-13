@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,7 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -349,6 +351,7 @@ private fun List<EventSummaryResponse>.toDailyEventItems(
     selectedDate: LocalDate
 ): List<DailyEventItem> {
     return map { event ->
+        Log.d("DailyEventsViewModel", "event: $event, selectedDate: $selectedDate")
         event.toDailyEventItem(selectedDate)
     }
 }
@@ -406,7 +409,9 @@ private fun parseEventDate(value: String?): LocalDate? {
     }
 
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
-        runCatching { LocalDate.parse(value) }.getOrNull()
+        runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
+            runCatching { LocalDate.parse(value) }.getOrNull()
+        }
     }
 }
 
@@ -418,7 +423,9 @@ private fun formatEventEnd(value: String?): String? {
     return runCatching {
         OffsetDateTime.parse(value).toLocalDateTime().format(ItemDateTimeFormatter)
     }.getOrElse {
-        runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
+        runCatching { LocalDateTime.parse(value).format(ItemDateTimeFormatter) }.getOrElse {
+            runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
+        }
     }
 }
 
