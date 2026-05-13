@@ -35,7 +35,7 @@ data class DailyEventItem(
     val id: Long,
     val title: String,
     val organization: String?,
-    val displayDate: String,
+    val eventEndDisplay: String,
     val dDayLabel: String,
     val accentColor: Color,
     val isBookmarked: Boolean,

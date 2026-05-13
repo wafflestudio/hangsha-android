@@ -34,11 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Cream5
 import com.example.hangsha_android.ui.theme.Ink60
+import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
@@ -301,40 +303,43 @@ private fun DailyEventCard(item: DailyEventItem) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(PureWhite)
-            .padding(horizontal = 10.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Column(
-            modifier = Modifier.padding(top = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(item.accentColor)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = item.dDayLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink60
-            )
-        }
-
         Column(
             modifier = Modifier.weight(1f)
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(item.accentColor)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = item.dDayLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 15.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Ink100,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = listOf(item.displayDate, item.organization.orEmpty())
-                    .filter { it.isNotBlank() }
-                    .joinToString("   "),
+                text = "${item.eventEndDisplay}   orgId: ${item.orgId}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ink60
             )
