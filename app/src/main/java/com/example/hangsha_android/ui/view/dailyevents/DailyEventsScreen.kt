@@ -1,6 +1,7 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +75,8 @@ fun DailyEventsScreen(
     onRemoveExcludeKeyword: (String) -> Unit,
     onApplyFilters: () -> Unit,
     onClearFilters: () -> Unit,
-    onRetryClick: () -> Unit
+    onRetryClick: () -> Unit,
+    onEventClick: (Long) -> Unit
 ) {
     if (uiState.isFilterSheetVisible) {
         DailyEventsFilterBottomSheet(
@@ -139,7 +141,10 @@ fun DailyEventsScreen(
                             items = uiState.items,
                             key = { it.id }
                         ) { item ->
-                            DailyEventCard(item = item)
+                            DailyEventCard(
+                                item = item,
+                                onClick = { onEventClick(item.id) }
+                            )
                         }
                     }
                 }
@@ -297,7 +302,10 @@ private fun FilterButton(
 }
 
 @Composable
-private fun DailyEventCard(item: DailyEventItem) {
+private fun DailyEventCard(
+    item: DailyEventItem,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -308,7 +316,9 @@ private fun DailyEventCard(item: DailyEventItem) {
         verticalAlignment = Alignment.Top
     ) {
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable(onClick = onClick)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically

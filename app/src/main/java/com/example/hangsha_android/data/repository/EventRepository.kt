@@ -2,6 +2,7 @@ package com.example.hangsha_android.data.repository
 
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.model.DayEventsResponse
+import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
@@ -59,5 +60,11 @@ class EventRepository @Inject constructor(
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
             excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() }
         )
+    }
+
+    suspend fun getEventDetail(
+        eventId: Long
+    ): Response<EventDetailResponse> {
+        return eventApi.getEventDetail(eventId = eventId)
     }
 }
