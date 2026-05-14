@@ -37,6 +37,8 @@ import com.example.hangsha_android.ui.view.calendar.CalendarViewModel
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsFilterState
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
+import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
+import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
@@ -64,6 +66,12 @@ sealed class HangshaDestinations(val route: String) {
         const val hasAppliedServerFiltersKey = "daily_events_has_applied_server_filters"
 
         fun createRoute(date: String): String = "$baseRoute/$date"
+    }
+    data object EventDetail : HangshaDestinations("event_detail/{eventId}") {
+        const val baseRoute = "event_detail"
+        const val eventIdArg = "eventId"
+
+        fun createRoute(eventId: Long): String = "$baseRoute/$eventId"
     }
 }
 
@@ -292,7 +300,27 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 },
                 onApplyFilters = { dailyEventsViewModel.applyDraftFilters() },
                 onClearFilters = { dailyEventsViewModel.clearDraftFilters() },
-                onRetryClick = { dailyEventsViewModel.retry() }
+                onRetryClick = { dailyEventsViewModel.retry() },
+                onEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                }
+            )
+        }
+        composable(
+            route = HangshaDestinations.EventDetail.route,
+            arguments = listOf(
+                navArgument(HangshaDestinations.EventDetail.eventIdArg) {
+                    type = NavType.LongType
+                }
+            )
+        ) {
+            val eventDetailViewModel: EventDetailViewModel = hiltViewModel()
+            val eventDetailUiState by eventDetailViewModel.uiState.collectAsState()
+
+            EventDetailScreen(
+                uiState = eventDetailUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onRetryClick = { eventDetailViewModel.retry() }
             )
         }
         composable(BottomTab.Timetable.route) {
