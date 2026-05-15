@@ -1,10 +1,10 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,18 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,15 +31,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Coral60
 import com.example.hangsha_android.ui.theme.Cream10
-import com.example.hangsha_android.ui.theme.Cream5
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Peach20
+import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
 @Composable
@@ -85,211 +83,187 @@ private fun EventDetailContent(
     item: EventDetailItem,
     onNavigateBack: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+            Surface(
+                onClick = onNavigateBack,
+                shape = RoundedCornerShape(14.dp),
+                color = PureWhite,
+                shadowElevation = 2.dp
             ) {
-                Surface(
-                    onClick = onNavigateBack,
-                    shape = CircleShape,
-                    color = PureWhite,
-                    shadowElevation = 2.dp
+                Box(
+                    modifier = Modifier.size(28.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier.size(40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Ink60
+                    )
                 }
             }
         }
 
         item {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = PureWhite,
-                shadowElevation = 2.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    if (!item.imageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = item.imageUrl,
-                            contentDescription = item.title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp)
-                                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp)
-                                .background(Cream10),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No image",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Ink60
-                            )
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Ink90
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.organization ?: "-",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Ink60
-                                )
-                            }
-
-                            Row {
-                                IconButton(onClick = {}) {
-                                    Icon(
-                                        imageVector = if (item.isInterested) {
-                                            Icons.Rounded.Favorite
-                                        } else {
-                                            Icons.Rounded.FavoriteBorder
-                                        },
-                                        contentDescription = "Interested",
-                                        tint = Coral60
-                                    )
-                                }
-                                IconButton(onClick = {}) {
-                                    Icon(
-                                        imageVector = if (item.isBookmarked) {
-                                            Icons.Rounded.Bookmark
-                                        } else {
-                                            Icons.Rounded.BookmarkBorder
-                                        },
-                                        contentDescription = "Bookmark",
-                                        tint = Ink60
-                                    )
-                                }
-                            }
-                        }
-
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            DetailChip(text = item.operationMode)
-                            DetailChip(text = item.statusText)
-                            DetailChip(text = "Capacity ${item.capacityText}")
-                            DetailChip(text = "Applied ${item.applyCountText}")
-                        }
-
-                        DetailInfoRow(label = "Application", value = item.applyPeriodText)
-                        DetailInfoRow(label = "Event", value = item.eventPeriodText)
-                        DetailInfoRow(label = "Location", value = item.location ?: "-")
-                        DetailInfoRow(label = "Apply Link", value = item.applyLink ?: "-")
-
-                        if (item.tags.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    text = "Tags",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = Ink90
-                                )
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    item.tags.forEach { tag ->
-                                        DetailChip(text = "#$tag")
-                                    }
-                                }
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "Detail",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Ink90
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = Cream5
-                            ) {
-                                Text(
-                                    text = item.detail ?: "-",
-                                    modifier = Modifier.padding(16.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Ink60
-                                )
-                            }
-                        }
-                    }
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(228.dp)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(228.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Cream10),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No image",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink60
+                    )
                 }
             }
+        }
+
+        item {
+            Icon(
+                imageVector = if (item.isBookmarked) {
+                    Icons.Rounded.Bookmark
+                } else {
+                    Icons.Rounded.BookmarkBorder
+                },
+                contentDescription = "Bookmark",
+                tint = Ink60
+            )
+        }
+
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 18.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Ink100,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = item.eventEndDisplay,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = Ink90
+                )
+            }
+        }
+
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlineBadge(text = item.dDayLabel)
+                FilledBadge(
+                    text = item.eventTypeLabel,
+                    backgroundColor = item.eventTypeColor
+                )
+            }
+        }
+
+        item {
+            Text(
+                text = item.organization ?: "-",
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Ink90
+            )
+        }
+
+        item {
+            val applyLink = item.applyLink
+            Text(
+                text = "지원 링크로 이동하기",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink60,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.then(
+                    if (!applyLink.isNullOrBlank()) {
+                        Modifier.clickable { uriHandler.openUri(applyLink) }
+                    } else {
+                        Modifier
+                    }
+                )
+            )
+        }
+
+        item {
+            Text(
+                text = item.detail ?: "-",
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 15.sp,
+                lineHeight = 24.sp,
+                color = Ink90
+            )
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-private fun DetailInfoRow(
-    label: String,
-    value: String
-) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+private fun OutlineBadge(text: String) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = PureWhite,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+    ) {
         Text(
-            text = label,
-            modifier = Modifier.width(92.dp),
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
             color = Ink90
         )
     }
 }
 
 @Composable
-private fun DetailChip(text: String) {
+private fun FilledBadge(
+    text: String,
+    backgroundColor: androidx.compose.ui.graphics.Color
+) {
     Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = Peach20.copy(alpha = 0.5f)
+        shape = RoundedCornerShape(10.dp),
+        color = backgroundColor
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = Ink90
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Ink100
         )
     }
 }
