@@ -1,5 +1,11 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
+import android.content.Intent
+import android.net.Uri
+import android.view.ViewGroup
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,16 +33,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.example.hangsha_android.ui.theme.Cream10
 import com.example.hangsha_android.ui.theme.Ink60
@@ -84,6 +97,7 @@ private fun EventDetailContent(
     onNavigateBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
 
     LazyColumn(
         modifier = Modifier
@@ -220,16 +234,129 @@ private fun EventDetailContent(
         }
 
         item {
-            Text(
-                text = item.detail ?: "-",
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 15.sp,
-                lineHeight = 24.sp,
-                color = Ink90
+            EventDetailHtmlContent(
+                html = item.detail,
+                onOpenLink = { url ->
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+private fun EventDetailHtmlContent(
+    html: String?,
+    onOpenLink: (String) -> Unit
+) {
+    if (html.isNullOrBlank()) {
+        Text(
+            text = "-",
+            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 15.sp,
+            lineHeight = 24.sp,
+            color = Ink90
+        )
+        return
+    }
+
+    var webViewHeightPx by remember(html) { mutableIntStateOf(1) }
+    val density = LocalDensity.current
+    val wrappedHtml = remember(html) { buildEventDetailHtml(html) }
+
+    AndroidView(
+        factory = { androidContext ->
+            WebView(androidContext).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                isVerticalScrollBarEnabled = false
+                isHorizontalScrollBarEnabled = false
+                overScrollMode = WebView.OVER_SCROLL_NEVER
+                settings.apply {
+                    javaScriptEnabled = false
+                    domStorageEnabled = false
+                    loadsImagesAutomatically = true
+                    builtInZoomControls = false
+                    displayZoomControls = false
+                    loadWithOverviewMode = true
+                    useWideViewPort = true
+                    defaultTextEncodingName = "utf-8"
+                }
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView,
+                        request: WebResourceRequest
+                    ): Boolean {
+                        val url = request.url.toString()
+                        onOpenLink(url)
+                        return true
+                    }
+
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        super.onPageFinished(view, url)
+                        view.postDelayed({
+                            webViewHeightPx = (view.contentHeight * view.scale)
+                                .toInt()
+                                .coerceAtLeast(1)
+                        }, 50)
+                    }
+                }
+                tag = wrappedHtml
+                loadDataWithBaseURL(null, wrappedHtml, "text/html", "utf-8", null)
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(with(density) { webViewHeightPx.toDp() }),
+        update = { webView ->
+            if (webView.tag != wrappedHtml) {
+                webView.tag = wrappedHtml
+                webView.loadDataWithBaseURL(null, wrappedHtml, "text/html", "utf-8", null)
+            }
+        }
+    )
+}
+
+private fun buildEventDetailHtml(bodyHtml: String): String {
+    return """
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: transparent;
+                    color: #1A1D1A;
+                    font-family: sans-serif;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                }
+                p, div, span {
+                    color: #1A1D1A;
+                    line-height: 1.6;
+                }
+                img {
+                    max-width: 100%;
+                    height: auto;
+                }
+                a {
+                    color: #5E615B;
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+        <body>$bodyHtml</body>
+        </html>
+    """.trimIndent()
 }
 
 @Composable
