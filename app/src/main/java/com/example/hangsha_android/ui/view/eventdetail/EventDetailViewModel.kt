@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -116,27 +117,31 @@ private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
 private fun EventDetailResponse.toEventDetailItem(): EventDetailItem {
+    val eventEndDate = parseEventDate(eventEnd)
+    val dDayLabel = eventEndDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        when {
+            diff == 0L -> "D-DAY"
+            diff > 0L -> "D-$diff"
+            else -> "D$diff"
+        }
+    } ?: "-"
+
     return EventDetailItem(
         id = id,
         title = title,
         imageUrl = imageUrl,
         organization = organization,
         location = location,
-        operationMode = operationMode,
-        applyPeriodText = formatPeriod(applyStart, applyEnd),
-        eventPeriodText = formatPeriod(eventStart, eventEnd),
-        statusText = "statusId: $statusId",
-        capacityText = capacity?.toString() ?: "-",
-        applyCountText = applyCount?.toString() ?: "-",
-        tags = tags.orEmpty()
-            .split(",", " ", "#")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .distinct(),
+        eventEndDisplay = formatEventEnd(eventEnd)
+            ?: eventEndDate?.format(DetailDateFormatter)
+            ?: "-",
+        dDayLabel = dDayLabel,
+        eventTypeLabel = eventTypeLabel(eventTypeId),
+        eventTypeColor = eventTypeColor(eventTypeId),
         applyLink = applyLink,
         detail = detail,
-        isBookmarked = isBookmarked,
-        isInterested = isInterested
+        isBookmarked = isBookmarked
     )
 }
 
@@ -149,6 +154,44 @@ private fun formatPeriod(start: String?, end: String?): String {
         startText != null -> startText
         endText != null -> endText
         else -> "-"
+    }
+}
+
+private fun formatEventEnd(value: String?): String? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching {
+        OffsetDateTime.parse(value).toLocalDateTime().format(DetailDateFormatter)
+    }.getOrElse {
+        runCatching { LocalDateTime.parse(value).format(DetailDateFormatter) }.getOrElse {
+            runCatching { LocalDate.parse(value).format(DetailDateFormatter) }.getOrNull()
+        }
+    }
+}
+
+private fun parseEventDate(value: String?): LocalDate? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+        runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
+            runCatching { LocalDate.parse(value) }.getOrNull()
+        }
+    }
+}
+
+private fun eventTypeLabel(eventTypeId: Long): String {
+    return when (eventTypeId) {
+        4L -> "교육(특강/세미나)"
+        5L -> "공모전/경진대회"
+        6L -> "창업/현장실습"
+        7L -> "사회공헌(봉사)"
+        8L -> "취업/진로상담"
+        39L -> "OpenLNL"
+        else -> "기타"
     }
 }
 

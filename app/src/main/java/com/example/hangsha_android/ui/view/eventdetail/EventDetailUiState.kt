@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
+import androidx.compose.ui.graphics.Color
+
 data class EventDetailUiState(
     val eventId: Long = -1L,
     val isLoading: Boolean = true,
@@ -13,15 +15,11 @@ data class EventDetailItem(
     val imageUrl: String?,
     val organization: String?,
     val location: String?,
-    val operationMode: String,
-    val applyPeriodText: String,
-    val eventPeriodText: String,
-    val statusText: String,
-    val capacityText: String,
-    val applyCountText: String,
-    val tags: List<String>,
+    val eventEndDisplay: String,
+    val dDayLabel: String,
+    val eventTypeLabel: String,
+    val eventTypeColor: Color,
     val applyLink: String?,
     val detail: String?,
-    val isBookmarked: Boolean,
-    val isInterested: Boolean
+    val isBookmarked: Boolean
 )
