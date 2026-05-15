@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.repository.AuthRepository
+import com.example.hangsha_android.data.repository.UserRepository
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -20,7 +21,8 @@ import retrofit2.HttpException
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val authTokenStorage: AuthTokenStorage
+    private val authTokenStorage: AuthTokenStorage,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -58,6 +60,7 @@ class LoginViewModel @Inject constructor(
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
                     saveAccessTokenFromResponse(response, "login")
+                    loadOrganizationNames()
                 }
 
                 result.fold(
@@ -119,6 +122,7 @@ class LoginViewModel @Inject constructor(
             val result = runCatching {
                 val response = authRepository.loginWithGoogle(serverAuthCode)
                 saveAccessTokenFromResponse(response, "Google login")
+                loadOrganizationNames()
             }
 
             result.fold(
@@ -174,6 +178,12 @@ class LoginViewModel @Inject constructor(
         }
 
         authTokenStorage.saveAccessToken(accessToken)
+    }
+
+    private suspend fun loadOrganizationNames() {
+        runCatching {
+            userRepository.ensureOrganizationNamesLoaded()
+        }
     }
 
     private fun onAuthSuccess(message: String) {

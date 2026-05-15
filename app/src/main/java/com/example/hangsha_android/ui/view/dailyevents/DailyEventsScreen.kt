@@ -44,6 +44,7 @@ import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -143,6 +144,7 @@ fun DailyEventsScreen(
                         ) { item ->
                             DailyEventCard(
                                 item = item,
+                                organizationNames = uiState.organizationNames,
                                 onClick = { onEventClick(item.id) }
                             )
                         }
@@ -304,6 +306,7 @@ private fun FilterButton(
 @Composable
 private fun DailyEventCard(
     item: DailyEventItem,
+    organizationNames: Map<Long, String>,
     onClick: () -> Unit
 ) {
     Row(
@@ -349,7 +352,7 @@ private fun DailyEventCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "${item.eventEndDisplay}   orgId: ${item.orgId}",
+                text = "${item.eventEndDisplay}   ${organizationLabel(item.orgId, organizationNames, item.organization)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ink60
             )

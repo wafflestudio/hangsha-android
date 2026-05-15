@@ -10,6 +10,7 @@ data class CalendarUiState(
     val visibleDates: List<LocalDate> = visibleRange.toDateList(),
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
+    val organizationNames: Map<Long, String> = emptyMap(),
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),

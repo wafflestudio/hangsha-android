@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +56,7 @@ import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
+// Event detail screen entry point that switches between loading, error, and content states.
 @Composable
 fun EventDetailScreen(
     uiState: EventDetailUiState,
@@ -247,6 +247,7 @@ private fun EventDetailContent(
     }
 }
 
+// 세부 설명
 @Composable
 private fun EventDetailHtmlContent(
     html: String?,
@@ -323,6 +324,7 @@ private fun EventDetailHtmlContent(
     )
 }
 
+// 웹뷰로 설명문을 감싸기
 private fun buildEventDetailHtml(bodyHtml: String): String {
     return """
         <html>
@@ -359,6 +361,7 @@ private fun buildEventDetailHtml(bodyHtml: String): String {
     """.trimIndent()
 }
 
+// D-day 라벨
 @Composable
 private fun OutlineBadge(text: String) {
     Surface(
@@ -376,6 +379,7 @@ private fun OutlineBadge(text: String) {
     }
 }
 
+// 색칠한 라벨: 여기서는 오직 분류
 @Composable
 private fun FilledBadge(
     text: String,
