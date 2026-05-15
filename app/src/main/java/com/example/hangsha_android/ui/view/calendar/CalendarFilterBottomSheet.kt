@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
 private val FilterDivider = Color(0xFFE7E5E1)
@@ -117,7 +118,7 @@ fun CalendarFilterBottomSheet(
                             emptyText = "선택 가능한 주최 기관이 없습니다.",
                             options = uiState.availableFilterOptions.orgIds,
                             selected = draft.orgIds,
-                            label = { orgLabel(it) },
+                            label = { organizationLabel(it, uiState.organizationNames) },
                             onToggle = onToggleOrgId
                         )
                     }

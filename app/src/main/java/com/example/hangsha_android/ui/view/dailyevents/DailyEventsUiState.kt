@@ -7,6 +7,7 @@ data class DailyEventsUiState(
     val selectedDate: LocalDate = LocalDate.now(),
     val filterSourceItems: List<DailyEventItem> = emptyList(),
     val items: List<DailyEventItem> = emptyList(),
+    val organizationNames: Map<Long, String> = emptyMap(),
     val appliedFilters: DailyEventsFilterState = DailyEventsFilterState(),
     val draftFilters: DailyEventsFilterState = DailyEventsFilterState(),
     val availableFilterOptions: DailyEventsFilterOptions = DailyEventsFilterOptions(),

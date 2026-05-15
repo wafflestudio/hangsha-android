@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -18,6 +19,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +32,7 @@ import retrofit2.Response
 @HiltViewModel
 class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
+    private val userRepository: UserRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var hasInitialized = false
@@ -44,6 +47,17 @@ class DailyEventsViewModel @Inject constructor(
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            userRepository.organizationNames.collect { organizationNames ->
+                _uiState.update { it.copy(organizationNames = organizationNames) }
+            }
+        }
+        viewModelScope.launch {
+            runCatching { userRepository.ensureOrganizationNamesLoaded() }
+        }
+    }
 
     fun showPreviousDay() {
         loadDate(_uiState.value.selectedDate.minusDays(1))

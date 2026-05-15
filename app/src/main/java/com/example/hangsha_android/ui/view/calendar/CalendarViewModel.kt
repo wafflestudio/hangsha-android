@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -14,6 +15,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +26,8 @@ import retrofit2.Response
 
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
-    private val eventRepository: EventRepository
+    private val eventRepository: EventRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -33,6 +36,14 @@ class CalendarViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            userRepository.organizationNames.collect { organizationNames ->
+                _uiState.update { it.copy(organizationNames = organizationNames) }
+            }
+        }
+        viewModelScope.launch {
+            runCatching { userRepository.ensureOrganizationNamesLoaded() }
+        }
         loadMonth(_uiState.value.currentMonth)
     }
 
