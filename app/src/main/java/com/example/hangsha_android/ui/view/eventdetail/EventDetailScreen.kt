@@ -56,7 +56,6 @@ import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
-// Event detail screen entry point that switches between loading, error, and content states.
 @Composable
 fun EventDetailScreen(
     uiState: EventDetailUiState,
