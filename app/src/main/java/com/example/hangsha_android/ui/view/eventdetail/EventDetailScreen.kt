@@ -136,8 +136,7 @@ private fun EventDetailContent(
                     model = item.imageUrl,
                     contentDescription = item.title,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(228.dp)
+                        .size(370.dp, 241.dp)
                         .clip(RoundedCornerShape(18.dp)),
                     contentScale = ContentScale.Crop
                 )
