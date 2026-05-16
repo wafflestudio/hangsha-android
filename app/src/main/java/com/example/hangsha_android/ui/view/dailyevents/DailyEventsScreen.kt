@@ -105,9 +105,9 @@ fun DailyEventsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 15.dp, vertical = 15.dp)
         ) {
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(25.dp))
             // "2026년 n월 n일", 좌우 화살표, 필터 버튼
             DailyEventsHeader(
                 state = DailyEventsHeaderState(
@@ -119,7 +119,7 @@ fun DailyEventsScreen(
                 onNextDayClick = onNextDayClick,
                 onOpenFilterClick = onOpenFilterClick
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(15.dp))
 
             when {
                 uiState.errorMessage != null -> {
@@ -227,15 +227,15 @@ private fun HeaderArrowButton(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
-        color = PureWhite,
-        shadowElevation = 2.dp
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
         Box(
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             content()
@@ -259,34 +259,15 @@ private fun FilterButton(
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(PureWhite)
-                    .let {
-                        if (isLoading) {
-                            it
-                        } else {
-                            it
-                        }
-                    },
+                    .fillMaxSize()
+                    .clickable(enabled = !isLoading, onClick = onOpenFilterClick),
                 contentAlignment = Alignment.Center
             ) {
-                Surface(
-                    onClick = onOpenFilterClick,
-                    enabled = !isLoading,
-                    color = Color.Transparent
-                ) {
-                    Box(
-                        modifier = Modifier.size(28.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Tune,
-                            contentDescription = "Filter",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = "Filter",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 
