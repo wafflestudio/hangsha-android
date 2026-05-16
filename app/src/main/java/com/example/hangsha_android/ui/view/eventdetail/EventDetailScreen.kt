@@ -81,6 +81,7 @@ fun EventDetailScreen(
             }
 
             uiState.item != null -> {
+                // 본문
                 EventDetailContent(
                     item = uiState.item,
                     onNavigateBack = onNavigateBack
@@ -105,6 +106,7 @@ private fun EventDetailContent(
             .padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 뒤로 가기 버튼
         item {
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -127,6 +129,7 @@ private fun EventDetailContent(
             }
         }
 
+        // 네모난 사진
         item {
             if (!item.imageUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -141,8 +144,7 @@ private fun EventDetailContent(
             } else {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(228.dp)
+                        .size(370.dp, 241.dp)
                         .clip(RoundedCornerShape(18.dp))
                         .background(Cream10),
                     contentAlignment = Alignment.Center
@@ -156,6 +158,7 @@ private fun EventDetailContent(
             }
         }
 
+        // 북마크 로고
         item {
             Icon(
                 imageVector = if (item.isBookmarked) {
@@ -164,34 +167,40 @@ private fun EventDetailContent(
                     Icons.Rounded.BookmarkBorder
                 },
                 contentDescription = "Bookmark",
-                tint = Ink60
+                tint = Ink60,
+                modifier = Modifier.size(32.dp)
             )
         }
 
         item {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // 이벤트 이름
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     lineHeight = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Ink100,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
+                // 이벤트 기간
                 Text(
                     text = item.eventEndDisplay,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                     color = Ink90
                 )
             }
         }
 
+        // D-day 라벨과 분류 라벨
         item {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -205,6 +214,7 @@ private fun EventDetailContent(
             }
         }
 
+        // Org 이름
         item {
             Text(
                 text = item.organization ?: "-",
@@ -215,6 +225,7 @@ private fun EventDetailContent(
             )
         }
 
+        // 지원 링크
         item {
             val applyLink = item.applyLink
             Text(
@@ -232,6 +243,7 @@ private fun EventDetailContent(
             )
         }
 
+        // WebView로 Detail Html Content - 세부 설명
         item {
             EventDetailHtmlContent(
                 html = item.detail,

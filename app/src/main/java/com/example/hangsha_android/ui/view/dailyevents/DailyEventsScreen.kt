@@ -366,7 +366,9 @@ private fun DailyEventCard(
             },
             contentDescription = "Bookmark",
             tint = DailyBookmarkTint,
-            modifier = Modifier.padding(top = 2.dp)
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(32.dp)
         )
     }
 }
