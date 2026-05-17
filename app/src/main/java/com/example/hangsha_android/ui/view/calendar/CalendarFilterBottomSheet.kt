@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
@@ -421,6 +422,9 @@ private fun ExcludeKeywordSection(
                     )
                 }
             },
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                imeAction = ImeAction.Done
+            ),
             keyboardActions = KeyboardActions(onDone = { onAdd() }),
             maxLines = 1
         )
