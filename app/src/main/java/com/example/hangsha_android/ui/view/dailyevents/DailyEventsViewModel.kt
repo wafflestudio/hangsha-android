@@ -296,7 +296,7 @@ class DailyEventsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             filterSourceItems = result.filterSourceItems,
-                            items = result.visibleItems,
+                            items = result.visibleItems.applyFilters(filters),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
