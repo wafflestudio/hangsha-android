@@ -59,10 +59,8 @@ private fun CalendarEvent.matches(filters: CalendarFilterState): Boolean {
     if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
     if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
     if (filters.excludedKeywords.isNotEmpty()) {
-        val searchTargets = listOfNotNull(title, organization, location, tags)
-            .joinToString(separator = " ")
-            .lowercase()
-        if (filters.excludedKeywords.any { keyword -> keyword.lowercase() in searchTargets }) {
+        val normalizedTitle = title.lowercase()
+        if (filters.excludedKeywords.any { keyword -> keyword.lowercase() in normalizedTitle }) {
             return false
         }
     }

@@ -258,7 +258,7 @@ class CalendarViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             filterSourceEventsByDate = result.filterSourceEventsByDate,
-                            eventsByDate = result.visibleEventsByDate,
+                            eventsByDate = result.visibleEventsByDate.applyFilters(filters),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
