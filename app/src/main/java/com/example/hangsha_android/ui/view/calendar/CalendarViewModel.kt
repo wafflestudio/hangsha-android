@@ -63,6 +63,36 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
+    fun restoreAppliedFilters(
+        filters: CalendarFilterState,
+        hasAppliedServerFilters: Boolean
+    ) {
+        val currentState = _uiState.value
+        if (
+            currentState.appliedFilters == filters &&
+            currentState.hasAppliedServerFilters == hasAppliedServerFilters
+        ) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = filters,
+                draftFilters = filters,
+                hasAppliedServerFilters = hasAppliedServerFilters,
+                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = "",
+                isFilterSheetVisible = false,
+                errorMessage = null
+            )
+        }
+        loadMonth(
+            month = currentState.currentMonth,
+            filters = filters,
+            hasAppliedServerFilters = hasAppliedServerFilters
+        )
+    }
+
     fun openFilterSheet() {
         _uiState.update {
             it.copy(

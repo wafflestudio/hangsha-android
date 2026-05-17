@@ -226,6 +226,21 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(BottomTab.Calendar.route) {
             val calendarViewModel: CalendarViewModel = hiltViewModel()
             val calendarUiState by calendarViewModel.uiState.collectAsState()
+            val calendarSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+            val returnedCalendarFilters = calendarSavedStateHandle?.toCalendarFilterState()
+            val returnedCalendarHasAppliedServerFilters: Boolean? = calendarSavedStateHandle
+                ?.get<Boolean>(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey)
+                ?: returnedCalendarFilters?.hasActiveFilters
+
+            LaunchedEffect(returnedCalendarFilters, returnedCalendarHasAppliedServerFilters) {
+                val filters = returnedCalendarFilters ?: return@LaunchedEffect
+                calendarViewModel.restoreAppliedFilters(
+                    filters = filters,
+                    hasAppliedServerFilters = returnedCalendarHasAppliedServerFilters
+                        ?: filters.hasActiveFilters
+                )
+                calendarSavedStateHandle?.clearCalendarFilters()
+            }
 
             CalendarScreen(
                 uiState = calendarUiState,
@@ -276,6 +291,16 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 dailyEventsViewModel.initialize(
                     filters = initialDailyFilters,
                     hasAppliedServerFilters = initialHasAppliedServerFilters
+                )
+            }
+
+            LaunchedEffect(
+                dailyEventsUiState.appliedFilters,
+                dailyEventsUiState.hasAppliedServerFilters
+            ) {
+                previousSavedStateHandle?.setCalendarFilters(
+                    filters = dailyEventsUiState.appliedFilters.toCalendarFilterState(),
+                    hasAppliedServerFilters = dailyEventsUiState.hasAppliedServerFilters
                 )
             }
 
@@ -354,6 +379,16 @@ fun SimplePageText(text: String) {
     }
 }
 
+private object CalendarFilterNavigationKeys {
+    const val bookmarkedOnlyKey = "calendar_bookmarked_only"
+    const val interestedOnlyKey = "calendar_interested_only"
+    const val orgIdsKey = "calendar_org_ids"
+    const val statusIdsKey = "calendar_status_ids"
+    const val eventTypeIdsKey = "calendar_event_type_ids"
+    const val excludedKeywordsKey = "calendar_excluded_keywords"
+    const val hasAppliedServerFiltersKey = "calendar_has_applied_server_filters"
+}
+
 private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
     filters: CalendarFilterState,
     hasAppliedServerFilters: Boolean
@@ -368,6 +403,19 @@ private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
         HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey,
         hasAppliedServerFilters
     )
+}
+
+private fun androidx.lifecycle.SavedStateHandle.setCalendarFilters(
+    filters: CalendarFilterState,
+    hasAppliedServerFilters: Boolean
+) {
+    set(CalendarFilterNavigationKeys.bookmarkedOnlyKey, filters.bookmarkedOnly)
+    set(CalendarFilterNavigationKeys.interestedOnlyKey, filters.interestedOnly)
+    set(CalendarFilterNavigationKeys.orgIdsKey, ArrayList(filters.orgIds))
+    set(CalendarFilterNavigationKeys.statusIdsKey, ArrayList(filters.statusIds))
+    set(CalendarFilterNavigationKeys.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
+    set(CalendarFilterNavigationKeys.excludedKeywordsKey, ArrayList(filters.excludedKeywords))
+    set(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey, hasAppliedServerFilters)
 }
 
 private fun androidx.lifecycle.SavedStateHandle.toDailyEventsFilterState(): DailyEventsFilterState? {
@@ -387,5 +435,46 @@ private fun androidx.lifecycle.SavedStateHandle.toDailyEventsFilterState(): Dail
         excludedKeywords = get<ArrayList<String>>(HangshaDestinations.DailyEvents.excludedKeywordsKey)
             ?.toList()
             ?: emptyList()
+    )
+}
+
+private fun androidx.lifecycle.SavedStateHandle.toCalendarFilterState(): CalendarFilterState? {
+    if (!contains(CalendarFilterNavigationKeys.statusIdsKey)) {
+        return null
+    }
+
+    return CalendarFilterState(
+        bookmarkedOnly = get<Boolean>(CalendarFilterNavigationKeys.bookmarkedOnlyKey) ?: false,
+        interestedOnly = get<Boolean>(CalendarFilterNavigationKeys.interestedOnlyKey) ?: false,
+        orgIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)?.toSet()
+            ?: emptySet(),
+        statusIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)?.toSet()
+            ?: emptySet(),
+        eventTypeIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.eventTypeIdsKey)?.toSet()
+            ?: emptySet(),
+        excludedKeywords = get<ArrayList<String>>(CalendarFilterNavigationKeys.excludedKeywordsKey)
+            ?.toList()
+            ?: emptyList()
+    )
+}
+
+private fun androidx.lifecycle.SavedStateHandle.clearCalendarFilters() {
+    remove<Boolean>(CalendarFilterNavigationKeys.bookmarkedOnlyKey)
+    remove<Boolean>(CalendarFilterNavigationKeys.interestedOnlyKey)
+    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)
+    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)
+    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.eventTypeIdsKey)
+    remove<ArrayList<String>>(CalendarFilterNavigationKeys.excludedKeywordsKey)
+    remove<Boolean>(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey)
+}
+
+private fun DailyEventsFilterState.toCalendarFilterState(): CalendarFilterState {
+    return CalendarFilterState(
+        bookmarkedOnly = bookmarkedOnly,
+        interestedOnly = interestedOnly,
+        orgIds = orgIds,
+        statusIds = statusIds,
+        eventTypeIds = eventTypeIds,
+        excludedKeywords = excludedKeywords
     )
 }
