@@ -83,7 +83,35 @@ class ExcludedKeywordsRepository @Inject constructor(
     }
 
     suspend fun removeExcludedKeyword(keyword: String): List<String> {
-        return localDataSource.removeKeyword(keyword).map { it.keyword }
+        return mutationMutex.withLock {
+            val normalizedKeyword = keyword.trim()
+            if (normalizedKeyword.isBlank()) {
+                return@withLock localDataSource.excludedKeywordItems.first().map { it.keyword }
+            }
+
+            val previousItems = localDataSource.excludedKeywordItems.first()
+            val targetItem = previousItems.firstOrNull { it.keyword == normalizedKeyword }
+                ?: return@withLock previousItems.map { it.keyword }
+            val updatedItems = localDataSource.removeKeyword(normalizedKeyword)
+
+            val excludedKeywordId = targetItem.id
+            if (!isLoggedIn() || excludedKeywordId == null) {
+                return@withLock updatedItems.map { it.keyword }
+            }
+
+            val deleteResponse = excludedKeywordsApi.deleteExcludedKeyword(excludedKeywordId)
+            if (!deleteResponse.isSuccessful) {
+                localDataSource.replaceItems(previousItems)
+                throw HttpException(deleteResponse)
+            }
+
+            runCatching {
+                refreshExcludedKeywordsFromRemote()
+            }.getOrElse { error ->
+                localDataSource.replaceItems(previousItems)
+                throw error
+            }
+        }
     }
 
     private fun isLoggedIn(): Boolean {
