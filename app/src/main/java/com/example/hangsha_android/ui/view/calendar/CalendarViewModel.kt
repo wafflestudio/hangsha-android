@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,7 +28,8 @@ import retrofit2.Response
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val eventRepository: EventRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -43,6 +45,11 @@ class CalendarViewModel @Inject constructor(
         }
         viewModelScope.launch {
             runCatching { userRepository.ensureOrganizationNamesLoaded() }
+        }
+        viewModelScope.launch {
+            excludedKeywordsRepository.excludedKeywords.collect { keywords ->
+                onExcludedKeywordsChanged(keywords)
+            }
         }
         loadMonth(_uiState.value.currentMonth)
     }
@@ -67,9 +74,12 @@ class CalendarViewModel @Inject constructor(
         filters: CalendarFilterState,
         hasAppliedServerFilters: Boolean
     ) {
+        val normalizedFilters = filters.copy(
+            excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
+        )
         val currentState = _uiState.value
         if (
-            currentState.appliedFilters == filters &&
+            currentState.appliedFilters == normalizedFilters &&
             currentState.hasAppliedServerFilters == hasAppliedServerFilters
         ) {
             return
@@ -77,9 +87,9 @@ class CalendarViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
-                appliedFilters = filters,
-                draftFilters = filters,
-                hasAppliedServerFilters = hasAppliedServerFilters,
+                appliedFilters = normalizedFilters,
+                draftFilters = normalizedFilters,
+                hasAppliedServerFilters = normalizedFilters.hasActiveFilters,
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
@@ -88,8 +98,8 @@ class CalendarViewModel @Inject constructor(
         }
         loadMonth(
             month = currentState.currentMonth,
-            filters = filters,
-            hasAppliedServerFilters = hasAppliedServerFilters
+            filters = normalizedFilters,
+            hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
     }
 
@@ -116,11 +126,23 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun clearDraftFilters() {
+        val keywordsToDelete = _uiState.value.draftFilters.excludedKeywords
         _uiState.update {
             it.copy(
                 draftFilters = CalendarFilterState(),
                 excludeKeywordInput = ""
             )
+        }
+        if (keywordsToDelete.isNotEmpty()) {
+            viewModelScope.launch {
+                runCatching {
+                    keywordsToDelete.forEach { keyword ->
+                        excludedKeywordsRepository.removeExcludedKeyword(keyword)
+                    }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+                }
+            }
         }
     }
 
@@ -182,27 +204,29 @@ class CalendarViewModel @Inject constructor(
         val keyword = _uiState.value.excludeKeywordInput.trim()
         if (keyword.isBlank()) return
 
-        _uiState.update { state ->
-            if (keyword in state.draftFilters.excludedKeywords) {
-                state.copy(excludeKeywordInput = "")
-            } else {
-                state.copy(
-                    draftFilters = state.draftFilters.copy(
-                        excludedKeywords = state.draftFilters.excludedKeywords + keyword
-                    ),
-                    excludeKeywordInput = ""
-                )
+        if (keyword in _uiState.value.draftFilters.excludedKeywords) {
+            _uiState.update { it.copy(excludeKeywordInput = "") }
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                excludedKeywordsRepository.addExcludedKeyword(keyword)
+            }.onSuccess {
+                _uiState.update { it.copy(excludeKeywordInput = "") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
             }
         }
     }
 
     fun removeDraftExcludeKeyword(keyword: String) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(
-                    excludedKeywords = it.draftFilters.excludedKeywords - keyword
-                )
-            )
+        viewModelScope.launch {
+            runCatching {
+                excludedKeywordsRepository.removeExcludedKeyword(keyword)
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+            }
         }
     }
 
@@ -343,6 +367,58 @@ class CalendarViewModel @Inject constructor(
             is IOException -> "Network error occurred. Please try again."
             is IllegalStateException -> error.message ?: "Failed to load events."
             else -> error.message ?: "Failed to load events."
+        }
+    }
+
+    private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid excluded keyword request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to update excluded keywords."
+                404 -> "Excluded keyword information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to update excluded keywords with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Failed to update excluded keywords."
+            else -> error.message ?: "Failed to update excluded keywords."
+        }
+    }
+
+    private fun onExcludedKeywordsChanged(keywords: List<String>) {
+        val previousState = _uiState.value
+        val previousAppliedKeywords = previousState.appliedFilters.excludedKeywords
+        val previousDraftKeywords = previousState.draftFilters.excludedKeywords
+
+        if (
+            previousAppliedKeywords == keywords &&
+            previousDraftKeywords == keywords
+        ) {
+            return
+        }
+
+        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
+        val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
+        val shouldReload = previousAppliedKeywords != keywords && !previousState.isLoading
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = updatedAppliedFilters,
+                draftFilters = updatedDraftFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
+                errorMessage = null
+            )
+        }
+
+        if (shouldReload) {
+            loadMonth(
+                month = previousState.currentMonth,
+                filters = updatedAppliedFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters
+            )
         }
     }
 }

@@ -4,6 +4,7 @@ import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.api.EventApi
+import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
 import com.example.hangsha_android.data.network.api.UserApi
 import dagger.Module
@@ -95,5 +96,13 @@ object NetworkModule {
         retrofit: Retrofit
     ): EventApi {
         return retrofit.create(EventApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExcludedKeywordsApi(
+        retrofit: Retrofit
+    ): ExcludedKeywordsApi {
+        return retrofit.create(ExcludedKeywordsApi::class.java)
     }
 }
