@@ -60,6 +60,7 @@ import com.example.hangsha_android.ui.theme.PureWhite
 fun EventDetailScreen(
     uiState: EventDetailUiState,
     onNavigateBack: () -> Unit,
+    onBookmarkClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
     Box(
@@ -84,7 +85,8 @@ fun EventDetailScreen(
                 // 본문
                 EventDetailContent(
                     item = uiState.item,
-                    onNavigateBack = onNavigateBack
+                    onNavigateBack = onNavigateBack,
+                    onBookmarkClick = onBookmarkClick
                 )
             }
         }
@@ -94,7 +96,8 @@ fun EventDetailScreen(
 @Composable
 private fun EventDetailContent(
     item: EventDetailItem,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onBookmarkClick: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -167,7 +170,9 @@ private fun EventDetailContent(
                 },
                 contentDescription = "Bookmark",
                 tint = Ink60,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier
+                    .size(32.dp)
+                    .clickable(onClick = onBookmarkClick)
             )
         }
 

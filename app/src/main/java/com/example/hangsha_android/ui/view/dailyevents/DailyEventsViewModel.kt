@@ -85,6 +85,22 @@ class DailyEventsViewModel @Inject constructor(
         )
     }
 
+    fun toggleBookmark(eventId: Long) {
+        _uiState.update { currentState ->
+            val updatedFilterSourceItems = currentState.filterSourceItems.toggleBookmark(eventId)
+            val updatedItems = currentState.items.toggleBookmark(eventId)
+                .applyFilters(
+                    filters = currentState.appliedFilters,
+                    applyExcludedKeywords = !currentState.isLoggedIn
+                )
+
+            currentState.copy(
+                filterSourceItems = updatedFilterSourceItems,
+                items = updatedItems
+            )
+        }
+    }
+
     // 캘린더에서 넘어온 적용 필터 동기화
     fun initialize(
         filters: DailyEventsFilterState?,
@@ -524,5 +540,15 @@ private fun <T> Set<T>.toggle(value: T): Set<T> {
         this - value
     } else {
         this + value
+    }
+}
+
+private fun List<DailyEventItem>.toggleBookmark(eventId: Long): List<DailyEventItem> {
+    return map { item ->
+        if (item.id == eventId) {
+            item.copy(isBookmarked = !item.isBookmarked)
+        } else {
+            item
+        }
     }
 }

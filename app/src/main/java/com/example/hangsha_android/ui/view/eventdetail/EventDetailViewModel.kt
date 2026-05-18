@@ -46,6 +46,17 @@ class EventDetailViewModel @Inject constructor(
         loadEventDetail()
     }
 
+    fun toggleBookmark() {
+        _uiState.update { currentState ->
+            val currentItem = currentState.item
+            currentState.copy(
+                item = currentItem?.copy(
+                    isBookmarked = !currentItem.isBookmarked
+                )
+            )
+        }
+    }
+
     private fun loadEventDetail() {
         if (eventId <= 0L) {
             _uiState.update {

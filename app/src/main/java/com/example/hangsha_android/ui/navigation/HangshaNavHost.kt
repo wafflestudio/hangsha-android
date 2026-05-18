@@ -328,7 +328,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onRetryClick = { dailyEventsViewModel.retry() },
                 onEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                }
+                },
+                onBookmarkClick = { eventId -> dailyEventsViewModel.toggleBookmark(eventId) }
             )
         }
         composable(
@@ -345,6 +346,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             EventDetailScreen(
                 uiState = eventDetailUiState,
                 onNavigateBack = { navController.popBackStack() },
+                onBookmarkClick = { eventDetailViewModel.toggleBookmark() },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }
