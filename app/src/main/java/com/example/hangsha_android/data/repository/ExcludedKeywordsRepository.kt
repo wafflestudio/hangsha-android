@@ -1,18 +1,28 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.local.ExcludedKeywordsLocalDataSource
+import com.example.hangsha_android.data.local.StoredExcludedKeywordItem
 import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
 import com.example.hangsha_android.data.network.model.ExcludedKeywordItemResponse
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 import retrofit2.HttpException
 
 @Singleton
 class ExcludedKeywordsRepository @Inject constructor(
-    private val excludedKeywordsApi: ExcludedKeywordsApi
+    private val excludedKeywordsApi: ExcludedKeywordsApi,
+    private val localDataSource: ExcludedKeywordsLocalDataSource
 ) {
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _excludedKeywordItems =
         MutableStateFlow<List<ExcludedKeywordItemResponse>>(emptyList())
     val excludedKeywordItems: StateFlow<List<ExcludedKeywordItemResponse>> =
@@ -20,6 +30,15 @@ class ExcludedKeywordsRepository @Inject constructor(
 
     private val _excludedKeywords = MutableStateFlow<List<String>>(emptyList())
     val excludedKeywords: StateFlow<List<String>> = _excludedKeywords.asStateFlow()
+
+    init {
+        repositoryScope.launch {
+            localDataSource.excludedKeywordItems.collectLatest { items ->
+                _excludedKeywordItems.value = items.toNetworkResponseItems()
+                _excludedKeywords.value = items.map { it.keyword }
+            }
+        }
+    }
 
     fun currentExcludedKeywords(): List<String> = _excludedKeywords.value
 
@@ -31,17 +50,16 @@ class ExcludedKeywordsRepository @Inject constructor(
 
         val items = response.body()?.items.orEmpty().normalizeItems()
         val keywords = items.map { it.keyword }
-        _excludedKeywordItems.value = items
-        _excludedKeywords.value = keywords
+        localDataSource.replaceItems(items.toStoredItems())
         return keywords
     }
 
     suspend fun addExcludedKeyword(keyword: String): List<String> {
-        throw UnsupportedOperationException("POST excluded-keywords spec is not integrated yet.")
+        return localDataSource.addKeyword(keyword).map { it.keyword }
     }
 
     suspend fun removeExcludedKeyword(keyword: String): List<String> {
-        throw UnsupportedOperationException("DELETE excluded-keywords spec is not integrated yet.")
+        return localDataSource.removeKeyword(keyword).map { it.keyword }
     }
 }
 
@@ -54,4 +72,26 @@ private fun List<ExcludedKeywordItemResponse>.normalizeItems(): List<ExcludedKey
             item.copy(keyword = normalizedKeyword)
         }
     }.distinctBy { it.id }
+}
+
+private fun List<ExcludedKeywordItemResponse>.toStoredItems(): List<StoredExcludedKeywordItem> {
+    return map { item ->
+        StoredExcludedKeywordItem(
+            id = item.id,
+            keyword = item.keyword,
+            createdAt = item.createdAt
+        )
+    }
+}
+
+private fun List<StoredExcludedKeywordItem>.toNetworkResponseItems(): List<ExcludedKeywordItemResponse> {
+    return mapNotNull { item ->
+        val id = item.id ?: return@mapNotNull null
+        val createdAt = item.createdAt ?: return@mapNotNull null
+        ExcludedKeywordItemResponse(
+            id = id,
+            keyword = item.keyword,
+            createdAt = createdAt
+        )
+    }
 }
