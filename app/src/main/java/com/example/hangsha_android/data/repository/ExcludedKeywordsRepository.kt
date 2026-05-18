@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 import retrofit2.HttpException
@@ -26,6 +28,7 @@ class ExcludedKeywordsRepository @Inject constructor(
     private val authTokenStorage: AuthTokenStorage
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mutationMutex = Mutex()
 
     private val _excludedKeywordItems =
         MutableStateFlow<List<ExcludedKeywordItemResponse>>(emptyList())
@@ -47,6 +50,47 @@ class ExcludedKeywordsRepository @Inject constructor(
     fun currentExcludedKeywords(): List<String> = _excludedKeywords.value
 
     suspend fun refreshExcludedKeywords(): List<String> {
+        return mutationMutex.withLock {
+            refreshExcludedKeywordsFromRemote()
+        }
+    }
+
+    suspend fun addExcludedKeyword(keyword: String): List<String> {
+        return mutationMutex.withLock {
+            val previousItems = localDataSource.excludedKeywordItems.first()
+            val updatedItems = localDataSource.addKeyword(keyword)
+            val normalizedKeyword = keyword.trim()
+
+            if (normalizedKeyword.isBlank() || !isLoggedIn()) {
+                return@withLock updatedItems.map { it.keyword }
+            }
+
+            val postResponse = excludedKeywordsApi.addExcludedKeyword(
+                CreateExcludedKeywordRequest(keyword = normalizedKeyword)
+            )
+            if (!postResponse.isSuccessful) {
+                localDataSource.replaceItems(previousItems)
+                throw HttpException(postResponse)
+            }
+
+            runCatching {
+                refreshExcludedKeywordsFromRemote()
+            }.getOrElse { error ->
+                localDataSource.replaceItems(previousItems)
+                throw error
+            }
+        }
+    }
+
+    suspend fun removeExcludedKeyword(keyword: String): List<String> {
+        return localDataSource.removeKeyword(keyword).map { it.keyword }
+    }
+
+    private fun isLoggedIn(): Boolean {
+        return !authTokenStorage.getAccessToken().isNullOrBlank()
+    }
+
+    private suspend fun refreshExcludedKeywordsFromRemote(): List<String> {
         val response = excludedKeywordsApi.getExcludedKeywords()
         if (!response.isSuccessful) {
             throw HttpException(response)
@@ -56,34 +100,6 @@ class ExcludedKeywordsRepository @Inject constructor(
         val keywords = items.map { it.keyword }
         localDataSource.replaceItems(items.toStoredItems())
         return keywords
-    }
-
-    suspend fun addExcludedKeyword(keyword: String): List<String> {
-        val previousItems = localDataSource.excludedKeywordItems.first()
-        val updatedItems = localDataSource.addKeyword(keyword)
-        val normalizedKeyword = keyword.trim()
-
-        if (normalizedKeyword.isBlank() || !isLoggedIn()) {
-            return updatedItems.map { it.keyword }
-        }
-
-        val response = excludedKeywordsApi.addExcludedKeyword(
-            CreateExcludedKeywordRequest(keyword = normalizedKeyword)
-        )
-        if (!response.isSuccessful) {
-            localDataSource.replaceItems(previousItems)
-            throw HttpException(response)
-        }
-
-        return updatedItems.map { it.keyword }
-    }
-
-    suspend fun removeExcludedKeyword(keyword: String): List<String> {
-        return localDataSource.removeKeyword(keyword).map { it.keyword }
-    }
-
-    private fun isLoggedIn(): Boolean {
-        return !authTokenStorage.getAccessToken().isNullOrBlank()
     }
 }
 
