@@ -2,6 +2,7 @@ package com.example.hangsha_android.ui.view.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.EventRepository
@@ -29,10 +30,15 @@ import retrofit2.Response
 class CalendarViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val userRepository: UserRepository,
-    private val excludedKeywordsRepository: ExcludedKeywordsRepository
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository,
+    authTokenStorage: AuthTokenStorage
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CalendarUiState())
+    private val _uiState = MutableStateFlow(
+        CalendarUiState(
+            isLoggedIn = !authTokenStorage.getAccessToken().isNullOrBlank()
+        )
+    )
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
@@ -104,10 +110,11 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun openFilterSheet() {
+        val currentKeywords = excludedKeywordsRepository.currentExcludedKeywords()
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = true,
-                draftFilters = it.appliedFilters,
+                draftFilters = it.appliedFilters.copy(excludedKeywords = currentKeywords),
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
@@ -312,7 +319,10 @@ class CalendarViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             filterSourceEventsByDate = result.filterSourceEventsByDate,
-                            eventsByDate = result.visibleEventsByDate.applyFilters(filters),
+                            eventsByDate = result.visibleEventsByDate.applyFilters(
+                                filters = filters,
+                                applyExcludedKeywords = !_uiState.value.isLoggedIn
+                            ),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -390,34 +400,18 @@ class CalendarViewModel @Inject constructor(
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
-        val previousAppliedKeywords = previousState.appliedFilters.excludedKeywords
         val previousDraftKeywords = previousState.draftFilters.excludedKeywords
 
-        if (
-            previousAppliedKeywords == keywords &&
-            previousDraftKeywords == keywords
-        ) {
+        if (previousDraftKeywords == keywords) {
             return
         }
 
-        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
         val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
-        val shouldReload = previousAppliedKeywords != keywords && !previousState.isLoading
 
         _uiState.update {
             it.copy(
-                appliedFilters = updatedAppliedFilters,
                 draftFilters = updatedDraftFilters,
-                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
                 errorMessage = null
-            )
-        }
-
-        if (shouldReload) {
-            loadMonth(
-                month = previousState.currentMonth,
-                filters = updatedAppliedFilters,
-                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters
             )
         }
     }

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
@@ -35,6 +36,7 @@ class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
+    authTokenStorage: AuthTokenStorage,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var hasInitialized = false
@@ -43,7 +45,8 @@ class DailyEventsViewModel @Inject constructor(
         DailyEventsUiState(
             selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: LocalDate.now()
+                ?: LocalDate.now(),
+            isLoggedIn = !authTokenStorage.getAccessToken().isNullOrBlank()
         )
     )
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
@@ -114,10 +117,11 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun openFilterSheet() {
+        val currentKeywords = excludedKeywordsRepository.currentExcludedKeywords()
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = true,
-                draftFilters = it.appliedFilters,
+                draftFilters = it.appliedFilters.copy(excludedKeywords = currentKeywords),
                 selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
@@ -319,7 +323,10 @@ class DailyEventsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             filterSourceItems = result.filterSourceItems,
-                            items = result.visibleItems.applyFilters(filters),
+                            items = result.visibleItems.applyFilters(
+                                filters = filters,
+                                applyExcludedKeywords = !_uiState.value.isLoggedIn
+                            ),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -394,34 +401,18 @@ class DailyEventsViewModel @Inject constructor(
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
-        val previousAppliedKeywords = previousState.appliedFilters.excludedKeywords
         val previousDraftKeywords = previousState.draftFilters.excludedKeywords
 
-        if (
-            previousAppliedKeywords == keywords &&
-            previousDraftKeywords == keywords
-        ) {
+        if (previousDraftKeywords == keywords) {
             return
         }
 
-        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
         val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
-        val shouldReload = hasInitialized && previousAppliedKeywords != keywords && !previousState.isLoading
 
         _uiState.update {
             it.copy(
-                appliedFilters = updatedAppliedFilters,
                 draftFilters = updatedDraftFilters,
-                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
                 errorMessage = null
-            )
-        }
-
-        if (shouldReload) {
-            loadDate(
-                date = previousState.selectedDate,
-                filters = updatedAppliedFilters,
-                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters
             )
         }
     }

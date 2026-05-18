@@ -135,6 +135,7 @@ fun DailyEventsFilterBottomSheet(
 
             FilterFooter(
                 resultCount = uiState.filteredItemCount,
+                isLoggedIn = uiState.isLoggedIn,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply
@@ -405,6 +406,7 @@ private fun ExcludeKeywordSection(
 @Composable
 private fun FilterFooter(
     resultCount: Int,
+    isLoggedIn: Boolean,
     isLoading: Boolean,
     onClear: () -> Unit,
     onApply: () -> Unit
@@ -450,7 +452,9 @@ private fun FilterFooter(
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text(text = "${resultCount}개의 행사 보기")
+                Text(
+                    text = if (isLoggedIn) "행사 보기" else "${resultCount}개의 행사 보기"
+                )
             }
         }
     }

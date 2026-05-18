@@ -158,6 +158,7 @@ fun CalendarFilterBottomSheet(
             // 초기화, 필터 버튼
             FilterFooter(
                 resultCount = uiState.filteredEventCount,
+                isLoggedIn = uiState.isLoggedIn,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply
@@ -458,6 +459,7 @@ private fun ExcludeKeywordSection(
 // 하단 초기화 버튼과 적용 버튼
 private fun FilterFooter(
     resultCount: Int,
+    isLoggedIn: Boolean,
     isLoading: Boolean,
     onClear: () -> Unit,
     onApply: () -> Unit
@@ -503,7 +505,9 @@ private fun FilterFooter(
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text(text = "${resultCount}개의 행사 보기")
+                Text(
+                    text = if (isLoggedIn) "행사 보기" else "${resultCount}개의 행사 보기"
+                )
             }
         }
     }
