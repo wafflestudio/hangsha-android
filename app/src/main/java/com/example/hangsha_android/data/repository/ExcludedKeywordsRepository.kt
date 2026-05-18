@@ -1,8 +1,10 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.local.ExcludedKeywordsLocalDataSource
 import com.example.hangsha_android.data.local.StoredExcludedKeywordItem
 import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
+import com.example.hangsha_android.data.network.model.CreateExcludedKeywordRequest
 import com.example.hangsha_android.data.network.model.ExcludedKeywordItemResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,7 +22,8 @@ import retrofit2.HttpException
 @Singleton
 class ExcludedKeywordsRepository @Inject constructor(
     private val excludedKeywordsApi: ExcludedKeywordsApi,
-    private val localDataSource: ExcludedKeywordsLocalDataSource
+    private val localDataSource: ExcludedKeywordsLocalDataSource,
+    private val authTokenStorage: AuthTokenStorage
 ) {
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -55,11 +59,31 @@ class ExcludedKeywordsRepository @Inject constructor(
     }
 
     suspend fun addExcludedKeyword(keyword: String): List<String> {
-        return localDataSource.addKeyword(keyword).map { it.keyword }
+        val previousItems = localDataSource.excludedKeywordItems.first()
+        val updatedItems = localDataSource.addKeyword(keyword)
+        val normalizedKeyword = keyword.trim()
+
+        if (normalizedKeyword.isBlank() || !isLoggedIn()) {
+            return updatedItems.map { it.keyword }
+        }
+
+        val response = excludedKeywordsApi.addExcludedKeyword(
+            CreateExcludedKeywordRequest(keyword = normalizedKeyword)
+        )
+        if (!response.isSuccessful) {
+            localDataSource.replaceItems(previousItems)
+            throw HttpException(response)
+        }
+
+        return updatedItems.map { it.keyword }
     }
 
     suspend fun removeExcludedKeyword(keyword: String): List<String> {
         return localDataSource.removeKeyword(keyword).map { it.keyword }
+    }
+
+    private fun isLoggedIn(): Boolean {
+        return !authTokenStorage.getAccessToken().isNullOrBlank()
     }
 }
 
