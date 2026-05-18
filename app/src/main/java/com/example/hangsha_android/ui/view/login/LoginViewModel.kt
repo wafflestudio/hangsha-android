@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.repository.AuthRepository
+import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -22,7 +23,8 @@ import retrofit2.HttpException
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val authTokenStorage: AuthTokenStorage,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -61,6 +63,7 @@ class LoginViewModel @Inject constructor(
                     val response = authRepository.login(email = email, password = password)
                     saveAccessTokenFromResponse(response, "login")
                     loadOrganizationNames()
+                    loadExcludedKeywords()
                 }
 
                 result.fold(
@@ -123,6 +126,7 @@ class LoginViewModel @Inject constructor(
                 val response = authRepository.loginWithGoogle(serverAuthCode)
                 saveAccessTokenFromResponse(response, "Google login")
                 loadOrganizationNames()
+                loadExcludedKeywords()
             }
 
             result.fold(
@@ -183,6 +187,12 @@ class LoginViewModel @Inject constructor(
     private suspend fun loadOrganizationNames() {
         runCatching {
             userRepository.ensureOrganizationNamesLoaded()
+        }
+    }
+
+    private suspend fun loadExcludedKeywords() {
+        runCatching {
+            excludedKeywordsRepository.refreshExcludedKeywords()
         }
     }
 

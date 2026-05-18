@@ -16,6 +16,7 @@ data class CalendarUiState(
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
     val selectedFilterTab: CalendarFilterTab = CalendarFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
+    val isLoggedIn: Boolean = false,
     val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
@@ -29,20 +30,26 @@ data class CalendarUiState(
 
     private val previewEventsByDate: Map<LocalDate, List<CalendarEvent>>
         get() = if (isFilterSheetVisible) {
-            filterSourceEventsByDate.applyFilters(draftFilters)
+            filterSourceEventsByDate.applyFilters(
+                filters = draftFilters,
+                applyExcludedKeywords = !isLoggedIn
+            )
         } else {
             eventsByDate
         }
 }
 
 internal fun Map<LocalDate, List<CalendarEvent>>.applyFilters(
-    filters: CalendarFilterState
+    filters: CalendarFilterState,
+    applyExcludedKeywords: Boolean = true
 ): Map<LocalDate, List<CalendarEvent>> {
     if (!filters.hasActiveFilters) return this
 
     return entries
         .mapNotNull { (date, events) ->
-            val filteredEvents = events.filter { it.matches(filters) }
+            val filteredEvents = events.filter {
+                it.matches(filters = filters, applyExcludedKeywords = applyExcludedKeywords)
+            }
             if (filteredEvents.isEmpty()) {
                 null
             } else {
@@ -52,13 +59,16 @@ internal fun Map<LocalDate, List<CalendarEvent>>.applyFilters(
         .toMap(linkedMapOf())
 }
 
-private fun CalendarEvent.matches(filters: CalendarFilterState): Boolean {
+private fun CalendarEvent.matches(
+    filters: CalendarFilterState,
+    applyExcludedKeywords: Boolean = true
+): Boolean {
     if (filters.bookmarkedOnly && !isBookmarked) return false
     if (filters.interestedOnly && !isInterested) return false
     if (filters.orgIds.isNotEmpty() && orgId !in filters.orgIds) return false
     if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
     if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
-    if (filters.excludedKeywords.isNotEmpty()) {
+    if (applyExcludedKeywords && filters.excludedKeywords.isNotEmpty()) {
         val normalizedTitle = title.lowercase()
         if (filters.excludedKeywords.any { keyword -> keyword.lowercase() in normalizedTitle }) {
             return false

@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +35,8 @@ import retrofit2.Response
 class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val userRepository: UserRepository,
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository,
+    authTokenStorage: AuthTokenStorage,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var hasInitialized = false
@@ -41,7 +45,8 @@ class DailyEventsViewModel @Inject constructor(
         DailyEventsUiState(
             selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: LocalDate.now()
+                ?: LocalDate.now(),
+            isLoggedIn = !authTokenStorage.getAccessToken().isNullOrBlank()
         )
     )
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
@@ -56,6 +61,11 @@ class DailyEventsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             runCatching { userRepository.ensureOrganizationNamesLoaded() }
+        }
+        viewModelScope.launch {
+            excludedKeywordsRepository.excludedKeywords.collect { keywords ->
+                onExcludedKeywordsChanged(keywords)
+            }
         }
     }
 
@@ -85,9 +95,11 @@ class DailyEventsViewModel @Inject constructor(
         }
         hasInitialized = true
 
-        val initialFilters = filters ?: _uiState.value.appliedFilters
+        val initialFilters = (filters ?: _uiState.value.appliedFilters).copy(
+            excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
+        )
         val initialHasAppliedServerFilters =
-            hasAppliedServerFilters ?: initialFilters.hasActiveFilters
+            initialFilters.hasActiveFilters
 
         _uiState.update {
             it.copy(
@@ -105,10 +117,11 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun openFilterSheet() {
+        val currentKeywords = excludedKeywordsRepository.currentExcludedKeywords()
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = true,
-                draftFilters = it.appliedFilters,
+                draftFilters = it.appliedFilters.copy(excludedKeywords = currentKeywords),
                 selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = ""
             )
@@ -127,11 +140,23 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun clearDraftFilters() {
+        val keywordsToDelete = _uiState.value.draftFilters.excludedKeywords
         _uiState.update {
             it.copy(
                 draftFilters = DailyEventsFilterState(),
                 excludeKeywordInput = ""
             )
+        }
+        if (keywordsToDelete.isNotEmpty()) {
+            viewModelScope.launch {
+                runCatching {
+                    keywordsToDelete.forEach { keyword ->
+                        excludedKeywordsRepository.removeExcludedKeyword(keyword)
+                    }
+                }.onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+                }
+            }
         }
     }
 
@@ -193,27 +218,29 @@ class DailyEventsViewModel @Inject constructor(
         val keyword = _uiState.value.excludeKeywordInput.trim()
         if (keyword.isBlank()) return
 
-        _uiState.update { state ->
-            if (keyword in state.draftFilters.excludedKeywords) {
-                state.copy(excludeKeywordInput = "")
-            } else {
-                state.copy(
-                    draftFilters = state.draftFilters.copy(
-                        excludedKeywords = state.draftFilters.excludedKeywords + keyword
-                    ),
-                    excludeKeywordInput = ""
-                )
+        if (keyword in _uiState.value.draftFilters.excludedKeywords) {
+            _uiState.update { it.copy(excludeKeywordInput = "") }
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                excludedKeywordsRepository.addExcludedKeyword(keyword)
+            }.onSuccess {
+                _uiState.update { it.copy(excludeKeywordInput = "") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
             }
         }
     }
 
     fun removeDraftExcludeKeyword(keyword: String) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(
-                    excludedKeywords = it.draftFilters.excludedKeywords - keyword
-                )
-            )
+        viewModelScope.launch {
+            runCatching {
+                excludedKeywordsRepository.removeExcludedKeyword(keyword)
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+            }
         }
     }
 
@@ -296,7 +323,10 @@ class DailyEventsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             filterSourceItems = result.filterSourceItems,
-                            items = result.visibleItems.applyFilters(filters),
+                            items = result.visibleItems.applyFilters(
+                                filters = filters,
+                                applyExcludedKeywords = !_uiState.value.isLoggedIn
+                            ),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
                             errorMessage = null
@@ -348,6 +378,42 @@ class DailyEventsViewModel @Inject constructor(
             is IOException -> "Network error occurred. Please try again."
             is IllegalStateException -> error.message ?: "Failed to load events."
             else -> error.message ?: "Failed to load events."
+        }
+    }
+
+    private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid excluded keyword request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to update excluded keywords."
+                404 -> "Excluded keyword information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to update excluded keywords with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Failed to update excluded keywords."
+            else -> error.message ?: "Failed to update excluded keywords."
+        }
+    }
+
+    private fun onExcludedKeywordsChanged(keywords: List<String>) {
+        val previousState = _uiState.value
+        val previousDraftKeywords = previousState.draftFilters.excludedKeywords
+
+        if (previousDraftKeywords == keywords) {
+            return
+        }
+
+        val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
+
+        _uiState.update {
+            it.copy(
+                draftFilters = updatedDraftFilters,
+                errorMessage = null
+            )
         }
     }
 }
