@@ -4,8 +4,10 @@ import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import retrofit2.Response
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface EventApi {
@@ -36,4 +38,14 @@ interface EventApi {
     suspend fun getEventDetail(
         @Path("eventId") eventId: Long
     ): Response<EventDetailResponse>
+
+    @POST("api/v1/events/{eventId}/bookmark")
+    suspend fun createBookmark(
+        @Path("eventId") eventId: Long
+    ): Response<Unit>
+
+    @DELETE("api/v1/events/{eventId}/bookmark")
+    suspend fun deleteBookmark(
+        @Path("eventId") eventId: Long
+    ): Response<Unit>
 }
