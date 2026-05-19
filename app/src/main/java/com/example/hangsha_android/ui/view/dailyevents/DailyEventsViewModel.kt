@@ -85,6 +85,40 @@ class DailyEventsViewModel @Inject constructor(
         )
     }
 
+    fun toggleBookmark(eventId: Long) {
+        val currentState = _uiState.value
+        val targetItem = currentState.filterSourceItems.firstOrNull { it.id == eventId }
+            ?: currentState.items.firstOrNull { it.id == eventId }
+            ?: return
+        val shouldBookmark = !targetItem.isBookmarked
+
+        _uiState.update { state ->
+            state.withUpdatedBookmark(
+                eventId = eventId,
+                isBookmarked = shouldBookmark
+            ).copy(errorMessage = null)
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                val response = eventRepository.updateBookmark(
+                    eventId = eventId,
+                    shouldBookmark = shouldBookmark
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.onFailure { error ->
+                _uiState.update { state ->
+                    state.withUpdatedBookmark(
+                        eventId = eventId,
+                        isBookmarked = !shouldBookmark
+                    ).copy(errorMessage = mapBookmarkErrorMessage(error))
+                }
+            }
+        }
+    }
+
     // 캘린더에서 넘어온 적용 필터 동기화
     fun initialize(
         filters: DailyEventsFilterState?,
@@ -399,6 +433,23 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 
+    private fun mapBookmarkErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid bookmark request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to update this bookmark."
+                404 -> "Event information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to update bookmark with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            else -> error.message ?: "Failed to update bookmark."
+        }
+    }
+
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
         val previousDraftKeywords = previousState.draftFilters.excludedKeywords
@@ -525,4 +576,49 @@ private fun <T> Set<T>.toggle(value: T): Set<T> {
     } else {
         this + value
     }
+}
+
+private fun List<DailyEventItem>.toggleBookmark(eventId: Long): List<DailyEventItem> {
+    return map { item ->
+        if (item.id == eventId) {
+            item.copy(isBookmarked = !item.isBookmarked)
+        } else {
+            item
+        }
+    }
+}
+
+private fun List<DailyEventItem>.setBookmark(
+    eventId: Long,
+    isBookmarked: Boolean
+): List<DailyEventItem> {
+    return map { item ->
+        if (item.id == eventId) {
+            item.copy(isBookmarked = isBookmarked)
+        } else {
+            item
+        }
+    }
+}
+
+private fun DailyEventsUiState.withUpdatedBookmark(
+    eventId: Long,
+    isBookmarked: Boolean
+): DailyEventsUiState {
+    val updatedFilterSourceItems = filterSourceItems.setBookmark(
+        eventId = eventId,
+        isBookmarked = isBookmarked
+    )
+    val updatedItems = items.setBookmark(
+        eventId = eventId,
+        isBookmarked = isBookmarked
+    ).applyFilters(
+        filters = appliedFilters,
+        applyExcludedKeywords = !isLoggedIn
+    )
+
+    return copy(
+        filterSourceItems = updatedFilterSourceItems,
+        items = updatedItems
+    )
 }

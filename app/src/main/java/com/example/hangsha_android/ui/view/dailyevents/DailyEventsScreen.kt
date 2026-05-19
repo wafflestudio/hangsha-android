@@ -77,7 +77,8 @@ fun DailyEventsScreen(
     onApplyFilters: () -> Unit,
     onClearFilters: () -> Unit,
     onRetryClick: () -> Unit,
-    onEventClick: (Long) -> Unit
+    onEventClick: (Long) -> Unit,
+    onBookmarkClick: (Long) -> Unit
 ) {
     if (uiState.isFilterSheetVisible) {
         DailyEventsFilterBottomSheet(
@@ -145,7 +146,8 @@ fun DailyEventsScreen(
                             DailyEventCard(
                                 item = item,
                                 organizationNames = uiState.organizationNames,
-                                onClick = { onEventClick(item.id) }
+                                onClick = { onEventClick(item.id) },
+                                onBookmarkClick = { onBookmarkClick(item.id) }
                             )
                         }
                     }
@@ -288,7 +290,8 @@ private fun FilterButton(
 private fun DailyEventCard(
     item: DailyEventItem,
     organizationNames: Map<Long, String>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onBookmarkClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -350,6 +353,7 @@ private fun DailyEventCard(
             modifier = Modifier
                 .padding(top = 2.dp)
                 .size(32.dp)
+                .clickable(onClick = onBookmarkClick)
         )
     }
 }

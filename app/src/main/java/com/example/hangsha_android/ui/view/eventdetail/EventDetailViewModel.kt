@@ -46,6 +46,37 @@ class EventDetailViewModel @Inject constructor(
         loadEventDetail()
     }
 
+    fun toggleBookmark() {
+        val currentItem = _uiState.value.item ?: return
+        val shouldBookmark = !currentItem.isBookmarked
+
+        _uiState.update { currentState ->
+            currentState.copy(
+                errorMessage = null,
+                item = currentItem.copy(isBookmarked = shouldBookmark)
+            )
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                val response = eventRepository.updateBookmark(
+                    eventId = currentItem.id,
+                    shouldBookmark = shouldBookmark
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.onFailure { error ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        errorMessage = mapBookmarkErrorMessage(error),
+                        item = currentState.item?.copy(isBookmarked = !shouldBookmark)
+                    )
+                }
+            }
+        }
+    }
+
     private fun loadEventDetail() {
         if (eventId <= 0L) {
             _uiState.update {
@@ -109,6 +140,23 @@ class EventDetailViewModel @Inject constructor(
             is IOException -> "Network error occurred. Please try again."
             is IllegalStateException -> error.message ?: "Failed to load event."
             else -> error.message ?: "Failed to load event."
+        }
+    }
+
+    private fun mapBookmarkErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid bookmark request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to update this bookmark."
+                404 -> "Event information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to update bookmark with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            else -> error.message ?: "Failed to update bookmark."
         }
     }
 }

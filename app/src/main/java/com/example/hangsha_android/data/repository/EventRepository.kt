@@ -67,4 +67,27 @@ class EventRepository @Inject constructor(
     ): Response<EventDetailResponse> {
         return eventApi.getEventDetail(eventId = eventId)
     }
+
+    suspend fun createBookmark(
+        eventId: Long
+    ): Response<Unit> {
+        return eventApi.createBookmark(eventId = eventId)
+    }
+
+    suspend fun deleteBookmark(
+        eventId: Long
+    ): Response<Unit> {
+        return eventApi.deleteBookmark(eventId = eventId)
+    }
+
+    suspend fun updateBookmark(
+        eventId: Long,
+        shouldBookmark: Boolean
+    ): Response<Unit> {
+        return if (shouldBookmark) {
+            createBookmark(eventId = eventId)
+        } else {
+            deleteBookmark(eventId = eventId)
+        }
+    }
 }
