@@ -1,8 +1,5 @@
 package com.example.hangsha_android.ui.view.mypage
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -27,24 +23,18 @@ import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BugReport
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,19 +44,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
-private val ProfileAvatarColor = Color(0xFF87959E)
 private val DividerColor = Color(0xFFE7E7E7)
 private val BorderColor = Color(0xFFCACACA)
 private val MutedIconColor = Color(0xFF9B9B9B)
@@ -77,16 +64,17 @@ private val PriorityChipColors = listOf(
     Color(0xFFC6A4FF)
 )
 
-// 마이페이지 전체 화면 배치부
+// 마이페이지 화면 배치
 @Composable
 fun MyPageScreen(
     uiState: MyPageUiState,
     onRetryClick: () -> Unit,
     onStartProfileEdit: () -> Unit,
     onDraftUsernameChanged: (String) -> Unit,
-    onDraftProfileImageSelected: (Uri) -> Unit,
+    onDraftProfileImageSelected: (android.net.Uri) -> Unit,
     onDraftProfileImageDeleted: () -> Unit,
-    onSaveProfileEdit: () -> Unit
+    onSaveProfileEdit: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -126,7 +114,7 @@ fun MyPageScreen(
                         TimetableRegistrationRow()
                         Spacer(modifier = Modifier.height(29.dp))
                         EmptyShortcutSection(
-                            title = "내 찜 목록",
+                            title = "찜 목록",
                             icon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Bookmark,
@@ -135,12 +123,12 @@ fun MyPageScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             },
-                            emptyTitle = "아직 찜된 행사가 없습니다.",
-                            emptyDescription = "관심있는 행사를 찜해보세요!"
+                            emptyTitle = "아직 찜한 행사가 없습니다.",
+                            emptyDescription = "관심있는 행사를 찜해보세요."
                         )
                         Spacer(modifier = Modifier.height(28.dp))
                         EmptyShortcutSection(
-                            title = "내 메모 목록",
+                            title = "메모 목록",
                             icon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Edit,
@@ -150,7 +138,7 @@ fun MyPageScreen(
                                 )
                             },
                             emptyTitle = "아직 메모가 없습니다.",
-                            emptyDescription = "다가온 행사나 관심있는 행사에 대한 메모를 작성해보세요!"
+                            emptyDescription = "관심있는 행사에 메모를 작성해보세요."
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider()
@@ -171,7 +159,8 @@ fun MyPageScreen(
                                 )
                             },
                             buttonColor = Color(0xFF555555),
-                            contentColor = PureWhite
+                            contentColor = PureWhite,
+                            onClick = onLogoutClick
                         )
                         Spacer(modifier = Modifier.height(18.dp))
                         Divider()
@@ -207,74 +196,7 @@ fun MyPageScreen(
     }
 }
 
-// 프로필 사진 이름 이메일 표시부
-@Composable
-private fun ProfileHeader(uiState: MyPageUiState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ProfileAvatar(
-            username = uiState.username,
-            profileImageUrl = uiState.profileImageUrl
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = uiState.username.ifBlank { "사용자" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = uiState.email.ifBlank { "이메일 정보 없음" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            imageVector = Icons.Rounded.Edit,
-            contentDescription = "프로필 수정",
-            tint = MutedIconColor,
-            modifier = Modifier
-                .size(24.dp)
-                .padding(3.dp)
-        )
-    }
-}
-
-// 프로필 이미지 또는 기본 글자 표시부
-@Composable
-private fun ProfileAvatar(
-    username: String,
-    profileImageUrl: String?
-) {
-    Box(
-        modifier = Modifier
-            .size(65.dp)
-            .clip(CircleShape)
-            .background(ProfileAvatarColor),
-        contentAlignment = Alignment.Center
-    ) {
-        if (profileImageUrl.isRealProfileImageUrl()) {
-            AsyncImage(
-                model = profileImageUrl,
-                contentDescription = "프로필 이미지",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-    }
-}
-
-// 관심 카테고리 우선순위 목록 표시부
+// 우선순위 목록 영역
 @Composable
 private fun PrioritySection(interests: List<String>) {
     Surface(
@@ -324,7 +246,7 @@ private fun PrioritySection(interests: List<String>) {
     }
 }
 
-// 우선순위 하나 알약 표시부
+// 우선순위 알약 영역
 @Composable
 private fun PriorityChip(
     text: String,
@@ -348,7 +270,7 @@ private fun PriorityChip(
     }
 }
 
-// 시간표 등록 버튼 줄 표시부
+// 시간표 등록 영역
 @Composable
 private fun TimetableRegistrationRow() {
     Surface(
@@ -379,7 +301,7 @@ private fun TimetableRegistrationRow() {
     }
 }
 
-// 찜 목록 메모 목록 빈 상태 표시부
+// 빈 목록 안내 영역
 @Composable
 private fun EmptyShortcutSection(
     title: String,
@@ -424,7 +346,7 @@ private fun EmptyShortcutSection(
     }
 }
 
-// 버그 신고 입력 영역 표시부
+// 버그 신고 영역
 @Composable
 private fun BugReportSection() {
     var title by remember { mutableStateOf("") }
@@ -449,7 +371,7 @@ private fun BugReportSection() {
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "이용 중 불편한 문제를 알려주세요.",
+            text = "사용 중 불편한 문제를 알려주세요.",
             style = MaterialTheme.typography.bodyMedium,
             color = Ink60,
             fontSize = 10.sp
@@ -495,7 +417,7 @@ private fun BugReportSection() {
     }
 }
 
-// 버그 신고 텍스트 입력칸 표시부
+// 버그 입력칸 영역
 @Composable
 private fun BugTextField(
     value: String,
@@ -527,7 +449,7 @@ private fun BugTextField(
     )
 }
 
-// 로그아웃 회원탈퇴 같은 계정 버튼 표시부
+// 계정 작업 영역
 @Composable
 private fun AccountActionSection(
     title: String,
@@ -536,7 +458,8 @@ private fun AccountActionSection(
     icon: @Composable () -> Unit,
     buttonColor: Color,
     contentColor: Color,
-    borderColor: Color? = null
+    borderColor: Color? = null,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -570,7 +493,7 @@ private fun AccountActionSection(
                         Modifier
                     }
                 )
-                .clickable(onClick = {})
+                .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -587,7 +510,7 @@ private fun AccountActionSection(
     }
 }
 
-// 마이페이지 로딩 실패 안내 표시부
+// 에러 안내 영역
 @Composable
 private fun MyPageErrorState(
     message: String,
@@ -612,7 +535,7 @@ private fun MyPageErrorState(
     }
 }
 
-// 얇은 구분선 표시부
+// 구분선 영역
 @Composable
 private fun Divider() {
     Spacer(
@@ -621,249 +544,4 @@ private fun Divider() {
             .height(1.dp)
             .background(DividerColor)
     )
-}
-
-@Composable
-private fun ProfileHeader(
-    uiState: MyPageUiState,
-    onStartProfileEdit: () -> Unit,
-    onDraftUsernameChanged: (String) -> Unit,
-    onDraftProfileImageSelected: (Uri) -> Unit,
-    onDraftProfileImageDeleted: () -> Unit,
-    onSaveProfileEdit: () -> Unit
-) {
-    var showDeleteProfileImageDialog by remember { mutableStateOf(false) }
-    val profileImagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            onDraftProfileImageSelected(uri)
-        }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        EditableProfileAvatar(
-            username = if (uiState.isEditingProfile) uiState.draftUsername else uiState.username,
-            profileImageModel = when {
-                uiState.isEditingProfile && uiState.draftProfileImageUri != null ->
-                    uiState.draftProfileImageUri
-                uiState.isEditingProfile -> uiState.draftProfileImageUrl
-                else -> uiState.profileImageUrl
-            },
-            isEditing = uiState.isEditingProfile,
-            onPickImageClick = { profileImagePicker.launch("image/*") },
-            onDeleteImageClick = { showDeleteProfileImageDialog = true }
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            if (uiState.isEditingProfile) {
-                OutlinedTextField(
-                    value = uiState.draftUsername,
-                    onValueChange = onDraftUsernameChanged,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    shape = RoundedCornerShape(5.dp),
-                    isError = uiState.usernameErrorMessage != null,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderColor,
-                        unfocusedBorderColor = BorderColor,
-                        errorBorderColor = Color(0xFFFF4B4B),
-                        focusedContainerColor = PureWhite,
-                        unfocusedContainerColor = PureWhite,
-                        errorContainerColor = PureWhite
-                    )
-                )
-                if (uiState.usernameErrorMessage != null) {
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = uiState.usernameErrorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
-                        fontSize = 10.sp
-                    )
-                }
-                if (uiState.profileSaveErrorMessage != null) {
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = uiState.profileSaveErrorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
-                        fontSize = 10.sp
-                    )
-                }
-            } else {
-                Text(
-                    text = uiState.username.ifBlank { "사용자" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = uiState.email.ifBlank { "이메일 정보 없음" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        IconButton(
-            onClick = {
-                if (uiState.isEditingProfile) {
-                    onSaveProfileEdit()
-                } else {
-                    onStartProfileEdit()
-                }
-            },
-            enabled = !uiState.isSavingProfile,
-            modifier = Modifier
-                .size(30.dp)
-                .padding(3.dp)
-        ) {
-            Icon(
-                imageVector = if (uiState.isEditingProfile) Icons.Rounded.Check else Icons.Rounded.Edit,
-                contentDescription = if (uiState.isEditingProfile) "프로필 저장" else "프로필 수정",
-                tint = if (uiState.isEditingProfile) Color(0xFF2E7D32) else MutedIconColor
-            )
-        }
-    }
-
-    if (showDeleteProfileImageDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteProfileImageDialog = false },
-            title = { Text(text = "프로필 이미지 삭제") },
-            text = { Text(text = "정말 삭제하시겠습니까?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteProfileImageDialog = false
-                        onDraftProfileImageDeleted()
-                    }
-                ) {
-                    Text(text = "확인", color = Color(0xFFFF4B4B))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteProfileImageDialog = false }) {
-                    Text(text = "취소")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun EditableProfileAvatar(
-    username: String,
-    profileImageModel: Any?,
-    isEditing: Boolean,
-    onPickImageClick: () -> Unit,
-    onDeleteImageClick: () -> Unit
-) {
-    val hasProfileImage = profileImageModel.hasRealProfileImage()
-    val canDeleteProfileImage = profileImageModel.isUserProfileImage()
-
-    Box(modifier = Modifier.size(76.dp)) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(65.dp)
-                .clip(CircleShape)
-                .background(ProfileAvatarColor),
-            contentAlignment = Alignment.Center
-        ) {
-            if (hasProfileImage) {
-                AsyncImage(
-                    model = profileImageModel,
-                    contentDescription = "프로필 이미지",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        }
-
-        if (isEditing && canDeleteProfileImage) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFFF4B4B))
-                    .clickable(onClick = onDeleteImageClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = "프로필 이미지 삭제",
-                    tint = PureWhite,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-
-        if (isEditing) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(PureWhite)
-                    .border(1.dp, BorderColor, CircleShape)
-                    .clickable(onClick = onPickImageClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PhotoCamera,
-                    contentDescription = "프로필 이미지 선택",
-                    tint = MutedIconColor,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-        }
-    }
-}
-
-private fun Any?.hasRealProfileImage(): Boolean {
-    return when (this) {
-        is Uri -> true
-        is String -> isRealProfileImageUrl()
-        else -> false
-    }
-}
-
-private fun Any?.isUserProfileImage(): Boolean {
-    return when (this) {
-        is Uri -> true
-        is String -> isRealProfileImageUrl() && !isDefaultProfileImageUrl()
-        else -> false
-    }
-}
-
-private fun String?.isRealProfileImageUrl(): Boolean {
-    val normalized = this?.trim().orEmpty()
-    return normalized.isNotBlank() &&
-        !normalized.equals("null", ignoreCase = true) &&
-        (normalized.startsWith("http://") ||
-            normalized.startsWith("https://") ||
-            normalized.startsWith("content://") ||
-            normalized.startsWith("file://"))
-}
-
-private fun String?.isDefaultProfileImageUrl(): Boolean {
-    val normalized = this?.trim().orEmpty()
-    return normalized.contains("/default/43513b43-2f84-4f0f-8de8-7d61120fe3aa.png")
 }

@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
+import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
@@ -34,9 +34,9 @@ import retrofit2.Response
 @HiltViewModel
 class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
+    private val bookmarkRepository: BookmarkRepository,
     private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
-    authTokenStorage: AuthTokenStorage,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var hasInitialized = false
@@ -46,7 +46,7 @@ class DailyEventsViewModel @Inject constructor(
             selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 ?: LocalDate.now(),
-            isLoggedIn = !authTokenStorage.getAccessToken().isNullOrBlank()
+            isLoggedIn = bookmarkRepository.isLoggedIn()
         )
     )
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
@@ -65,6 +65,11 @@ class DailyEventsViewModel @Inject constructor(
         viewModelScope.launch {
             excludedKeywordsRepository.excludedKeywords.collect { keywords ->
                 onExcludedKeywordsChanged(keywords)
+            }
+        }
+        viewModelScope.launch {
+            bookmarkRepository.bookmarkedEventIds.collect { eventIds ->
+                onBookmarkedEventIdsChanged(eventIds)
             }
         }
     }
@@ -101,13 +106,10 @@ class DailyEventsViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                val response = eventRepository.updateBookmark(
+                bookmarkRepository.setBookmark(
                     eventId = eventId,
-                    shouldBookmark = shouldBookmark
+                    isBookmarked = shouldBookmark
                 )
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
             }.onFailure { error ->
                 _uiState.update { state ->
                     state.withUpdatedBookmark(
@@ -328,22 +330,25 @@ class DailyEventsViewModel @Inject constructor(
                     .requireBody("Daily events response was empty.")
                     .items
                     .orEmpty()
+                    .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap()) }
                     .toDailyEventItems(date)
                 val filterOptions = buildFilterOptions(sourceItems)
                 val visibleItems = if (hasAppliedServerFilters) {
-                    eventRepository.getDayEvents(date, filters)
+                    val filteredResponses = eventRepository.getDayEvents(date, filters)
                         .requireBody("Filtered daily events response was empty.")
                         .items
                         .orEmpty()
-                        .toDailyEventItems(date)
+                    bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap())
+                    filteredResponses.toDailyEventItems(date)
                 } else {
-                    val prioritizedItems = eventRepository.getDayEvents(
+                    val prioritizedResponses = eventRepository.getDayEvents(
                         date = date,
                         filters = DailyEventsFilterState()
                     ).requireBody("Prioritized daily events response was empty.")
                         .items
                         .orEmpty()
-                        .toDailyEventItems(date)
+                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap())
+                    val prioritizedItems = prioritizedResponses.toDailyEventItems(date)
                     sourceItems.reorderedBy(prioritizedItems)
                 }
 
@@ -355,9 +360,12 @@ class DailyEventsViewModel @Inject constructor(
             }.fold(
                 onSuccess = { result ->
                     _uiState.update {
+                        val bookmarkIds = bookmarkRepository.currentBookmarkedEventIds()
+                        val filterSourceItems = result.filterSourceItems.withBookmarkState(bookmarkIds)
+                        val visibleItems = result.visibleItems.withBookmarkState(bookmarkIds)
                         it.copy(
-                            filterSourceItems = result.filterSourceItems,
-                            items = result.visibleItems.applyFilters(
+                            filterSourceItems = filterSourceItems,
+                            items = visibleItems.applyFilters(
                                 filters = filters,
                                 applyExcludedKeywords = !_uiState.value.isLoggedIn
                             ),
@@ -467,6 +475,22 @@ class DailyEventsViewModel @Inject constructor(
             )
         }
     }
+
+    private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
+        _uiState.update {
+            val filterSourceItems = it.filterSourceItems.withBookmarkState(eventIds)
+            val items = it.items.withBookmarkState(eventIds)
+                .applyFilters(
+                    filters = it.appliedFilters,
+                    applyExcludedKeywords = !it.isLoggedIn
+                )
+
+            it.copy(
+                filterSourceItems = filterSourceItems,
+                items = items
+            )
+        }
+    }
 }
 
 private data class DailyEventsLoadResult(
@@ -484,6 +508,10 @@ private fun List<EventSummaryResponse>.toDailyEventItems(
     return map { event ->
         event.toDailyEventItem(selectedDate)
     }
+}
+
+private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> {
+    return associate { event -> event.id to event.isBookmarked }
 }
 
 private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): DailyEventItem {
@@ -516,6 +544,15 @@ private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): Dail
         tags = tags
     )
 }
+
+private fun List<DailyEventItem>.withBookmarkState(
+    bookmarkedEventIds: Set<Long>
+): List<DailyEventItem> {
+    return map { item ->
+        item.copy(isBookmarked = item.id in bookmarkedEventIds)
+    }
+}
+
 private fun List<DailyEventItem>.reorderedBy(
     prioritizedItems: List<DailyEventItem>
 ): List<DailyEventItem> {

@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
+import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.eventTypeColor
@@ -29,6 +30,7 @@ import retrofit2.Response
 @HiltViewModel
 class EventDetailViewModel @Inject constructor(
     private val eventRepository: EventRepository,
+    private val bookmarkRepository: BookmarkRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val eventId = savedStateHandle.get<Long>(HangshaDestinations.EventDetail.eventIdArg) ?: -1L
@@ -39,6 +41,11 @@ class EventDetailViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            bookmarkRepository.bookmarkedEventIds.collect { eventIds ->
+                onBookmarkedEventIdsChanged(eventIds)
+            }
+        }
         loadEventDetail()
     }
 
@@ -59,13 +66,10 @@ class EventDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                val response = eventRepository.updateBookmark(
+                bookmarkRepository.setBookmark(
                     eventId = currentItem.id,
-                    shouldBookmark = shouldBookmark
+                    isBookmarked = shouldBookmark
                 )
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
             }.onFailure { error ->
                 _uiState.update { currentState ->
                     currentState.copy(
@@ -99,9 +103,14 @@ class EventDetailViewModel @Inject constructor(
 
         loadJob = viewModelScope.launch {
             runCatching {
-                eventRepository.getEventDetail(eventId)
+                val response = eventRepository.getEventDetail(eventId)
                     .requireBody("Event detail response was empty.")
-                    .toEventDetailItem()
+                bookmarkRepository.syncKnownRemoteBookmarks(
+                    mapOf(response.id to response.isBookmarked)
+                )
+                response.toEventDetailItem(
+                    bookmarkedEventIds = bookmarkRepository.currentBookmarkedEventIds()
+                )
             }.fold(
                 onSuccess = { item ->
                     _uiState.update {
@@ -159,12 +168,23 @@ class EventDetailViewModel @Inject constructor(
             else -> error.message ?: "Failed to update bookmark."
         }
     }
+
+    private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
+        _uiState.update { currentState ->
+            val currentItem = currentState.item ?: return@update currentState
+            currentState.copy(
+                item = currentItem.copy(isBookmarked = currentItem.id in eventIds)
+            )
+        }
+    }
 }
 
 private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
-private fun EventDetailResponse.toEventDetailItem(): EventDetailItem {
+private fun EventDetailResponse.toEventDetailItem(
+    bookmarkedEventIds: Set<Long>
+): EventDetailItem {
     val eventEndDate = parseEventDate(eventEnd)
     val dDayLabel = eventEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
@@ -189,7 +209,7 @@ private fun EventDetailResponse.toEventDetailItem(): EventDetailItem {
         eventTypeColor = eventTypeColor(eventTypeId),
         applyLink = applyLink,
         detail = detail,
-        isBookmarked = isBookmarked
+        isBookmarked = id in bookmarkedEventIds
     )
 }
 

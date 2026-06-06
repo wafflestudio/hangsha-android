@@ -367,6 +367,17 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 myPageViewModel.onProfileSaveToastConsumed()
             }
 
+            LaunchedEffect(myPageUiState.isLoggedOut) {
+                if (!myPageUiState.isLoggedOut) {
+                    return@LaunchedEffect
+                }
+
+                navController.navigate(HangshaDestinations.Login.route) {
+                    popUpTo(HangshaDestinations.Main.route) { inclusive = true }
+                }
+                myPageViewModel.onLogoutNavigationConsumed()
+            }
+
             MyPageScreen(
                 uiState = myPageUiState,
                 onRetryClick = { myPageViewModel.loadMyProfile() },
@@ -380,7 +391,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onDraftProfileImageDeleted = {
                     myPageViewModel.markDraftProfileImageDeleted()
                 },
-                onSaveProfileEdit = { myPageViewModel.saveProfileEdit() }
+                onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
+                onLogoutClick = { myPageViewModel.logout() }
             )
         }
     }

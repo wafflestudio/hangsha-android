@@ -1,5 +1,6 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
@@ -12,7 +13,8 @@ import javax.inject.Inject
 import retrofit2.Response
 
 class EventRepository @Inject constructor(
-    private val eventApi: EventApi
+    private val eventApi: EventApi,
+    private val authTokenStorage: AuthTokenStorage
 ) {
     suspend fun getAllEvents(
         range: EventDateRange
@@ -30,7 +32,7 @@ class EventRepository @Inject constructor(
         return eventApi.getEvents(
             from = range.from.toString(),
             to = range.to.toString(),
-            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it },
+            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it && isLoggedIn() },
             interestedOnly = filters.interestedOnly.takeIf { it },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
@@ -53,7 +55,7 @@ class EventRepository @Inject constructor(
     ): Response<DayEventsResponse> {
         return eventApi.getDayEvents(
             date = date.toString(),
-            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it },
+            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it && isLoggedIn() },
             interestedOnly = filters.interestedOnly.takeIf { it },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
@@ -89,5 +91,9 @@ class EventRepository @Inject constructor(
         } else {
             deleteBookmark(eventId = eventId)
         }
+    }
+
+    private fun isLoggedIn(): Boolean {
+        return !authTokenStorage.getAccessToken().isNullOrBlank()
     }
 }
