@@ -77,7 +77,8 @@ private val PriorityChipColors = listOf(
     Color(0xFFC6A4FF)
 )
 
-// 마이페이지 전체 화면 배치부
+
+// 마이페이지 화면 배치
 @Composable
 fun MyPageScreen(
     uiState: MyPageUiState,
@@ -126,7 +127,7 @@ fun MyPageScreen(
                         TimetableRegistrationRow()
                         Spacer(modifier = Modifier.height(29.dp))
                         EmptyShortcutSection(
-                            title = "내 찜 목록",
+                            title = "찜 목록",
                             icon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Bookmark,
@@ -135,12 +136,12 @@ fun MyPageScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             },
-                            emptyTitle = "아직 찜된 행사가 없습니다.",
-                            emptyDescription = "관심있는 행사를 찜해보세요!"
+                            emptyTitle = "아직 찜한 행사가 없습니다.",
+                            emptyDescription = "관심있는 행사를 찜해보세요."
                         )
                         Spacer(modifier = Modifier.height(28.dp))
                         EmptyShortcutSection(
-                            title = "내 메모 목록",
+                            title = "메모 목록",
                             icon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Edit,
@@ -150,7 +151,7 @@ fun MyPageScreen(
                                 )
                             },
                             emptyTitle = "아직 메모가 없습니다.",
-                            emptyDescription = "다가온 행사나 관심있는 행사에 대한 메모를 작성해보세요!"
+                            emptyDescription = "관심있는 행사에 메모를 작성해보세요."
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider()
@@ -207,74 +208,7 @@ fun MyPageScreen(
     }
 }
 
-// 프로필 사진 이름 이메일 표시부
-@Composable
-private fun ProfileHeader(uiState: MyPageUiState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ProfileAvatar(
-            username = uiState.username,
-            profileImageUrl = uiState.profileImageUrl
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = uiState.username.ifBlank { "사용자" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = uiState.email.ifBlank { "이메일 정보 없음" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            imageVector = Icons.Rounded.Edit,
-            contentDescription = "프로필 수정",
-            tint = MutedIconColor,
-            modifier = Modifier
-                .size(24.dp)
-                .padding(3.dp)
-        )
-    }
-}
-
-// 프로필 이미지 또는 기본 글자 표시부
-@Composable
-private fun ProfileAvatar(
-    username: String,
-    profileImageUrl: String?
-) {
-    Box(
-        modifier = Modifier
-            .size(65.dp)
-            .clip(CircleShape)
-            .background(ProfileAvatarColor),
-        contentAlignment = Alignment.Center
-    ) {
-        if (profileImageUrl.isRealProfileImageUrl()) {
-            AsyncImage(
-                model = profileImageUrl,
-                contentDescription = "프로필 이미지",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-    }
-}
-
-// 관심 카테고리 우선순위 목록 표시부
+// 우선순위 목록 영역
 @Composable
 private fun PrioritySection(interests: List<String>) {
     Surface(
@@ -623,6 +557,7 @@ private fun Divider() {
     )
 }
 
+// 프로필 헤더 영역
 @Composable
 private fun ProfileHeader(
     uiState: MyPageUiState,
@@ -766,6 +701,7 @@ private fun ProfileHeader(
     }
 }
 
+// 프로필 이미지 영역
 @Composable
 private fun EditableProfileAvatar(
     username: String,
@@ -837,6 +773,7 @@ private fun EditableProfileAvatar(
     }
 }
 
+// 이미지 표시 판정
 private fun Any?.hasRealProfileImage(): Boolean {
     return when (this) {
         is Uri -> true
@@ -845,6 +782,7 @@ private fun Any?.hasRealProfileImage(): Boolean {
     }
 }
 
+// 사용자 이미지 판정
 private fun Any?.isUserProfileImage(): Boolean {
     return when (this) {
         is Uri -> true
@@ -853,6 +791,7 @@ private fun Any?.isUserProfileImage(): Boolean {
     }
 }
 
+// 실제 이미지 URL 판정
 private fun String?.isRealProfileImageUrl(): Boolean {
     val normalized = this?.trim().orEmpty()
     return normalized.isNotBlank() &&
@@ -863,6 +802,7 @@ private fun String?.isRealProfileImageUrl(): Boolean {
             normalized.startsWith("file://"))
 }
 
+// 기본 이미지 URL 판정
 private fun String?.isDefaultProfileImageUrl(): Boolean {
     val normalized = this?.trim().orEmpty()
     return normalized.contains("/default/43513b43-2f84-4f0f-8de8-7d61120fe3aa.png")
