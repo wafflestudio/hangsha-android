@@ -52,6 +52,7 @@ class MyPageViewModel @Inject constructor(
                             email = profile.email,
                             profileImageUrl = profile.profileImageUrl,
                             interests = profile.interestCategories
+                                .orEmpty()
                                 .sortedBy { interest -> interest.priority }
                                 .map { interest -> interest.category.name },
                             errorMessage = null
