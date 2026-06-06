@@ -359,10 +359,28 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(BottomTab.MyPage.route) {
             val myPageViewModel: MyPageViewModel = hiltViewModel()
             val myPageUiState by myPageViewModel.uiState.collectAsState()
+            val context = LocalContext.current
+
+            LaunchedEffect(myPageUiState.profileSaveToastMessage) {
+                val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                myPageViewModel.onProfileSaveToastConsumed()
+            }
 
             MyPageScreen(
                 uiState = myPageUiState,
-                onRetryClick = { myPageViewModel.loadMyProfile() }
+                onRetryClick = { myPageViewModel.loadMyProfile() },
+                onStartProfileEdit = { myPageViewModel.startProfileEdit() },
+                onDraftUsernameChanged = { value ->
+                    myPageViewModel.onDraftUsernameChanged(value)
+                },
+                onDraftProfileImageSelected = { uri ->
+                    myPageViewModel.onDraftProfileImageSelected(uri)
+                },
+                onDraftProfileImageDeleted = {
+                    myPageViewModel.markDraftProfileImageDeleted()
+                },
+                onSaveProfileEdit = { myPageViewModel.saveProfileEdit() }
             )
         }
     }

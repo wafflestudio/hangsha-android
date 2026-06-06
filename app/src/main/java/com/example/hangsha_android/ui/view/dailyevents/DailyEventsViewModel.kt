@@ -482,7 +482,6 @@ private fun List<EventSummaryResponse>.toDailyEventItems(
     selectedDate: LocalDate
 ): List<DailyEventItem> {
     return map { event ->
-        Log.d("DailyEventsViewModel", "event: $event, selectedDate: $selectedDate")
         event.toDailyEventItem(selectedDate)
     }
 }
