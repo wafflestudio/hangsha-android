@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.repository.UserRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -22,6 +23,7 @@ import retrofit2.HttpException
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val authTokenStorage: AuthTokenStorage,
     @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -217,6 +219,19 @@ class MyPageViewModel @Inject constructor(
     fun onProfileSaveToastConsumed() {
         _uiState.update {
             it.copy(profileSaveToastMessage = null)
+        }
+    }
+
+    fun logout() {
+        authTokenStorage.clearAccessToken()
+        _uiState.update {
+            it.copy(isLoggedOut = true)
+        }
+    }
+
+    fun onLogoutNavigationConsumed() {
+        _uiState.update {
+            it.copy(isLoggedOut = false)
         }
     }
 

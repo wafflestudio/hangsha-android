@@ -73,7 +73,8 @@ fun MyPageScreen(
     onDraftUsernameChanged: (String) -> Unit,
     onDraftProfileImageSelected: (android.net.Uri) -> Unit,
     onDraftProfileImageDeleted: () -> Unit,
-    onSaveProfileEdit: () -> Unit
+    onSaveProfileEdit: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -158,7 +159,8 @@ fun MyPageScreen(
                                 )
                             },
                             buttonColor = Color(0xFF555555),
-                            contentColor = PureWhite
+                            contentColor = PureWhite,
+                            onClick = onLogoutClick
                         )
                         Spacer(modifier = Modifier.height(18.dp))
                         Divider()
@@ -456,7 +458,8 @@ private fun AccountActionSection(
     icon: @Composable () -> Unit,
     buttonColor: Color,
     contentColor: Color,
-    borderColor: Color? = null
+    borderColor: Color? = null,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -490,7 +493,7 @@ private fun AccountActionSection(
                         Modifier
                     }
                 )
-                .clickable(onClick = {})
+                .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
