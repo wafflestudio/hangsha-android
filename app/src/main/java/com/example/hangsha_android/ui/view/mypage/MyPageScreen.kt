@@ -3,7 +3,6 @@ package com.example.hangsha_android.ui.view.mypage
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,13 +55,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.R
 import coil.compose.AsyncImage
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
@@ -266,14 +263,7 @@ private fun ProfileAvatar(
             .background(ProfileAvatarColor),
         contentAlignment = Alignment.Center
     ) {
-        if (!profileImageUrl.isRealProfileImageUrl()) {
-            Image(
-                painter = painterResource(id = R.drawable.profile_null_img),
-                contentDescription = "기본 프로필 이미지",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
+        if (profileImageUrl.isRealProfileImageUrl()) {
             AsyncImage(
                 model = profileImageUrl,
                 contentDescription = "프로필 이미지",
@@ -673,7 +663,9 @@ private fun ProfileHeader(
                 OutlinedTextField(
                     value = uiState.draftUsername,
                     onValueChange = onDraftUsernameChanged,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp,
@@ -794,14 +786,7 @@ private fun EditableProfileAvatar(
                 .background(ProfileAvatarColor),
             contentAlignment = Alignment.Center
         ) {
-            if (!hasProfileImage) {
-                Image(
-                    painter = painterResource(id = R.drawable.profile_null_img),
-                    contentDescription = "기본 프로필 이미지",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
+            if (hasProfileImage) {
                 AsyncImage(
                     model = profileImageModel,
                     contentDescription = "프로필 이미지",
