@@ -42,4 +42,18 @@ class UpdateUserProfileRequestTest {
         assertEquals("new_name", jsonObject["username"].asString)
         assertEquals("https://example.com/profile.png", jsonObject["profileImageUrl"].asString)
     }
+
+    @Test
+    fun updateProfileWithNullImageIncludesJsonNull() {
+        val jsonObject = UpdateUserProfileRequest
+            .updateProfile(
+                username = "new_name",
+                profileImageUrl = null
+            )
+            .toJsonObject()
+
+        assertEquals("new_name", jsonObject["username"].asString)
+        assertTrue(jsonObject.has("profileImageUrl"))
+        assertSame(JsonNull.INSTANCE, jsonObject["profileImageUrl"])
+    }
 }
