@@ -4,6 +4,8 @@ import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -327,8 +329,12 @@ private fun CalendarBody(
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+
     Box(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
     ) {
         // 날짜 카드들의 월간 그리드
         CalendarMonthGrid(
@@ -336,7 +342,7 @@ private fun CalendarBody(
             currentMonth = currentMonth,
             eventsByDate = eventsByDate,
             onDateClick = onDateClick,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (isLoading) {
