@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.hangsha_android.R
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
@@ -205,6 +206,7 @@ private fun EditableProfileAvatar(
     onDeleteImageClick: () -> Unit
 ) {
     val hasProfileImage = profileImageModel.hasRealProfileImage()
+    val imageModel = if (hasProfileImage) profileImageModel else R.drawable.profile_null_img
     val canDeleteProfileImage = profileImageModel.isUserProfileImage()
 
     Box(modifier = Modifier.size(76.dp)) {
@@ -216,14 +218,12 @@ private fun EditableProfileAvatar(
                 .background(ProfileAvatarColor),
             contentAlignment = Alignment.Center
         ) {
-            if (hasProfileImage) {
-                AsyncImage(
-                    model = profileImageModel,
+            AsyncImage(
+                    model = imageModel,
                     contentDescription = "프로필 이미지",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
-                )
-            }
+            )
         }
 
         if (isEditing && canDeleteProfileImage) {
