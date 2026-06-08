@@ -26,8 +26,10 @@ import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,8 +77,11 @@ fun MyPageScreen(
     onDraftProfileImageSelected: (android.net.Uri) -> Unit,
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit
 ) {
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -178,11 +184,26 @@ fun MyPageScreen(
                             },
                             buttonColor = PureWhite,
                             contentColor = Color(0xFFFF4B4B),
-                            borderColor = Color(0xFFFFA0A0)
+                            borderColor = Color(0xFFFFA0A0),
+                            onClick = { showDeleteAccountDialog = true }
                         )
                     }
                 }
             }
+        }
+
+        if (showDeleteAccountDialog) {
+            DeleteAccountDialog(
+                email = uiState.email,
+                isDeletingAccount = uiState.isDeletingAccount,
+                errorMessage = uiState.accountDeletionErrorMessage,
+                onDismissRequest = {
+                    if (!uiState.isDeletingAccount) {
+                        showDeleteAccountDialog = false
+                    }
+                },
+                onConfirmClick = onDeleteAccountClick
+            )
         }
 
         if (uiState.isLoading) {
@@ -197,6 +218,136 @@ fun MyPageScreen(
 }
 
 // 우선순위 목록 영역
+@Composable
+private fun DeleteAccountDialog(
+    email: String,
+    isDeletingAccount: Boolean,
+    errorMessage: String?,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit
+) {
+    var isUnderstood by remember { mutableStateOf(false) }
+    var emailConfirmation by remember { mutableStateOf("") }
+    val isEmailMatched = emailConfirmation == email
+    val canConfirm = isUnderstood && isEmailMatched && !isDeletingAccount
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(text = "회원 탈퇴")
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "탈퇴하면 계정 정보가 삭제되며 복구할 수 없습니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink100,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !isDeletingAccount) {
+                            isUnderstood = !isUnderstood
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isUnderstood,
+                        onCheckedChange = { checked -> isUnderstood = checked },
+                        enabled = !isDeletingAccount
+                    )
+                    Text(
+                        text = "위 내용을 이해했습니다.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink100,
+                        fontSize = 13.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "확인을 위해 이메일을 그대로 입력해 주세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 11.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = emailConfirmation,
+                    onValueChange = { emailConfirmation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isDeletingAccount,
+                    singleLine = true,
+                    placeholder = {
+                        Text(text = email)
+                    },
+                    isError = emailConfirmation.isNotEmpty() && !isEmailMatched,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                    shape = RoundedCornerShape(5.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BorderColor,
+                        unfocusedBorderColor = BorderColor,
+                        errorBorderColor = Color(0xFFFF4B4B),
+                        focusedContainerColor = PureWhite,
+                        unfocusedContainerColor = PureWhite,
+                        disabledContainerColor = PureWhite,
+                        errorContainerColor = PureWhite
+                    )
+                )
+                if (emailConfirmation.isNotEmpty() && !isEmailMatched) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "이메일이 일치하지 않습니다.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFF4B4B),
+                        fontSize = 10.sp
+                    )
+                }
+                if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFF4B4B),
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmClick,
+                enabled = canConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF4B4B),
+                    contentColor = PureWhite,
+                    disabledContainerColor = Color(0xFFFFD6D6),
+                    disabledContentColor = PureWhite
+                )
+            ) {
+                if (isDeletingAccount) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = PureWhite
+                    )
+                } else {
+                    Text(text = "승인")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest,
+                enabled = !isDeletingAccount
+            ) {
+                Text(text = "취소")
+            }
+        }
+    )
+}
+
 @Composable
 private fun PrioritySection(interests: List<String>) {
     Surface(

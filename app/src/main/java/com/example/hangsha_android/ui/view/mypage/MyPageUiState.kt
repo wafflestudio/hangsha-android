@@ -5,6 +5,7 @@ import android.net.Uri
 data class MyPageUiState(
     val isLoading: Boolean = true,
     val isSavingProfile: Boolean = false,
+    val isDeletingAccount: Boolean = false,
     val username: String = "",
     val email: String = "",
     val profileImageUrl: String? = null,
@@ -17,6 +18,7 @@ data class MyPageUiState(
     val usernameErrorMessage: String? = null,
     val profileSaveErrorMessage: String? = null,
     val profileSaveToastMessage: String? = null,
+    val accountDeletionErrorMessage: String? = null,
     val isLoggedOut: Boolean = false,
     val errorMessage: String? = null
 )

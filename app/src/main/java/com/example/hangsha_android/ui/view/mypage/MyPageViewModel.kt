@@ -229,6 +229,47 @@ class MyPageViewModel @Inject constructor(
         }
     }
 
+    fun deleteMyAccount() {
+        if (_uiState.value.isDeletingAccount) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isDeletingAccount = true,
+                    accountDeletionErrorMessage = null
+                )
+            }
+
+            runCatching {
+                val response = userRepository.deleteMyAccount()
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.fold(
+                onSuccess = {
+                    authTokenStorage.clearAccessToken()
+                    _uiState.update {
+                        it.copy(
+                            isDeletingAccount = false,
+                            isLoggedOut = true,
+                            accountDeletionErrorMessage = null
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isDeletingAccount = false,
+                            accountDeletionErrorMessage = mapAccountDeletionErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
     fun onLogoutNavigationConsumed() {
         _uiState.update {
             it.copy(isLoggedOut = false)
@@ -293,6 +334,21 @@ class MyPageViewModel @Inject constructor(
         return when (error) {
             is IllegalArgumentException -> error.message ?: "프로필 입력값을 확인해 주세요."
             else -> mapErrorMessage(error)
+        }
+    }
+
+    private fun mapAccountDeletionErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                401 -> "로그인이 필요합니다."
+                403 -> "회원 탈퇴 권한이 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "회원 탈퇴에 실패했습니다. (${error.code()})"
+            }
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> error.message ?: "회원 탈퇴에 실패했습니다."
         }
     }
 
