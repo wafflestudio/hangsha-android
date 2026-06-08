@@ -367,6 +367,12 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 myPageViewModel.onProfileSaveToastConsumed()
             }
 
+            LaunchedEffect(myPageUiState.bugReportToastMessage) {
+                val message = myPageUiState.bugReportToastMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                myPageViewModel.onBugReportToastConsumed()
+            }
+
             LaunchedEffect(myPageUiState.isLoggedOut) {
                 if (!myPageUiState.isLoggedOut) {
                     return@LaunchedEffect
@@ -393,6 +399,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 },
                 onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
                 onLogoutClick = { myPageViewModel.logout() },
+                onBugReportTitleChanged = { value ->
+                    myPageViewModel.onBugReportTitleChanged(value)
+                },
+                onBugReportContentChanged = { value ->
+                    myPageViewModel.onBugReportContentChanged(value)
+                },
+                onSubmitBugReportClick = { myPageViewModel.submitBugReport() },
                 onDeleteAccountClick = { myPageViewModel.deleteMyAccount() }
             )
         }

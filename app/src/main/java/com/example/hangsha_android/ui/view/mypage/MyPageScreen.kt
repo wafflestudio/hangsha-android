@@ -80,6 +80,9 @@ fun MyPageScreen(
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
     onLogoutClick: () -> Unit,
+    onBugReportTitleChanged: (String) -> Unit,
+    onBugReportContentChanged: (String) -> Unit,
+    onSubmitBugReportClick: () -> Unit,
     onDeleteAccountClick: () -> Unit
 ) {
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -151,7 +154,14 @@ fun MyPageScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider()
                         Spacer(modifier = Modifier.height(17.dp))
-                        BugReportSection()
+                        BugReportSection(
+                            title = uiState.bugReportTitle,
+                            content = uiState.bugReportContent,
+                            isSubmitting = uiState.isSubmittingBugReport,
+                            onTitleChanged = onBugReportTitleChanged,
+                            onContentChanged = onBugReportContentChanged,
+                            onSubmitClick = onSubmitBugReportClick
+                        )
                         Spacer(modifier = Modifier.height(18.dp))
                         Divider()
                         Spacer(modifier = Modifier.height(17.dp))
@@ -501,9 +511,15 @@ private fun EmptyShortcutSection(
 
 // 버그 신고 영역
 @Composable
-private fun BugReportSection() {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+private fun BugReportSection(
+    title: String,
+    content: String,
+    isSubmitting: Boolean,
+    onTitleChanged: (String) -> Unit,
+    onContentChanged: (String) -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = title.isNotBlank() && content.isNotBlank() && !isSubmitting
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -532,14 +548,14 @@ private fun BugReportSection() {
         Spacer(modifier = Modifier.height(8.dp))
         BugTextField(
             value = title,
-            onValueChange = { title = it },
+            onValueChange = onTitleChanged,
             placeholder = "제목",
             minLines = 1
         )
         Spacer(modifier = Modifier.height(8.dp))
         BugTextField(
-            value = description,
-            onValueChange = { description = it },
+            value = content,
+            onValueChange = onContentChanged,
             placeholder = "문제가 발생한 상황을 자세히 적어주세요.",
             minLines = 5
         )
@@ -547,11 +563,14 @@ private fun BugReportSection() {
         Row(modifier = Modifier.fillMaxWidth()) {
             Spacer(modifier = Modifier.weight(1f))
             Button(
-                onClick = {},
+                onClick = onSubmitClick,
+                enabled = canSubmit,
                 shape = RoundedCornerShape(5.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4A4A4A),
-                    contentColor = PureWhite
+                    contentColor = PureWhite,
+                    disabledContainerColor = Color(0xFFBDBDBD),
+                    disabledContentColor = PureWhite
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 15.dp,

@@ -18,6 +18,10 @@ data class MyPageUiState(
     val usernameErrorMessage: String? = null,
     val profileSaveErrorMessage: String? = null,
     val profileSaveToastMessage: String? = null,
+    val bugReportTitle: String = "",
+    val bugReportContent: String = "",
+    val isSubmittingBugReport: Boolean = false,
+    val bugReportToastMessage: String? = null,
     val accountDeletionErrorMessage: String? = null,
     val isLoggedOut: Boolean = false,
     val errorMessage: String? = null
