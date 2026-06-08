@@ -392,7 +392,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     myPageViewModel.markDraftProfileImageDeleted()
                 },
                 onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
-                onLogoutClick = { myPageViewModel.logout() }
+                onLogoutClick = { myPageViewModel.logout() },
+                onDeleteAccountClick = { myPageViewModel.deleteMyAccount() }
             )
         }
     }

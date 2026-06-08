@@ -30,6 +30,10 @@ class UserRepository @Inject constructor(
         return userApi.getMyProfile()
     }
 
+    suspend fun deleteMyAccount(): Response<Unit> {
+        return userApi.deleteMyAccount()
+    }
+
     suspend fun uploadMyProfileImage(
         imageFile: File,
         mimeType: String?

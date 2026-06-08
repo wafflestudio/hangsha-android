@@ -7,6 +7,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -16,6 +17,9 @@ import retrofit2.http.Part
 interface UserApi {
     @GET("api/v1/users/me")
     suspend fun getMyProfile(): Response<UserProfileResponse>
+
+    @DELETE("api/v1/users/me")
+    suspend fun deleteMyAccount(): Response<Unit>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMyProfile(
