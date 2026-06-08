@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Logout
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,6 +80,9 @@ fun MyPageScreen(
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
     onLogoutClick: () -> Unit,
+    onBugReportTitleChanged: (String) -> Unit,
+    onBugReportContentChanged: (String) -> Unit,
+    onSubmitBugReportClick: () -> Unit,
     onDeleteAccountClick: () -> Unit
 ) {
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -149,7 +154,14 @@ fun MyPageScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider()
                         Spacer(modifier = Modifier.height(17.dp))
-                        BugReportSection()
+                        BugReportSection(
+                            title = uiState.bugReportTitle,
+                            content = uiState.bugReportContent,
+                            isSubmitting = uiState.isSubmittingBugReport,
+                            onTitleChanged = onBugReportTitleChanged,
+                            onContentChanged = onBugReportContentChanged,
+                            onSubmitClick = onSubmitBugReportClick
+                        )
                         Spacer(modifier = Modifier.height(18.dp))
                         Divider()
                         Spacer(modifier = Modifier.height(17.dp))
@@ -499,9 +511,15 @@ private fun EmptyShortcutSection(
 
 // 버그 신고 영역
 @Composable
-private fun BugReportSection() {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+private fun BugReportSection(
+    title: String,
+    content: String,
+    isSubmitting: Boolean,
+    onTitleChanged: (String) -> Unit,
+    onContentChanged: (String) -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = title.isNotBlank() && content.isNotBlank() && !isSubmitting
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -530,14 +548,14 @@ private fun BugReportSection() {
         Spacer(modifier = Modifier.height(8.dp))
         BugTextField(
             value = title,
-            onValueChange = { title = it },
+            onValueChange = onTitleChanged,
             placeholder = "제목",
             minLines = 1
         )
         Spacer(modifier = Modifier.height(8.dp))
         BugTextField(
-            value = description,
-            onValueChange = { description = it },
+            value = content,
+            onValueChange = onContentChanged,
             placeholder = "문제가 발생한 상황을 자세히 적어주세요.",
             minLines = 5
         )
@@ -545,11 +563,14 @@ private fun BugReportSection() {
         Row(modifier = Modifier.fillMaxWidth()) {
             Spacer(modifier = Modifier.weight(1f))
             Button(
-                onClick = {},
+                onClick = onSubmitClick,
+                enabled = canSubmit,
                 shape = RoundedCornerShape(5.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4A4A4A),
-                    contentColor = PureWhite
+                    contentColor = PureWhite,
+                    disabledContainerColor = Color(0xFFBDBDBD),
+                    disabledContentColor = PureWhite
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 15.dp,
@@ -576,27 +597,40 @@ private fun BugTextField(
     placeholder: String,
     minLines: Int
 ) {
-    OutlinedTextField(
+    val shape = RoundedCornerShape(5.dp)
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(
+        color = Ink100,
+        fontSize = 11.sp
+    )
+
+    BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (minLines == 1) 34.dp else 86.dp)
+            .background(PureWhite, shape)
+            .border(1.dp, BorderColor, shape),
         minLines = minLines,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 11.sp),
-        placeholder = {
-            Text(
-                text = placeholder,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF9D9D9D),
-                fontSize = 11.sp
-            )
-        },
-        shape = RoundedCornerShape(5.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BorderColor,
-            unfocusedBorderColor = BorderColor,
-            focusedContainerColor = PureWhite,
-            unfocusedContainerColor = PureWhite
-        )
+        maxLines = if (minLines == 1) 1 else Int.MAX_VALUE,
+        textStyle = textStyle,
+        cursorBrush = SolidColor(Ink100),
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = textStyle,
+                        color = Color(0xFF9D9D9D)
+                    )
+                }
+                innerTextField()
+            }
+        }
     )
 }
 

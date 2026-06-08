@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -23,6 +24,7 @@ import retrofit2.HttpException
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val bugReportRepository: BugReportRepository,
     private val authTokenStorage: AuthTokenStorage,
     @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
@@ -222,6 +224,84 @@ class MyPageViewModel @Inject constructor(
         }
     }
 
+    fun onBugReportTitleChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportTitle = value,
+                bugReportToastMessage = null
+            )
+        }
+    }
+
+    fun onBugReportContentChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportContent = value,
+                bugReportToastMessage = null
+            )
+        }
+    }
+
+    fun submitBugReport() {
+        val current = _uiState.value
+        val title = current.bugReportTitle.trim()
+        val content = current.bugReportContent.trim()
+
+        if (current.isSubmittingBugReport) {
+            return
+        }
+        if (title.isBlank() || content.isBlank()) {
+            _uiState.update {
+                it.copy(bugReportToastMessage = "제목과 내용을 모두 입력해 주세요.")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSubmittingBugReport = true,
+                    bugReportToastMessage = null
+                )
+            }
+
+            runCatching {
+                val response = bugReportRepository.createBugReport(
+                    title = title,
+                    content = content
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            bugReportTitle = "",
+                            bugReportContent = "",
+                            isSubmittingBugReport = false,
+                            bugReportToastMessage = "버그 신고가 접수되었습니다."
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingBugReport = false,
+                            bugReportToastMessage = mapBugReportErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onBugReportToastConsumed() {
+        _uiState.update {
+            it.copy(bugReportToastMessage = null)
+        }
+    }
+
     fun logout() {
         authTokenStorage.clearAccessToken()
         _uiState.update {
@@ -349,6 +429,21 @@ class MyPageViewModel @Inject constructor(
             is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
             is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
             else -> error.message ?: "회원 탈퇴에 실패했습니다."
+        }
+    }
+
+    private fun mapBugReportErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                400 -> "버그 신고 내용을 확인해 주세요."
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "버그 신고에 실패했습니다. (${error.code()})"
+            }
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> error.message ?: "버그 신고에 실패했습니다."
         }
     }
 
