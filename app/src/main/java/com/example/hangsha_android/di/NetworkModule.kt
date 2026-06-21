@@ -4,6 +4,7 @@ import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.api.BugReportApi
+import com.example.hangsha_android.data.network.api.CategoryApi
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
@@ -113,5 +114,13 @@ object NetworkModule {
         retrofit: Retrofit
     ): BugReportApi {
         return retrofit.create(BugReportApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCategoryApi(
+        retrofit: Retrofit
+    ): CategoryApi {
+        return retrofit.create(CategoryApi::class.java)
     }
 }

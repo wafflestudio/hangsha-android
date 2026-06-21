@@ -1,5 +1,6 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.network.api.CategoryApi
 import com.example.hangsha_android.data.network.model.OrganizationCategoryResponse
 import com.example.hangsha_android.data.network.api.UserApi
 import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
@@ -21,7 +22,8 @@ import retrofit2.Response
 
 @Singleton
 class UserRepository @Inject constructor(
-    private val userApi: UserApi
+    private val userApi: UserApi,
+    private val categoryApi: CategoryApi
 ) {
     private val _organizationNames = MutableStateFlow<Map<Long, String>>(emptyMap())
     val organizationNames: StateFlow<Map<Long, String>> = _organizationNames.asStateFlow()
@@ -85,7 +87,7 @@ class UserRepository @Inject constructor(
             return
         }
 
-        val response = userApi.getOrganizationCategories()
+        val response = categoryApi.getOrganizationCategories()
         if (!response.isSuccessful) {
             throw HttpException(response)
         }
