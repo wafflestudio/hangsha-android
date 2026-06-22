@@ -42,6 +42,9 @@ import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
+private val SelectedCategoryChipColor = Color(0xFF9E9E9E)
+
+// 관심사 설정 화면 구성
 @Composable
 fun InterestPriorityScreen(
     uiState: InterestPriorityUiState,
@@ -111,6 +114,17 @@ fun InterestPriorityScreen(
                     selectedIds = uiState.selectedCategoryIds,
                     categoriesById = categoriesById
                 )
+                if (uiState.saveErrorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.saveErrorMessage,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFFF4B4B),
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Spacer(modifier = Modifier.height(18.dp))
             }
 
@@ -156,7 +170,7 @@ fun InterestPriorityScreen(
             }
         }
 
-        if (uiState.isLoading) {
+        if (uiState.isLoading || uiState.isSaving) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -174,7 +188,7 @@ fun InterestPriorityScreen(
         ) {
             Button(
                 onClick = onDoneClick,
-                enabled = !uiState.isLoading,
+                enabled = !uiState.isLoading && !uiState.isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 22.dp, vertical = 14.dp)
@@ -187,16 +201,25 @@ fun InterestPriorityScreen(
                     disabledContentColor = PureWhite
                 )
             ) {
-                Text(
-                    text = "완료",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = PureWhite
+                    )
+                } else {
+                    Text(
+                        text = "완료",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
 
+// 선택 우선순위 행 구성
 @Composable
 private fun SelectedInterestPriorityRow(
     selectedIds: List<Long>,
@@ -219,6 +242,7 @@ private fun SelectedInterestPriorityRow(
     }
 }
 
+// 선택 우선순위 알약 구성
 @Composable
 private fun SelectedPriorityChip(text: String) {
     Box(
@@ -240,6 +264,7 @@ private fun SelectedPriorityChip(text: String) {
     }
 }
 
+// 카테고리 묶음 구성
 @Composable
 private fun InterestCategorySection(
     title: String,
@@ -274,6 +299,7 @@ private fun InterestCategorySection(
     }
 }
 
+// 카테고리 알약 구성
 @Composable
 private fun InterestCategoryChip(
     text: String,
@@ -284,10 +310,10 @@ private fun InterestCategoryChip(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(if (selectedOrder == null) color else color.copy(alpha = 0.78f))
+            .background(if (selectedOrder == null) color else SelectedCategoryChipColor)
             .then(
                 if (selectedOrder != null) {
-                    Modifier.border(1.dp, Ink100.copy(alpha = 0.18f), RoundedCornerShape(100.dp))
+                    Modifier.border(1.dp, Color(0xFF8A8A8A), RoundedCornerShape(100.dp))
                 } else {
                     Modifier
                 }

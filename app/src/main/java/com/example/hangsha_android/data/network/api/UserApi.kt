@@ -1,6 +1,7 @@
 package com.example.hangsha_android.data.network.api
 
 import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
+import com.example.hangsha_android.data.network.model.UpdateInterestCategoriesRequest
 import com.example.hangsha_android.data.network.model.UserProfileResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -12,6 +13,7 @@ import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.PUT
 
 interface UserApi {
     @GET("api/v1/users/me")
@@ -30,4 +32,9 @@ interface UserApi {
     suspend fun uploadMyProfileImage(
         @Part file: MultipartBody.Part
     ): Response<ProfileImageUploadResponse>
+
+    @PUT("api/v1/users/me/interest-categories")
+    suspend fun updateMyInterestCategories(
+        @Body request: UpdateInterestCategoriesRequest
+    ): Response<Unit>
 }

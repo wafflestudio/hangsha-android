@@ -2,9 +2,12 @@ package com.example.hangsha_android.ui.view.interestpriority
 
 data class InterestPriorityUiState(
     val isLoading: Boolean = true,
+    val isSaving: Boolean = false,
     val categoryGroups: List<InterestCategoryGroupUiModel> = emptyList(),
     val selectedCategoryIds: List<Long> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val saveErrorMessage: String? = null,
+    val isSaveSuccessful: Boolean = false
 )
 
 data class InterestCategoryGroupUiModel(

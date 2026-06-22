@@ -29,12 +29,15 @@ class InterestPriorityViewModel @Inject constructor(
         load()
     }
 
+    // 관심사 데이터 로드
     fun load() {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
-                    errorMessage = null
+                    errorMessage = null,
+                    saveErrorMessage = null,
+                    isSaveSuccessful = false
                 )
             }
 
@@ -96,7 +99,8 @@ class InterestPriorityViewModel @Inject constructor(
                             isLoading = false,
                             selectedCategoryIds = selectedIds,
                             categoryGroups = groups,
-                            errorMessage = null
+                            errorMessage = null,
+                            saveErrorMessage = null
                         )
                     }
                 },
@@ -112,6 +116,7 @@ class InterestPriorityViewModel @Inject constructor(
         }
     }
 
+    // 카테고리 선택 토글
     fun toggleCategory(categoryId: Long) {
         _uiState.update { current ->
             val selectedIds = current.selectedCategoryIds
@@ -121,10 +126,67 @@ class InterestPriorityViewModel @Inject constructor(
                 else -> selectedIds
             }
 
-            current.copy(selectedCategoryIds = updatedIds)
+            current.copy(
+                selectedCategoryIds = updatedIds,
+                saveErrorMessage = null,
+                isSaveSuccessful = false
+            )
         }
     }
 
+    // 관심사 우선순위 저장
+    fun save() {
+        val selectedIds = _uiState.value.selectedCategoryIds.take(MAX_INTEREST_PRIORITY_COUNT)
+        if (_uiState.value.isSaving) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSaving = true,
+                    saveErrorMessage = null,
+                    isSaveSuccessful = false
+                )
+            }
+
+            runCatching {
+                val response = userRepository.updateMyInterestCategories(selectedIds)
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            selectedCategoryIds = selectedIds,
+                            saveErrorMessage = null,
+                            isSaveSuccessful = true
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            saveErrorMessage = mapSaveErrorMessage(error),
+                            isSaveSuccessful = false
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    // 저장 성공 소비
+    fun onSaveSuccessConsumed() {
+        _uiState.update {
+            it.copy(isSaveSuccessful = false)
+        }
+    }
+
+    // 오류 문구 매핑
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
@@ -138,8 +200,25 @@ class InterestPriorityViewModel @Inject constructor(
             else -> error.message ?: "카테고리 목록을 불러오지 못했습니다."
         }
     }
+
+    // 저장 오류 문구 매핑
+    private fun mapSaveErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                400 -> "관심사 우선순위를 확인해 주세요."
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "관심사 우선순위 저장에 실패했습니다. (${error.code()})"
+            }
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> error.message ?: "관심사 우선순위 저장에 실패했습니다."
+        }
+    }
 }
 
+// 그룹 표시 순서 계산
 private fun interestGroupDisplayOrder(groupName: String): Int {
     return when (groupName) {
         "프로그램 유형" -> 0
