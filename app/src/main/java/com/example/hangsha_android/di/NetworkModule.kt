@@ -3,6 +3,7 @@ package com.example.hangsha_android.di
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.AuthApi
+import com.example.hangsha_android.data.network.api.BookmarkApi
 import com.example.hangsha_android.data.network.api.BugReportApi
 import com.example.hangsha_android.data.network.api.CategoryApi
 import com.example.hangsha_android.data.network.api.EventApi
@@ -98,6 +99,14 @@ object NetworkModule {
         retrofit: Retrofit
     ): EventApi {
         return retrofit.create(EventApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookmarkApi(
+        retrofit: Retrofit
+    ): BookmarkApi {
+        return retrofit.create(BookmarkApi::class.java)
     }
 
     @Provides

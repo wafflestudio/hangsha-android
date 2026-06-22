@@ -80,6 +80,7 @@ fun MyPageScreen(
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
     onInterestPriorityClick: () -> Unit,
+    onBookmarksClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onBugReportTitleChanged: (String) -> Unit,
     onBugReportContentChanged: (String) -> Unit,
@@ -139,7 +140,8 @@ fun MyPageScreen(
                                 )
                             },
                             emptyTitle = "아직 찜한 행사가 없습니다.",
-                            emptyDescription = "관심있는 행사를 찜해보세요."
+                            emptyDescription = "관심있는 행사를 찜해보세요.",
+                            onClick = onBookmarksClick
                         )
                         Spacer(modifier = Modifier.height(28.dp))
                         EmptyShortcutSection(
@@ -479,9 +481,20 @@ private fun EmptyShortcutSection(
     title: String,
     icon: @Composable () -> Unit,
     emptyTitle: String,
-    emptyDescription: String
+    emptyDescription: String,
+    onClick: (() -> Unit)? = null
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
