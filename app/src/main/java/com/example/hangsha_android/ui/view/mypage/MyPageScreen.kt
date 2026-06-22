@@ -79,6 +79,7 @@ fun MyPageScreen(
     onDraftProfileImageSelected: (android.net.Uri) -> Unit,
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
+    onInterestPriorityClick: () -> Unit,
     onLogoutClick: () -> Unit,
     onBugReportTitleChanged: (String) -> Unit,
     onBugReportContentChanged: (String) -> Unit,
@@ -120,7 +121,10 @@ fun MyPageScreen(
                             onSaveProfileEdit = onSaveProfileEdit
                         )
                         Spacer(modifier = Modifier.height(20.dp))
-                        PrioritySection(interests = uiState.interests)
+                        PrioritySection(
+                            interests = uiState.interests,
+                            onClick = onInterestPriorityClick
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         TimetableRegistrationRow()
                         Spacer(modifier = Modifier.height(29.dp))
@@ -361,9 +365,14 @@ private fun DeleteAccountDialog(
 }
 
 @Composable
-private fun PrioritySection(interests: List<String>) {
+private fun PrioritySection(
+    interests: List<String>,
+    onClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = PureWhite,
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)
@@ -392,7 +401,7 @@ private fun PrioritySection(interests: List<String>) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                interests.take(4).forEachIndexed { index, interest ->
+                interests.take(3).forEachIndexed { index, interest ->
                     PriorityChip(
                         text = "${index + 1}순위: $interest",
                         color = PriorityChipColors[index % PriorityChipColors.size]

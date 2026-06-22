@@ -39,6 +39,8 @@ import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
+import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
+import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
@@ -54,6 +56,7 @@ sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
     data object SignUp : HangshaDestinations("sign_up")
     data object Main : HangshaDestinations("main")
+    data object InterestPriority : HangshaDestinations("interest_priority")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
@@ -356,15 +359,54 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(BottomTab.Bookmarks.route) {
             SimplePageText("bookmark events")
         }
+        composable(HangshaDestinations.InterestPriority.route) {
+            val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
+            val interestPriorityUiState by interestPriorityViewModel.uiState.collectAsState()
+
+            LaunchedEffect(interestPriorityUiState.isSaveSuccessful) {
+                if (!interestPriorityUiState.isSaveSuccessful) {
+                    return@LaunchedEffect
+                }
+
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    InterestPriorityNavigationKeys.updatedKey,
+                    true
+                )
+                navController.popBackStack()
+                interestPriorityViewModel.onSaveSuccessConsumed()
+            }
+
+            InterestPriorityScreen(
+                uiState = interestPriorityUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onCategoryClick = { categoryId ->
+                    interestPriorityViewModel.toggleCategory(categoryId)
+                },
+                onRetryClick = { interestPriorityViewModel.load() },
+                onDoneClick = { interestPriorityViewModel.save() }
+            )
+        }
         composable(BottomTab.MyPage.route) {
             val myPageViewModel: MyPageViewModel = hiltViewModel()
             val myPageUiState by myPageViewModel.uiState.collectAsState()
             val context = LocalContext.current
+            val myPageSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+            val interestPriorityUpdated = myPageSavedStateHandle
+                ?.get<Boolean>(InterestPriorityNavigationKeys.updatedKey)
 
             LaunchedEffect(myPageUiState.profileSaveToastMessage) {
                 val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 myPageViewModel.onProfileSaveToastConsumed()
+            }
+
+            LaunchedEffect(interestPriorityUpdated) {
+                if (interestPriorityUpdated != true) {
+                    return@LaunchedEffect
+                }
+
+                myPageViewModel.loadMyProfile()
+                myPageSavedStateHandle.remove<Boolean>(InterestPriorityNavigationKeys.updatedKey)
             }
 
             LaunchedEffect(myPageUiState.bugReportToastMessage) {
@@ -398,6 +440,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     myPageViewModel.markDraftProfileImageDeleted()
                 },
                 onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
+                onInterestPriorityClick = {
+                    navController.navigate(HangshaDestinations.InterestPriority.route)
+                },
                 onLogoutClick = { myPageViewModel.logout() },
                 onBugReportTitleChanged = { value ->
                     myPageViewModel.onBugReportTitleChanged(value)
@@ -433,6 +478,10 @@ private object CalendarFilterNavigationKeys {
     const val eventTypeIdsKey = "calendar_event_type_ids"
     const val excludedKeywordsKey = "calendar_excluded_keywords"
     const val hasAppliedServerFiltersKey = "calendar_has_applied_server_filters"
+}
+
+private object InterestPriorityNavigationKeys {
+    const val updatedKey = "interest_priority_updated"
 }
 
 private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(

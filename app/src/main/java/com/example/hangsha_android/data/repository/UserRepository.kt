@@ -1,8 +1,11 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.network.api.CategoryApi
 import com.example.hangsha_android.data.network.model.OrganizationCategoryResponse
 import com.example.hangsha_android.data.network.api.UserApi
 import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
+import com.example.hangsha_android.data.network.model.UpdateInterestCategoriesRequest
+import com.example.hangsha_android.data.network.model.UpdateInterestCategoryItemRequest
 import com.example.hangsha_android.data.network.model.UpdateUserProfileRequest
 import com.example.hangsha_android.data.network.model.UserProfileResponse
 import java.io.File
@@ -21,7 +24,8 @@ import retrofit2.Response
 
 @Singleton
 class UserRepository @Inject constructor(
-    private val userApi: UserApi
+    private val userApi: UserApi,
+    private val categoryApi: CategoryApi
 ) {
     private val _organizationNames = MutableStateFlow<Map<Long, String>>(emptyMap())
     val organizationNames: StateFlow<Map<Long, String>> = _organizationNames.asStateFlow()
@@ -32,6 +36,20 @@ class UserRepository @Inject constructor(
 
     suspend fun deleteMyAccount(): Response<Unit> {
         return userApi.deleteMyAccount()
+    }
+
+    suspend fun updateMyInterestCategories(categoryIds: List<Long>): Response<Unit> {
+        val request = UpdateInterestCategoriesRequest(
+            items = categoryIds
+                .take(MAX_INTEREST_PRIORITY_COUNT)
+                .mapIndexed { index, categoryId ->
+                    UpdateInterestCategoryItemRequest(
+                        categoryId = categoryId,
+                        priority = index + 1
+                    )
+                }
+        )
+        return userApi.updateMyInterestCategories(request)
     }
 
     suspend fun uploadMyProfileImage(
@@ -85,7 +103,7 @@ class UserRepository @Inject constructor(
             return
         }
 
-        val response = userApi.getOrganizationCategories()
+        val response = categoryApi.getOrganizationCategories()
         if (!response.isSuccessful) {
             throw HttpException(response)
         }
@@ -144,4 +162,5 @@ private fun OrganizationCategoryResponse?.toOrganizationNameMap(): Map<Long, Str
 
 private const val ENGLISH_USERNAME_MAX_LENGTH = 20
 private const val KOREAN_USERNAME_MAX_LENGTH = 10
+private const val MAX_INTEREST_PRIORITY_COUNT = 3
 private const val JSON_MEDIA_TYPE = "application/json; charset=utf-8"

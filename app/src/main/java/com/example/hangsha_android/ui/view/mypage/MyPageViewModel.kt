@@ -54,6 +54,9 @@ class MyPageViewModel @Inject constructor(
                 response.body() ?: throw IllegalStateException("Profile response was empty.")
             }.fold(
                 onSuccess = { profile ->
+                    val sortedInterests = profile.interestCategories
+                        .orEmpty()
+                        .sortedBy { interest -> interest.priority }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -64,10 +67,7 @@ class MyPageViewModel @Inject constructor(
                             draftProfileImageUrl = profile.profileImageUrl,
                             draftProfileImageUri = null,
                             isProfileImageMarkedForDeletion = false,
-                            interests = profile.interestCategories
-                                .orEmpty()
-                                .sortedBy { interest -> interest.priority }
-                                .map { interest -> interest.category.name },
+                            interests = sortedInterests.map { interest -> interest.category.name },
                             usernameErrorMessage = null,
                             profileSaveErrorMessage = null,
                             errorMessage = null
