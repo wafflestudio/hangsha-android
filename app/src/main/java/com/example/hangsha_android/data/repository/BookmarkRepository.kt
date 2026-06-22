@@ -2,7 +2,9 @@ package com.example.hangsha_android.data.repository
 
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.local.BookmarksLocalDataSource
+import com.example.hangsha_android.data.network.api.BookmarkApi
 import com.example.hangsha_android.data.network.api.EventApi
+import com.example.hangsha_android.data.network.model.BookmarkedEventsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,7 @@ import retrofit2.HttpException
 @Singleton
 class BookmarkRepository @Inject constructor(
     private val eventApi: EventApi,
+    private val bookmarkApi: BookmarkApi,
     private val localDataSource: BookmarksLocalDataSource,
     private val authTokenStorage: AuthTokenStorage
 ) {
@@ -68,6 +71,13 @@ class BookmarkRepository @Inject constructor(
 
             updatedEventIds
         }
+    }
+
+    suspend fun getMyBookmarks(
+        page: Int,
+        size: Int
+    ): retrofit2.Response<BookmarkedEventsResponse> {
+        return bookmarkApi.getMyBookmarks(page = page, size = size)
     }
 
     suspend fun syncKnownRemoteBookmarks(

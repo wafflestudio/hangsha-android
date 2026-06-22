@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,7 +29,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import androidx.navigation.navArgument
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.ui.view.bookmarks.BookmarksScreen
+import com.example.hangsha_android.ui.view.bookmarks.BookmarksViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
@@ -57,6 +63,7 @@ sealed class HangshaDestinations(val route: String) {
     data object SignUp : HangshaDestinations("sign_up")
     data object Main : HangshaDestinations("main")
     data object InterestPriority : HangshaDestinations("interest_priority")
+    data object MyBookmarks : HangshaDestinations("my_bookmarks")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
@@ -349,7 +356,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             EventDetailScreen(
                 uiState = eventDetailUiState,
                 onNavigateBack = { navController.popBackStack() },
-                onBookmarkClick = { eventDetailViewModel.toggleBookmark() },
+                onBookmarkClick = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        MyBookmarksNavigationKeys.bookmarkChangedKey,
+                        true
+                    )
+                    eventDetailViewModel.toggleBookmark()
+                },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }
@@ -358,6 +371,61 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
         composable(BottomTab.Bookmarks.route) {
             SimplePageText("bookmark events")
+        }
+        composable(HangshaDestinations.MyBookmarks.route) {
+            val bookmarksViewModel: BookmarksViewModel = hiltViewModel()
+            val bookmarksUiState by bookmarksViewModel.uiState.collectAsState()
+            val myBookmarksSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+            val bookmarkChanged = myBookmarksSavedStateHandle
+                ?.get<Boolean>(MyBookmarksNavigationKeys.bookmarkChangedKey)
+            val lifecycleOwner = LocalLifecycleOwner.current
+
+            LaunchedEffect(Unit) {
+                bookmarksViewModel.refreshFromServerKeepingScroll()
+            }
+
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        bookmarksViewModel.refreshFromServerKeepingScroll()
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            LaunchedEffect(bookmarkChanged) {
+                if (bookmarkChanged != true) {
+                    return@LaunchedEffect
+                }
+
+                bookmarksViewModel.refreshFromServerKeepingScroll()
+                myBookmarksSavedStateHandle.remove<Boolean>(
+                    MyBookmarksNavigationKeys.bookmarkChangedKey
+                )
+            }
+
+            BookmarksScreen(
+                uiState = bookmarksUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onBookmarkClick = { eventId ->
+                    bookmarksViewModel.removeBookmark(eventId)
+                },
+                onRetryClick = { bookmarksViewModel.loadFirstPage() },
+                onLoadNextPage = { bookmarksViewModel.loadNextPage() },
+                onScrollPositionChanged = { index, offset, itemId ->
+                    bookmarksViewModel.saveScrollPosition(
+                        firstVisibleItemIndex = index,
+                        firstVisibleItemOffset = offset,
+                        firstVisibleItemId = itemId
+                    )
+                }
+            )
         }
         composable(HangshaDestinations.InterestPriority.route) {
             val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
@@ -443,6 +511,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onInterestPriorityClick = {
                     navController.navigate(HangshaDestinations.InterestPriority.route)
                 },
+                onBookmarksClick = {
+                    navController.navigate(HangshaDestinations.MyBookmarks.route)
+                },
                 onLogoutClick = { myPageViewModel.logout() },
                 onBugReportTitleChanged = { value ->
                     myPageViewModel.onBugReportTitleChanged(value)
@@ -482,6 +553,10 @@ private object CalendarFilterNavigationKeys {
 
 private object InterestPriorityNavigationKeys {
     const val updatedKey = "interest_priority_updated"
+}
+
+private object MyBookmarksNavigationKeys {
+    const val bookmarkChangedKey = "my_bookmarks_bookmark_changed"
 }
 
 private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
