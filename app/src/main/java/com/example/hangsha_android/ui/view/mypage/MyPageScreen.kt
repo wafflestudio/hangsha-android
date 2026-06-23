@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -49,19 +53,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
+import com.example.hangsha_android.ui.view.event.eventTypeColor
 
 private val DividerColor = Color(0xFFE7E7E7)
 private val BorderColor = Color(0xFFCACACA)
 private val MutedIconColor = Color(0xFF9B9B9B)
+private val BookmarkPreviewImageBackground = Color(0xFFE8F3EC)
 private val PriorityChipColors = listOf(
     Color(0xFF88D6F8),
     Color(0xFF83C9F4),
@@ -81,6 +90,7 @@ fun MyPageScreen(
     onSaveProfileEdit: () -> Unit,
     onInterestPriorityClick: () -> Unit,
     onBookmarksClick: () -> Unit,
+    onBookmarkedEventClick: (Long) -> Unit,
     onLogoutClick: () -> Unit,
     onBugReportTitleChanged: (String) -> Unit,
     onBugReportContentChanged: (String) -> Unit,
@@ -129,19 +139,14 @@ fun MyPageScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         TimetableRegistrationRow()
                         Spacer(modifier = Modifier.height(29.dp))
-                        EmptyShortcutSection(
-                            title = "찜 목록",
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.Bookmark,
-                                    contentDescription = null,
-                                    tint = MutedIconColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            emptyTitle = "아직 찜한 행사가 없습니다.",
-                            emptyDescription = "관심있는 행사를 찜해보세요.",
-                            onClick = onBookmarksClick
+                        BookmarksPreviewSection(
+                            items = uiState.bookmarkedEvents,
+                            isLoading = uiState.isBookmarksPreviewLoading,
+                            errorMessage = uiState.bookmarksPreviewErrorMessage,
+                            hasMoreItems = uiState.hasMoreBookmarkedEvents,
+                            onHeaderClick = onBookmarksClick,
+                            onEventClick = onBookmarkedEventClick,
+                            onMoreClick = onBookmarksClick
                         )
                         Spacer(modifier = Modifier.height(28.dp))
                         EmptyShortcutSection(
@@ -470,6 +475,248 @@ private fun TimetableRegistrationRow() {
                 color = Ink100,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+// 찜 목록 미리보기 영역
+@Composable
+private fun BookmarksPreviewSection(
+    items: List<BookmarkedEventItem>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    hasMoreItems: Boolean,
+    onHeaderClick: () -> Unit,
+    onEventClick: (Long) -> Unit,
+    onMoreClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ShortcutSectionHeader(
+            title = "찜 목록",
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.Bookmark,
+                    contentDescription = null,
+                    tint = MutedIconColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            onClick = onHeaderClick
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(124.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                }
+            }
+
+            errorMessage != null -> {
+                Text(
+                    text = errorMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            items.isEmpty() -> {
+                Text(
+                    text = "아직 찜한 행사가 없습니다.\n관심있는 행사를 찜해보세요.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            else -> {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(
+                        items = items,
+                        key = { item -> item.id }
+                    ) { item ->
+                        BookmarkedEventPreviewCard(
+                            item = item,
+                            onClick = { onEventClick(item.id) }
+                        )
+                    }
+                    if (hasMoreItems) {
+                        item {
+                            MoreBookmarksPreviewCard(onClick = onMoreClick)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 섹션 제목 이동
+@Composable
+private fun ShortcutSectionHeader(
+    title: String,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink100,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        icon()
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = "$title 이동",
+            tint = MutedIconColor,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+// 찜 행사 미리보기 카드
+@Composable
+private fun BookmarkedEventPreviewCard(
+    item: BookmarkedEventItem,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(180.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.78f)
+                .clip(RoundedCornerShape(7.dp))
+                .background(BookmarkPreviewImageBackground)
+        ) {
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(27.dp)
+                    .clip(CircleShape)
+                    .background(eventTypeColor(item.eventTypeId))
+            )
+            Spacer(modifier = Modifier.width(9.dp))
+            Text(
+                text = item.dDayLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink100,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink100,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(7.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = item.applyPeriodDisplay,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink60,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = item.organization.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink60,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// 추가 찜 목록 안내
+@Composable
+private fun MoreBookmarksPreviewCard(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .width(180.dp)
+            .height(202.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(7.dp),
+        color = Color(0xFFF7F7F7),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DividerColor)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "더 자세한 내용은\n찜 목록 페이지에서\n확인해 주세요.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink60,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "찜 목록 이동",
+                tint = MutedIconColor,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
