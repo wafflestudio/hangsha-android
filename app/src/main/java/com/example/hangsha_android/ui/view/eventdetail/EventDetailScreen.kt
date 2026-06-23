@@ -61,6 +61,12 @@ fun EventDetailScreen(
     uiState: EventDetailUiState,
     onNavigateBack: () -> Unit,
     onBookmarkClick: () -> Unit,
+    onMemoClick: () -> Unit,
+    onMemoContentChanged: (String) -> Unit,
+    onMemoTagInputChanged: (String) -> Unit,
+    onAddMemoTag: () -> Unit,
+    onRemoveMemoTag: (String) -> Unit,
+    onSaveMemoClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
     Box(
@@ -84,9 +90,16 @@ fun EventDetailScreen(
             uiState.item != null -> {
                 // 본문
                 EventDetailContent(
+                    uiState = uiState,
                     item = uiState.item,
                     onNavigateBack = onNavigateBack,
-                    onBookmarkClick = onBookmarkClick
+                    onBookmarkClick = onBookmarkClick,
+                    onMemoClick = onMemoClick,
+                    onMemoContentChanged = onMemoContentChanged,
+                    onMemoTagInputChanged = onMemoTagInputChanged,
+                    onAddMemoTag = onAddMemoTag,
+                    onRemoveMemoTag = onRemoveMemoTag,
+                    onSaveMemoClick = onSaveMemoClick
                 )
             }
         }
@@ -95,9 +108,16 @@ fun EventDetailScreen(
 
 @Composable
 private fun EventDetailContent(
+    uiState: EventDetailUiState,
     item: EventDetailItem,
     onNavigateBack: () -> Unit,
-    onBookmarkClick: () -> Unit
+    onBookmarkClick: () -> Unit,
+    onMemoClick: () -> Unit,
+    onMemoContentChanged: (String) -> Unit,
+    onMemoTagInputChanged: (String) -> Unit,
+    onAddMemoTag: () -> Unit,
+    onRemoveMemoTag: (String) -> Unit,
+    onSaveMemoClick: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -256,6 +276,24 @@ private fun EventDetailContent(
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 }
+            )
+        }
+
+        // 메모 기능 - 별도 파일로 분리
+        item {
+            EventDetailMemoSection(
+                isOpen = uiState.isMemoEditorOpen,
+                savedMemo = uiState.savedMemo,
+                content = uiState.memoContent,
+                tagInput = uiState.memoTagInput,
+                tagNames = uiState.memoTagNames,
+                isSaving = uiState.isMemoSaving,
+                onOpen = onMemoClick,
+                onContentChanged = onMemoContentChanged,
+                onTagInputChanged = onMemoTagInputChanged,
+                onAddTag = onAddMemoTag,
+                onRemoveTag = onRemoveMemoTag,
+                onSaveClick = onSaveMemoClick
             )
             Spacer(modifier = Modifier.height(24.dp))
         }

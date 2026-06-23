@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
+import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.BugReportRepository
+import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,6 +36,7 @@ class MyPageViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val bugReportRepository: BugReportRepository,
+    private val memoRepository: MemoRepository,
     private val authTokenStorage: AuthTokenStorage,
     @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
@@ -41,10 +44,12 @@ class MyPageViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MyPageUiState())
     val uiState: StateFlow<MyPageUiState> = _uiState.asStateFlow()
     private var isBookmarksPreviewInFlight = false
+    private var isMemosPreviewInFlight = false
 
     init {
         loadMyProfile()
         loadBookmarkedEventPreview()
+        loadMemoPreview()
     }
 
     fun loadMyProfile() {
@@ -148,6 +153,53 @@ class MyPageViewModel @Inject constructor(
                 )
             } finally {
                 isBookmarksPreviewInFlight = false
+            }
+        }
+    }
+
+    fun loadMemoPreview() {
+        if (isMemosPreviewInFlight) {
+            return
+        }
+
+        isMemosPreviewInFlight = true
+        viewModelScope.launch {
+            try {
+                _uiState.update {
+                    it.copy(
+                        isMemosPreviewLoading = it.memoItems.isEmpty(),
+                        memosPreviewErrorMessage = null
+                    )
+                }
+
+                runCatching {
+                    val response = memoRepository.getMemos()
+                    if (!response.isSuccessful) {
+                        throw HttpException(response)
+                    }
+
+                    response.body() ?: throw IllegalStateException("Memos response was empty.")
+                }.fold(
+                    onSuccess = { body ->
+                        _uiState.update {
+                            it.copy(
+                                memoItems = body.items.map { memo -> memo.toMyPageMemoItem() },
+                                isMemosPreviewLoading = false,
+                                memosPreviewErrorMessage = null
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isMemosPreviewLoading = false,
+                                memosPreviewErrorMessage = mapMemosPreviewErrorMessage(error)
+                            )
+                        }
+                    }
+                )
+            } finally {
+                isMemosPreviewInFlight = false
             }
         }
     }
@@ -527,6 +579,20 @@ class MyPageViewModel @Inject constructor(
         }
     }
 
+    private fun mapMemosPreviewErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "메모 목록을 불러오지 못했습니다. (${error.code()})"
+            }
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> error.message ?: "메모 목록을 불러오지 못했습니다."
+        }
+    }
+
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "No internet connection. Please check your network."
@@ -574,6 +640,19 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     )
 }
 
+private fun MemoResponse.toMyPageMemoItem(): MyPageMemoItem {
+    return MyPageMemoItem(
+        id = id,
+        eventId = eventId,
+        eventTitle = eventTitle,
+        content = content,
+        tagNames = tags.map { tag -> tag.name },
+        updatedDateDisplay = formatMemoDate(updatedAt)
+            ?: formatMemoDate(createdAt)
+            ?: "-"
+    )
+}
+
 private fun parseDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) {
         return null
@@ -584,6 +663,11 @@ private fun parseDate(value: String?): LocalDate? {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }
     }
+}
+
+private fun formatMemoDate(value: String?): String? {
+    val date = parseDate(value)
+    return date?.format(FullDateFormatter)
 }
 
 private fun formatPeriod(

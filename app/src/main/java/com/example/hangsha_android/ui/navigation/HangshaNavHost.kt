@@ -352,6 +352,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) {
             val eventDetailViewModel: EventDetailViewModel = hiltViewModel()
             val eventDetailUiState by eventDetailViewModel.uiState.collectAsState()
+            val context = LocalContext.current
+
+            LaunchedEffect(eventDetailUiState.memoSaveMessage) {
+                val message = eventDetailUiState.memoSaveMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                eventDetailViewModel.onMemoSaveMessageConsumed()
+            }
 
             EventDetailScreen(
                 uiState = eventDetailUiState,
@@ -363,6 +370,16 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     )
                     eventDetailViewModel.toggleBookmark()
                 },
+                onMemoClick = { eventDetailViewModel.openMemoEditor() },
+                onMemoContentChanged = { value ->
+                    eventDetailViewModel.onMemoContentChanged(value)
+                },
+                onMemoTagInputChanged = { value ->
+                    eventDetailViewModel.onMemoTagInputChanged(value)
+                },
+                onAddMemoTag = { eventDetailViewModel.addMemoTag() },
+                onRemoveMemoTag = { tagName -> eventDetailViewModel.removeMemoTag(tagName) },
+                onSaveMemoClick = { eventDetailViewModel.saveMemo() },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }
@@ -488,6 +505,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         myPageViewModel.loadBookmarkedEventPreview()
+                        myPageViewModel.loadMemoPreview()
                     }
                 }
                 myPageLifecycleOwner.lifecycle.addObserver(observer)
@@ -528,6 +546,12 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     navController.navigate(HangshaDestinations.MyBookmarks.route)
                 },
                 onBookmarkedEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onMemoListClick = {
+                    // TODO: Navigate to the memo detail/list page when that screen is implemented.
+                },
+                onMemoEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
                 onLogoutClick = { myPageViewModel.logout() },

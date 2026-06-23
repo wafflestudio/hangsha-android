@@ -307,7 +307,6 @@ private fun FilterButton(
         }
 
         if (hasActiveFilters) {
-            // TODO: 필터 적용 여부를 알려 주는 작은 배지 점
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)

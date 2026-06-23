@@ -8,6 +8,7 @@ import com.example.hangsha_android.data.network.api.BugReportApi
 import com.example.hangsha_android.data.network.api.CategoryApi
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
+import com.example.hangsha_android.data.network.api.MemoApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
 import com.example.hangsha_android.data.network.api.UserApi
 import dagger.Module
@@ -123,6 +124,14 @@ object NetworkModule {
         retrofit: Retrofit
     ): BugReportApi {
         return retrofit.create(BugReportApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMemoApi(
+        retrofit: Retrofit
+    ): MemoApi {
+        return retrofit.create(MemoApi::class.java)
     }
 
     @Provides

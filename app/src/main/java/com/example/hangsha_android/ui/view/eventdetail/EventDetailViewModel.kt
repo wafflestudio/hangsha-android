@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
+import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +33,7 @@ import retrofit2.Response
 class EventDetailViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val memoRepository: MemoRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val eventId = savedStateHandle.get<Long>(HangshaDestinations.EventDetail.eventIdArg) ?: -1L
@@ -39,6 +42,7 @@ class EventDetailViewModel @Inject constructor(
     val uiState: StateFlow<EventDetailUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var memoLoadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -47,10 +51,12 @@ class EventDetailViewModel @Inject constructor(
             }
         }
         loadEventDetail()
+        loadMemoForEvent()
     }
 
     fun retry() {
         loadEventDetail()
+        loadMemoForEvent()
     }
 
     fun toggleBookmark() {
@@ -78,6 +84,124 @@ class EventDetailViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    fun openMemoEditor() {
+        _uiState.update {
+            val savedMemo = it.savedMemo
+            if (savedMemo == null) {
+                it.copy(isMemoEditorOpen = true)
+            } else {
+                it.copy(
+                    isMemoEditorOpen = true,
+                    memoContent = savedMemo.content,
+                    memoTagInput = "",
+                    memoTagNames = savedMemo.tagNames
+                )
+            }
+        }
+    }
+
+    fun onMemoContentChanged(value: String) {
+        _uiState.update {
+            it.copy(memoContent = value)
+        }
+    }
+
+    fun onMemoTagInputChanged(value: String) {
+        _uiState.update {
+            it.copy(memoTagInput = value)
+        }
+    }
+
+    fun addMemoTag() {
+        val tagName = _uiState.value.memoTagInput.trim()
+        if (tagName.isBlank()) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                memoTagInput = "",
+                memoTagNames = (it.memoTagNames + tagName).distinct()
+            )
+        }
+    }
+
+    fun removeMemoTag(tagName: String) {
+        _uiState.update {
+            it.copy(memoTagNames = it.memoTagNames - tagName)
+        }
+    }
+
+    fun saveMemo() {
+        val currentState = _uiState.value
+        val currentItem = currentState.item ?: return
+        val content = currentState.memoContent.trim()
+        if (content.isBlank()) {
+            _uiState.update {
+                it.copy(memoSaveMessage = "메모를 입력해주세요.")
+            }
+            return
+        }
+
+        if (currentState.isMemoSaving) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(isMemoSaving = true, memoSaveMessage = null)
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                val savedMemo = currentState.savedMemo
+                if (savedMemo == null) {
+                    val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                    memoRepository.createMemo(
+                        eventId = currentItem.id,
+                        content = content,
+                        tagNames = tagNames
+                    ).requireBody("Memo response was empty.")
+                } else {
+                    memoRepository.updateMemo(
+                        memoId = savedMemo.id,
+                        content = content
+                    ).requireBody("Memo response was empty.")
+                }
+            }.fold(
+                onSuccess = { memo ->
+                    _uiState.update {
+                        val savedMemo = memo.toEventDetailMemo()
+                        it.copy(
+                            isMemoEditorOpen = false,
+                            memoContent = savedMemo.content,
+                            memoTagInput = "",
+                            memoTagNames = savedMemo.tagNames,
+                            savedMemo = savedMemo,
+                            isMemoSaving = false,
+                            memoSaveMessage = "메모가 저장되었습니다."
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMemoSaving = false,
+                            memoSaveMessage = mapMemoErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onMemoSaveMessageConsumed() {
+        _uiState.update {
+            it.copy(memoSaveMessage = null)
         }
     }
 
@@ -134,6 +258,32 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    private fun loadMemoForEvent() {
+        if (eventId <= 0L) {
+            return
+        }
+
+        memoLoadJob?.cancel()
+        memoLoadJob = viewModelScope.launch {
+            runCatching {
+                memoRepository.getMemos()
+                    .requireBody("Memo list response was empty.")
+                    .items
+                    .firstOrNull { it.eventId == eventId }
+                    ?.toEventDetailMemo()
+            }.onSuccess { memo ->
+                _uiState.update {
+                    it.copy(
+                        savedMemo = memo,
+                        memoContent = memo?.content.orEmpty(),
+                        memoTagInput = "",
+                        memoTagNames = memo?.tagNames.orEmpty()
+                    )
+                }
+            }
+        }
+    }
+
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "No internet connection. Please check your network."
@@ -169,6 +319,24 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    private fun mapMemoErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid memo request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to create this memo."
+                404 -> "Event information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to save memo with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Failed to save memo."
+            else -> error.message ?: "Failed to save memo."
+        }
+    }
+
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update { currentState ->
             val currentItem = currentState.item ?: return@update currentState
@@ -181,6 +349,15 @@ class EventDetailViewModel @Inject constructor(
 
 private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
+
+private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
+    return EventDetailMemo(
+        id = id,
+        eventId = eventId,
+        content = content,
+        tagNames = tags.map { it.name }
+    )
+}
 
 private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
@@ -277,9 +454,9 @@ private fun formatDateTime(value: String?): String? {
     }
 }
 
-private fun Response<EventDetailResponse>.requireBody(
+private fun <T> Response<T>.requireBody(
     emptyMessage: String
-): EventDetailResponse {
+): T {
     if (!isSuccessful) {
         throw HttpException(this)
     }
