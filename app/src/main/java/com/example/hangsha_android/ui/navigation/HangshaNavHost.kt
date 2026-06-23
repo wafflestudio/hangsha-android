@@ -505,6 +505,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         myPageViewModel.loadBookmarkedEventPreview()
+                        myPageViewModel.loadMemoPreview()
                     }
                 }
                 myPageLifecycleOwner.lifecycle.addObserver(observer)
@@ -545,6 +546,12 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     navController.navigate(HangshaDestinations.MyBookmarks.route)
                 },
                 onBookmarkedEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onMemoListClick = {
+                    // TODO: Navigate to the memo detail/list page when that screen is implemented.
+                },
+                onMemoEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
                 onLogoutClick = { myPageViewModel.logout() },

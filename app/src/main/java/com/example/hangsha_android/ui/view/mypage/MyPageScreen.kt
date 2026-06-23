@@ -91,6 +91,8 @@ fun MyPageScreen(
     onInterestPriorityClick: () -> Unit,
     onBookmarksClick: () -> Unit,
     onBookmarkedEventClick: (Long) -> Unit,
+    onMemoListClick: () -> Unit,
+    onMemoEventClick: (Long) -> Unit,
     onLogoutClick: () -> Unit,
     onBugReportTitleChanged: (String) -> Unit,
     onBugReportContentChanged: (String) -> Unit,
@@ -149,8 +151,10 @@ fun MyPageScreen(
                             onMoreClick = onBookmarksClick
                         )
                         Spacer(modifier = Modifier.height(28.dp))
-                        EmptyShortcutSection(
-                            title = "메모 목록",
+                        MemosPreviewSection(
+                            items = uiState.memoItems,
+                            isLoading = uiState.isMemosPreviewLoading,
+                            errorMessage = uiState.memosPreviewErrorMessage,
                             icon = {
                                 Icon(
                                     imageVector = Icons.Rounded.Edit,
@@ -159,8 +163,8 @@ fun MyPageScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                             },
-                            emptyTitle = "아직 메모가 없습니다.",
-                            emptyDescription = "관심있는 행사에 메모를 작성해보세요."
+                            onHeaderClick = onMemoListClick,
+                            onMemoClick = onMemoEventClick
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider()
@@ -719,6 +723,155 @@ private fun MoreBookmarksPreviewCard(onClick: () -> Unit) {
                 modifier = Modifier.size(22.dp)
             )
         }
+    }
+}
+
+// 메모 목록 미리보기 영역
+@Composable
+private fun MemosPreviewSection(
+    items: List<MyPageMemoItem>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    icon: @Composable () -> Unit,
+    onHeaderClick: () -> Unit,
+    onMemoClick: (Long) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ShortcutSectionHeader(
+            title = "내 메모 목록",
+            icon = icon,
+            onClick = onHeaderClick
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(126.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                }
+            }
+
+            errorMessage != null -> {
+                Text(
+                    text = errorMessage,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            items.isEmpty() -> {
+                Text(
+                    text = "아직 메모가 없습니다.\n관심있는 행사에 메모를 작성해보세요.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink60,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            else -> {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    items(
+                        items = items,
+                        key = { item -> item.id }
+                    ) { item ->
+                        MemoPreviewCard(
+                            item = item,
+                            onClick = { onMemoClick(item.eventId) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoPreviewCard(
+    item: MyPageMemoItem,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(215.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Text(
+            text = item.content,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink100,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(74.dp))
+        Text(
+            text = item.eventTitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink60,
+            fontSize = 13.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = item.updatedDateDisplay,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink60,
+            fontSize = 12.sp
+        )
+        if (item.tagNames.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                maxLines = 1
+            ) {
+                item.tagNames.take(3).forEach { tagName ->
+                    MemoPreviewTagChip(text = tagName)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoPreviewTagChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFFE8E8E8))
+            .padding(horizontal = 9.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink60,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

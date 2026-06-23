@@ -37,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -287,8 +286,9 @@ private fun EventDetailContent(
         }
 
         item {
-            EventDetailMemoSection(
+            EventDetailMemoSectionWithSavedMemo(
                 isOpen = uiState.isMemoEditorOpen,
+                savedMemo = uiState.savedMemo,
                 content = uiState.memoContent,
                 tagInput = uiState.memoTagInput,
                 tagNames = uiState.memoTagNames,
@@ -301,6 +301,212 @@ private fun EventDetailContent(
                 onSaveClick = onSaveMemoClick
             )
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun EventDetailMemoSectionWithSavedMemo(
+    isOpen: Boolean,
+    savedMemo: EventDetailMemo?,
+    content: String,
+    tagInput: String,
+    tagNames: List<String>,
+    isSaving: Boolean,
+    onOpen: () -> Unit,
+    onContentChanged: (String) -> Unit,
+    onTagInputChanged: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onRemoveTag: (String) -> Unit,
+    onSaveClick: () -> Unit
+) {
+    if (!isOpen) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpen),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            MemoSectionHeader()
+            if (savedMemo == null) {
+                MemoPlaceholder()
+            } else {
+                MemoDisplay(
+                    content = savedMemo.content,
+                    tagNames = savedMemo.tagNames
+                )
+            }
+        }
+        return
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = PureWhite,
+        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    tint = Ink60,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = if (isSaving) "저장 중" else "저장하기",
+                    modifier = Modifier
+                        .clickable(enabled = !isSaving, onClick = onSaveClick)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    color = Ink90,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            MemoTextInput(
+                value = content,
+                onValueChange = onContentChanged,
+                placeholder = "메모를 입력하세요",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(102.dp)
+            )
+
+            if (tagNames.isNotEmpty()) {
+                MemoTagRow(
+                    tagNames = tagNames,
+                    onRemoveTag = onRemoveTag
+                )
+            }
+
+            // TODO: Connect tag creation/update API for existing memos when the backend contract is ready.
+            // TODO: 태그와 관련된 모든 것: 생성, 수정, 삭제 등등을 모두 하지 않음
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MemoTextInput(
+                    value = tagInput,
+                    onValueChange = onTagInputChanged,
+                    placeholder = "태그를 입력하세요",
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
+                    singleLine = true
+                )
+                Button(
+                    onClick = onAddTag,
+                    enabled = tagInput.isNotBlank() && !isSaving,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PureWhite,
+                        contentColor = Ink90,
+                        disabledContainerColor = PureWhite,
+                        disabledContentColor = Ink60.copy(alpha = 0.45f)
+                    ),
+                    border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+                ) {
+                    Text(text = "추가")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoSectionHeader() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Edit,
+            contentDescription = null,
+            tint = Ink60,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = "메모하기",
+            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 14.sp,
+            color = Ink90
+        )
+    }
+}
+
+@Composable
+private fun MemoPlaceholder() {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = PureWhite,
+        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+    ) {
+        Text(
+            text = "메모를 입력하세요",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 15.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 14.sp,
+            color = Ink60.copy(alpha = 0.55f)
+        )
+    }
+}
+
+@Composable
+private fun MemoDisplay(
+    content: String,
+    tagNames: List<String>
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = PureWhite,
+            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+        ) {
+            Text(
+                text = content,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 14.sp,
+                color = Ink100
+            )
+        }
+        if (tagNames.isNotEmpty()) {
+            MemoTagRow(tagNames = tagNames, onRemoveTag = null)
+        }
+    }
+}
+
+@Composable
+private fun MemoTagRow(
+    tagNames: List<String>,
+    onRemoveTag: ((String) -> Unit)?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tagNames.forEach { tagName ->
+            MemoTagChip(
+                text = tagName,
+                onClick = onRemoveTag?.let { remove -> { remove(tagName) } }
+            )
         }
     }
 }
@@ -369,8 +575,8 @@ private fun EventDetailMemoSection(
         border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -383,16 +589,14 @@ private fun EventDetailMemoSection(
                     tint = Ink60,
                     modifier = Modifier.size(18.dp)
                 )
-                TextButton(
-                    onClick = onSaveClick,
-                    enabled = !isSaving
-                ) {
-                    Text(
-                        text = if (isSaving) "저장 중" else "저장하기",
-                        color = Ink90,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text(
+                    text = if (isSaving) "저장 중" else "저장하기",
+                    modifier = Modifier
+                        .clickable(enabled = !isSaving, onClick = onSaveClick)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    color = Ink90,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             MemoTextInput(
@@ -499,20 +703,45 @@ private fun MemoTextInput(
 @Composable
 private fun MemoTagChip(
     text: String,
-    onClick: () -> Unit
+    onClick: (() -> Unit)? = null
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = Cream10,
-        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f))
-    ) {
-        Text(
-            text = "#$text",
+    val content: @Composable () -> Unit = {
+        Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            fontSize = 13.sp,
-            color = Ink90
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "#$text",
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 13.sp,
+                color = Ink90
+            )
+            if (onClick != null) {
+                Text(
+                    text = "x",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 13.sp,
+                    color = Ink60
+                )
+            }
+        }
+    }
+
+    if (onClick == null) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = Cream10,
+            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f)),
+            content = content
+        )
+    } else {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(10.dp),
+            color = Cream10,
+            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f)),
+            content = content
         )
     }
 }

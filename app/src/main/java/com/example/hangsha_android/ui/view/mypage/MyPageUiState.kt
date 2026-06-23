@@ -6,6 +6,7 @@ import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 data class MyPageUiState(
     val isLoading: Boolean = true,
     val isBookmarksPreviewLoading: Boolean = true,
+    val isMemosPreviewLoading: Boolean = true,
     val isSavingProfile: Boolean = false,
     val isDeletingAccount: Boolean = false,
     val username: String = "",
@@ -29,5 +30,16 @@ data class MyPageUiState(
     val bookmarkedEvents: List<BookmarkedEventItem> = emptyList(),
     val hasMoreBookmarkedEvents: Boolean = false,
     val bookmarksPreviewErrorMessage: String? = null,
+    val memoItems: List<MyPageMemoItem> = emptyList(),
+    val memosPreviewErrorMessage: String? = null,
     val errorMessage: String? = null
+)
+
+data class MyPageMemoItem(
+    val id: Long,
+    val eventId: Long,
+    val eventTitle: String,
+    val content: String,
+    val tagNames: List<String>,
+    val updatedDateDisplay: String
 )

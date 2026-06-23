@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
+import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
@@ -41,6 +42,7 @@ class EventDetailViewModel @Inject constructor(
     val uiState: StateFlow<EventDetailUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var memoLoadJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -49,10 +51,12 @@ class EventDetailViewModel @Inject constructor(
             }
         }
         loadEventDetail()
+        loadMemoForEvent()
     }
 
     fun retry() {
         loadEventDetail()
+        loadMemoForEvent()
     }
 
     fun toggleBookmark() {
@@ -85,7 +89,17 @@ class EventDetailViewModel @Inject constructor(
 
     fun openMemoEditor() {
         _uiState.update {
-            it.copy(isMemoEditorOpen = true)
+            val savedMemo = it.savedMemo
+            if (savedMemo == null) {
+                it.copy(isMemoEditorOpen = true)
+            } else {
+                it.copy(
+                    isMemoEditorOpen = true,
+                    memoContent = savedMemo.content,
+                    memoTagInput = "",
+                    memoTagNames = savedMemo.tagNames
+                )
+            }
         }
     }
 
@@ -125,10 +139,6 @@ class EventDetailViewModel @Inject constructor(
         val currentState = _uiState.value
         val currentItem = currentState.item ?: return
         val content = currentState.memoContent.trim()
-        val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
-            .filter { it.isNotBlank() }
-            .distinct()
-
         if (content.isBlank()) {
             _uiState.update {
                 it.copy(memoSaveMessage = "메모를 입력해주세요.")
@@ -146,19 +156,32 @@ class EventDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                memoRepository.createMemo(
-                    eventId = currentItem.id,
-                    content = content,
-                    tagNames = tagNames
-                ).requireBody("Memo response was empty.")
+                val savedMemo = currentState.savedMemo
+                if (savedMemo == null) {
+                    val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                    memoRepository.createMemo(
+                        eventId = currentItem.id,
+                        content = content,
+                        tagNames = tagNames
+                    ).requireBody("Memo response was empty.")
+                } else {
+                    memoRepository.updateMemo(
+                        memoId = savedMemo.id,
+                        content = content
+                    ).requireBody("Memo response was empty.")
+                }
             }.fold(
-                onSuccess = {
+                onSuccess = { memo ->
                     _uiState.update {
+                        val savedMemo = memo.toEventDetailMemo()
                         it.copy(
                             isMemoEditorOpen = false,
-                            memoContent = "",
+                            memoContent = savedMemo.content,
                             memoTagInput = "",
-                            memoTagNames = emptyList(),
+                            memoTagNames = savedMemo.tagNames,
+                            savedMemo = savedMemo,
                             isMemoSaving = false,
                             memoSaveMessage = "메모가 저장되었습니다."
                         )
@@ -235,6 +258,32 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    private fun loadMemoForEvent() {
+        if (eventId <= 0L) {
+            return
+        }
+
+        memoLoadJob?.cancel()
+        memoLoadJob = viewModelScope.launch {
+            runCatching {
+                memoRepository.getMemos()
+                    .requireBody("Memo list response was empty.")
+                    .items
+                    .firstOrNull { it.eventId == eventId }
+                    ?.toEventDetailMemo()
+            }.onSuccess { memo ->
+                _uiState.update {
+                    it.copy(
+                        savedMemo = memo,
+                        memoContent = memo?.content.orEmpty(),
+                        memoTagInput = "",
+                        memoTagNames = memo?.tagNames.orEmpty()
+                    )
+                }
+            }
+        }
+    }
+
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "No internet connection. Please check your network."
@@ -300,6 +349,15 @@ class EventDetailViewModel @Inject constructor(
 
 private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
+
+private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
+    return EventDetailMemo(
+        id = id,
+        eventId = eventId,
+        content = content,
+        tagNames = tags.map { it.name }
+    )
+}
 
 private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
