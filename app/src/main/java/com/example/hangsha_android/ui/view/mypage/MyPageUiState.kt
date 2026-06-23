@@ -1,9 +1,11 @@
 package com.example.hangsha_android.ui.view.mypage
 
 import android.net.Uri
+import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 
 data class MyPageUiState(
     val isLoading: Boolean = true,
+    val isBookmarksPreviewLoading: Boolean = true,
     val isSavingProfile: Boolean = false,
     val isDeletingAccount: Boolean = false,
     val username: String = "",
@@ -24,5 +26,8 @@ data class MyPageUiState(
     val bugReportToastMessage: String? = null,
     val accountDeletionErrorMessage: String? = null,
     val isLoggedOut: Boolean = false,
+    val bookmarkedEvents: List<BookmarkedEventItem> = emptyList(),
+    val hasMoreBookmarkedEvents: Boolean = false,
+    val bookmarksPreviewErrorMessage: String? = null,
     val errorMessage: String? = null
 )

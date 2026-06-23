@@ -5,13 +5,21 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.network.model.EventSummaryResponse
+import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.UserRepository
+import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +32,7 @@ import retrofit2.HttpException
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val bookmarkRepository: BookmarkRepository,
     private val bugReportRepository: BugReportRepository,
     private val authTokenStorage: AuthTokenStorage,
     @param:ApplicationContext private val appContext: Context
@@ -31,9 +40,11 @@ class MyPageViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(MyPageUiState())
     val uiState: StateFlow<MyPageUiState> = _uiState.asStateFlow()
+    private var isBookmarksPreviewInFlight = false
 
     init {
         loadMyProfile()
+        loadBookmarkedEventPreview()
     }
 
     fun loadMyProfile() {
@@ -83,6 +94,61 @@ class MyPageViewModel @Inject constructor(
                     }
                 }
             )
+        }
+    }
+
+    fun loadBookmarkedEventPreview() {
+        if (isBookmarksPreviewInFlight) {
+            return
+        }
+
+        isBookmarksPreviewInFlight = true
+        viewModelScope.launch {
+            try {
+                _uiState.update {
+                    it.copy(
+                        isBookmarksPreviewLoading = it.bookmarkedEvents.isEmpty(),
+                        bookmarksPreviewErrorMessage = null
+                    )
+                }
+
+                runCatching {
+                    val response = bookmarkRepository.getMyBookmarks(
+                        page = BOOKMARKS_PREVIEW_PAGE,
+                        size = BOOKMARKS_PREVIEW_SIZE
+                    )
+                    if (!response.isSuccessful) {
+                        throw HttpException(response)
+                    }
+
+                    response.body() ?: throw IllegalStateException("Bookmarks response was empty.")
+                }.fold(
+                    onSuccess = { body ->
+                        val bookmarkedEvents = body.items.map { event -> event.toBookmarkedEventItem() }
+                        _uiState.update {
+                            it.copy(
+                                bookmarkedEvents = bookmarkedEvents,
+                                hasMoreBookmarkedEvents = bookmarkedEvents.size >= BOOKMARKS_PREVIEW_SIZE,
+                                isBookmarksPreviewLoading = false,
+                                bookmarksPreviewErrorMessage = null
+                            )
+                        }
+                        bookmarkRepository.syncKnownRemoteBookmarks(
+                            bookmarkedEvents.associate { event -> event.id to event.isBookmarked }
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isBookmarksPreviewLoading = false,
+                                bookmarksPreviewErrorMessage = mapBookmarksPreviewErrorMessage(error)
+                            )
+                        }
+                    }
+                )
+            } finally {
+                isBookmarksPreviewInFlight = false
+            }
         }
     }
 
@@ -447,6 +513,20 @@ class MyPageViewModel @Inject constructor(
         }
     }
 
+    private fun mapBookmarksPreviewErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "찜 목록을 불러오지 못했습니다. (${error.code()})"
+            }
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> error.message ?: "찜 목록을 불러오지 못했습니다."
+        }
+    }
+
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "No internet connection. Please check your network."
@@ -470,8 +550,65 @@ private fun Char.isKorean(): Boolean {
         this in '\u3130'..'\u318F'
 }
 
+private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
+    val applyEndDate = parseDate(applyEnd)
+    val dDayLabel = applyEndDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        when {
+            diff == 0L -> "지원 D-day"
+            diff > 0L -> "지원 D-$diff"
+            else -> "지원 D$diff"
+        }
+    } ?: "지원 -"
+
+    return BookmarkedEventItem(
+        id = id,
+        title = title,
+        imageUrl = imageUrl,
+        eventTypeId = eventTypeId,
+        statusId = statusId,
+        dDayLabel = dDayLabel,
+        applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
+        organization = organization,
+        isBookmarked = isBookmarked
+    )
+}
+
+private fun parseDate(value: String?): LocalDate? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+        runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
+            runCatching { LocalDate.parse(value) }.getOrNull()
+        }
+    }
+}
+
+private fun formatPeriod(
+    startValue: String?,
+    endValue: String?
+): String {
+    val start = parseDate(startValue)
+    val end = parseDate(endValue)
+    return when {
+        start != null && end != null && start.year == end.year ->
+            "${start.format(FullDateFormatter)}~${end.format(MonthDayFormatter)}"
+        start != null && end != null ->
+            "${start.format(FullDateFormatter)}~${end.format(FullDateFormatter)}"
+        start != null -> start.format(FullDateFormatter)
+        end != null -> end.format(FullDateFormatter)
+        else -> "-"
+    }
+}
+
 private const val ENGLISH_USERNAME_MAX_LENGTH = 20
 private const val KOREAN_USERNAME_MAX_LENGTH = 10
+private const val BOOKMARKS_PREVIEW_PAGE = 1
+private const val BOOKMARKS_PREVIEW_SIZE = 20
+private val FullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
+private val MonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
 private data class SavedProfile(
     val username: String,

@@ -461,6 +461,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val myPageSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
             val interestPriorityUpdated = myPageSavedStateHandle
                 ?.get<Boolean>(InterestPriorityNavigationKeys.updatedKey)
+            val myPageLifecycleOwner = LocalLifecycleOwner.current
 
             LaunchedEffect(myPageUiState.profileSaveToastMessage) {
                 val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
@@ -481,6 +482,18 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 val message = myPageUiState.bugReportToastMessage ?: return@LaunchedEffect
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 myPageViewModel.onBugReportToastConsumed()
+            }
+
+            DisposableEffect(myPageLifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        myPageViewModel.loadBookmarkedEventPreview()
+                    }
+                }
+                myPageLifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    myPageLifecycleOwner.lifecycle.removeObserver(observer)
+                }
             }
 
             LaunchedEffect(myPageUiState.isLoggedOut) {
@@ -513,6 +526,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 },
                 onBookmarksClick = {
                     navController.navigate(HangshaDestinations.MyBookmarks.route)
+                },
+                onBookmarkedEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
                 onLogoutClick = { myPageViewModel.logout() },
                 onBugReportTitleChanged = { value ->
