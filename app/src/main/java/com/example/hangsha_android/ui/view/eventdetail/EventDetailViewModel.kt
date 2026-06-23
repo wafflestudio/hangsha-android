@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.EventRepository
+import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,7 @@ import retrofit2.Response
 class EventDetailViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val memoRepository: MemoRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val eventId = savedStateHandle.get<Long>(HangshaDestinations.EventDetail.eventIdArg) ?: -1L
@@ -78,6 +80,105 @@ class EventDetailViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    fun openMemoEditor() {
+        _uiState.update {
+            it.copy(isMemoEditorOpen = true)
+        }
+    }
+
+    fun onMemoContentChanged(value: String) {
+        _uiState.update {
+            it.copy(memoContent = value)
+        }
+    }
+
+    fun onMemoTagInputChanged(value: String) {
+        _uiState.update {
+            it.copy(memoTagInput = value)
+        }
+    }
+
+    fun addMemoTag() {
+        val tagName = _uiState.value.memoTagInput.trim()
+        if (tagName.isBlank()) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                memoTagInput = "",
+                memoTagNames = (it.memoTagNames + tagName).distinct()
+            )
+        }
+    }
+
+    fun removeMemoTag(tagName: String) {
+        _uiState.update {
+            it.copy(memoTagNames = it.memoTagNames - tagName)
+        }
+    }
+
+    fun saveMemo() {
+        val currentState = _uiState.value
+        val currentItem = currentState.item ?: return
+        val content = currentState.memoContent.trim()
+        val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (content.isBlank()) {
+            _uiState.update {
+                it.copy(memoSaveMessage = "메모를 입력해주세요.")
+            }
+            return
+        }
+
+        if (currentState.isMemoSaving) {
+            return
+        }
+
+        _uiState.update {
+            it.copy(isMemoSaving = true, memoSaveMessage = null)
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                memoRepository.createMemo(
+                    eventId = currentItem.id,
+                    content = content,
+                    tagNames = tagNames
+                ).requireBody("Memo response was empty.")
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isMemoEditorOpen = false,
+                            memoContent = "",
+                            memoTagInput = "",
+                            memoTagNames = emptyList(),
+                            isMemoSaving = false,
+                            memoSaveMessage = "메모가 저장되었습니다."
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isMemoSaving = false,
+                            memoSaveMessage = mapMemoErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onMemoSaveMessageConsumed() {
+        _uiState.update {
+            it.copy(memoSaveMessage = null)
         }
     }
 
@@ -166,6 +267,24 @@ class EventDetailViewModel @Inject constructor(
             }
             is IOException -> "Network error occurred. Please try again."
             else -> error.message ?: "Failed to update bookmark."
+        }
+    }
+
+    private fun mapMemoErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "No internet connection. Please check your network."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is HttpException -> when (error.code()) {
+                400 -> "Invalid memo request."
+                401 -> "Login is required."
+                403 -> "You do not have permission to create this memo."
+                404 -> "Event information could not be found."
+                in 500..599 -> "Server error occurred. Please try again later."
+                else -> "Failed to save memo with code ${error.code()}."
+            }
+            is IOException -> "Network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Failed to save memo."
+            else -> error.message ?: "Failed to save memo."
         }
     }
 
@@ -277,9 +396,9 @@ private fun formatDateTime(value: String?): String? {
     }
 }
 
-private fun Response<EventDetailResponse>.requireBody(
+private fun <T> Response<T>.requireBody(
     emptyMessage: String
-): EventDetailResponse {
+): T {
     if (!isSuccessful) {
         throw HttpException(this)
     }

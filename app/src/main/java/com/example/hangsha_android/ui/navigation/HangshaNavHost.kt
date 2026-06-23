@@ -352,6 +352,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) {
             val eventDetailViewModel: EventDetailViewModel = hiltViewModel()
             val eventDetailUiState by eventDetailViewModel.uiState.collectAsState()
+            val context = LocalContext.current
+
+            LaunchedEffect(eventDetailUiState.memoSaveMessage) {
+                val message = eventDetailUiState.memoSaveMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                eventDetailViewModel.onMemoSaveMessageConsumed()
+            }
 
             EventDetailScreen(
                 uiState = eventDetailUiState,
@@ -363,6 +370,16 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     )
                     eventDetailViewModel.toggleBookmark()
                 },
+                onMemoClick = { eventDetailViewModel.openMemoEditor() },
+                onMemoContentChanged = { value ->
+                    eventDetailViewModel.onMemoContentChanged(value)
+                },
+                onMemoTagInputChanged = { value ->
+                    eventDetailViewModel.onMemoTagInputChanged(value)
+                },
+                onAddMemoTag = { eventDetailViewModel.addMemoTag() },
+                onRemoveMemoTag = { tagName -> eventDetailViewModel.removeMemoTag(tagName) },
+                onSaveMemoClick = { eventDetailViewModel.saveMemo() },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }

@@ -6,7 +6,13 @@ data class EventDetailUiState(
     val eventId: Long = -1L,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
-    val item: EventDetailItem? = null
+    val item: EventDetailItem? = null,
+    val isMemoEditorOpen: Boolean = false,
+    val memoContent: String = "",
+    val memoTagInput: String = "",
+    val memoTagNames: List<String> = emptyList(),
+    val isMemoSaving: Boolean = false,
+    val memoSaveMessage: String? = null
 )
 
 data class EventDetailItem(

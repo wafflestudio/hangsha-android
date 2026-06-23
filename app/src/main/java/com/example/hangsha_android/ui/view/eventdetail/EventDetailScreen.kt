@@ -6,8 +6,10 @@ import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,18 +21,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +68,12 @@ fun EventDetailScreen(
     uiState: EventDetailUiState,
     onNavigateBack: () -> Unit,
     onBookmarkClick: () -> Unit,
+    onMemoClick: () -> Unit,
+    onMemoContentChanged: (String) -> Unit,
+    onMemoTagInputChanged: (String) -> Unit,
+    onAddMemoTag: () -> Unit,
+    onRemoveMemoTag: (String) -> Unit,
+    onSaveMemoClick: () -> Unit,
     onRetryClick: () -> Unit
 ) {
     Box(
@@ -84,9 +97,16 @@ fun EventDetailScreen(
             uiState.item != null -> {
                 // 본문
                 EventDetailContent(
+                    uiState = uiState,
                     item = uiState.item,
                     onNavigateBack = onNavigateBack,
-                    onBookmarkClick = onBookmarkClick
+                    onBookmarkClick = onBookmarkClick,
+                    onMemoClick = onMemoClick,
+                    onMemoContentChanged = onMemoContentChanged,
+                    onMemoTagInputChanged = onMemoTagInputChanged,
+                    onAddMemoTag = onAddMemoTag,
+                    onRemoveMemoTag = onRemoveMemoTag,
+                    onSaveMemoClick = onSaveMemoClick
                 )
             }
         }
@@ -95,9 +115,16 @@ fun EventDetailScreen(
 
 @Composable
 private fun EventDetailContent(
+    uiState: EventDetailUiState,
     item: EventDetailItem,
     onNavigateBack: () -> Unit,
-    onBookmarkClick: () -> Unit
+    onBookmarkClick: () -> Unit,
+    onMemoClick: () -> Unit,
+    onMemoContentChanged: (String) -> Unit,
+    onMemoTagInputChanged: (String) -> Unit,
+    onAddMemoTag: () -> Unit,
+    onRemoveMemoTag: (String) -> Unit,
+    onSaveMemoClick: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -257,8 +284,236 @@ private fun EventDetailContent(
                     }
                 }
             )
+        }
+
+        item {
+            EventDetailMemoSection(
+                isOpen = uiState.isMemoEditorOpen,
+                content = uiState.memoContent,
+                tagInput = uiState.memoTagInput,
+                tagNames = uiState.memoTagNames,
+                isSaving = uiState.isMemoSaving,
+                onOpen = onMemoClick,
+                onContentChanged = onMemoContentChanged,
+                onTagInputChanged = onMemoTagInputChanged,
+                onAddTag = onAddMemoTag,
+                onRemoveTag = onRemoveMemoTag,
+                onSaveClick = onSaveMemoClick
+            )
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun EventDetailMemoSection(
+    isOpen: Boolean,
+    content: String,
+    tagInput: String,
+    tagNames: List<String>,
+    isSaving: Boolean,
+    onOpen: () -> Unit,
+    onContentChanged: (String) -> Unit,
+    onTagInputChanged: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onRemoveTag: (String) -> Unit,
+    onSaveClick: () -> Unit
+) {
+    if (!isOpen) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpen),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    tint = Ink60,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "메모하기",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = Ink90
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = PureWhite,
+                border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+            ) {
+                Text(
+                    text = "메모를 입력하세요",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 15.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = Ink60.copy(alpha = 0.55f)
+                )
+            }
+        }
+        return
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = PureWhite,
+        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    tint = Ink60,
+                    modifier = Modifier.size(18.dp)
+                )
+                TextButton(
+                    onClick = onSaveClick,
+                    enabled = !isSaving
+                ) {
+                    Text(
+                        text = if (isSaving) "저장 중" else "저장하기",
+                        color = Ink90,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            MemoTextInput(
+                value = content,
+                onValueChange = onContentChanged,
+                placeholder = "메모를 입력하세요",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(102.dp)
+            )
+
+            if (tagNames.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tagNames.forEach { tagName ->
+                        MemoTagChip(
+                            text = tagName,
+                            onClick = { onRemoveTag(tagName) }
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MemoTextInput(
+                    value = tagInput,
+                    onValueChange = onTagInputChanged,
+                    placeholder = "태그를 입력하세요",
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
+                    singleLine = true
+                )
+                Button(
+                    onClick = onAddTag,
+                    enabled = tagInput.isNotBlank() && !isSaving,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PureWhite,
+                        contentColor = Ink90,
+                        disabledContainerColor = PureWhite,
+                        disabledContentColor = Ink60.copy(alpha = 0.45f)
+                    ),
+                    border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+                ) {
+                    Text(text = "추가")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoTextInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = false
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = PureWhite,
+        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.28f))
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
+                color = Ink100
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (value.isBlank()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 14.sp,
+                            color = Ink60.copy(alpha = 0.55f)
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun MemoTagChip(
+    text: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = Cream10,
+        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f))
+    ) {
+        Text(
+            text = "#$text",
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 13.sp,
+            color = Ink90
+        )
     }
 }
 
