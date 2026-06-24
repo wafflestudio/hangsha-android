@@ -42,4 +42,10 @@ class MemoRepository @Inject constructor(
             )
         )
     }
+
+    suspend fun deleteMemo(
+        memoId: Long
+    ): Response<Unit> {
+        return memoApi.deleteMemo(memoId = memoId)
+    }
 }
