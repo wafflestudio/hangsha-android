@@ -139,7 +139,10 @@ class EventDetailViewModel @Inject constructor(
         val currentState = _uiState.value
         val currentItem = currentState.item ?: return
         val content = currentState.memoContent.trim()
-        if (content.isBlank()) {
+        val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (currentState.savedMemo == null && content.isBlank()) {
             _uiState.update {
                 it.copy(memoSaveMessage = "메모를 입력해주세요.")
             }
@@ -158,33 +161,49 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 val savedMemo = currentState.savedMemo
                 if (savedMemo == null) {
-                    val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
-                        .filter { it.isNotBlank() }
-                        .distinct()
                     memoRepository.createMemo(
                         eventId = currentItem.id,
                         content = content,
                         tagNames = tagNames
                     ).requireBody("Memo response was empty.")
+                } else if (content.isBlank() && tagNames.isEmpty()) {
+                    val response = memoRepository.deleteMemo(savedMemo.id)
+                    if (!response.isSuccessful) {
+                        throw HttpException(response)
+                    }
+                    null
                 } else {
                     memoRepository.updateMemo(
                         memoId = savedMemo.id,
-                        content = content
+                        content = content,
+                        tagNames = tagNames
                     ).requireBody("Memo response was empty.")
                 }
             }.fold(
                 onSuccess = { memo ->
                     _uiState.update {
-                        val savedMemo = memo.toEventDetailMemo()
-                        it.copy(
-                            isMemoEditorOpen = false,
-                            memoContent = savedMemo.content,
-                            memoTagInput = "",
-                            memoTagNames = savedMemo.tagNames,
-                            savedMemo = savedMemo,
-                            isMemoSaving = false,
-                            memoSaveMessage = "메모가 저장되었습니다."
-                        )
+                        if (memo == null) {
+                            it.copy(
+                                isMemoEditorOpen = false,
+                                memoContent = "",
+                                memoTagInput = "",
+                                memoTagNames = emptyList(),
+                                savedMemo = null,
+                                isMemoSaving = false,
+                                memoSaveMessage = "메모가 삭제되었습니다."
+                            )
+                        } else {
+                            val savedMemo = memo.toEventDetailMemo()
+                            it.copy(
+                                isMemoEditorOpen = false,
+                                memoContent = savedMemo.content,
+                                memoTagInput = "",
+                                memoTagNames = savedMemo.tagNames,
+                                savedMemo = savedMemo,
+                                isMemoSaving = false,
+                                memoSaveMessage = "메모가 저장되었습니다."
+                            )
+                        }
                     }
                 },
                 onFailure = { error ->

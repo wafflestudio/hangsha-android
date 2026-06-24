@@ -49,6 +49,8 @@ import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScre
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
+import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
+import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
 import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
@@ -64,6 +66,7 @@ sealed class HangshaDestinations(val route: String) {
     data object Main : HangshaDestinations("main")
     data object InterestPriority : HangshaDestinations("interest_priority")
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
+    data object MyMemos : HangshaDestinations("my_memos")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
@@ -444,6 +447,47 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 }
             )
         }
+        composable(HangshaDestinations.MyMemos.route) {
+            val myMemosViewModel: MyMemosViewModel = hiltViewModel()
+            val myMemosUiState by myMemosViewModel.uiState.collectAsState()
+            val context = LocalContext.current
+            val myMemosLifecycleOwner = LocalLifecycleOwner.current
+
+            LaunchedEffect(myMemosUiState.toastMessage) {
+                val message = myMemosUiState.toastMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                myMemosViewModel.onToastMessageConsumed()
+            }
+
+            DisposableEffect(myMemosLifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        myMemosViewModel.loadMemos()
+                    }
+                }
+                myMemosLifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    myMemosLifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            MyMemosScreen(
+                uiState = myMemosUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onMemoClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onDeleteMemoClick = { memoId -> myMemosViewModel.deleteMemo(memoId) },
+                onStartEditMemo = { memo -> myMemosViewModel.startEditMemo(memo) },
+                onEditContentChanged = { value -> myMemosViewModel.onEditContentChanged(value) },
+                onStartAddingTag = { myMemosViewModel.startAddingTag() },
+                onEditTagInputChanged = { value -> myMemosViewModel.onEditTagInputChanged(value) },
+                onAddEditTag = { myMemosViewModel.addEditTag() },
+                onRemoveEditTag = { tagName -> myMemosViewModel.removeEditTag(tagName) },
+                onSaveEditedMemo = { myMemosViewModel.saveEditedMemo() },
+                onRetryClick = { myMemosViewModel.loadMemos() }
+            )
+        }
         composable(HangshaDestinations.InterestPriority.route) {
             val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
             val interestPriorityUiState by interestPriorityViewModel.uiState.collectAsState()
@@ -549,7 +593,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
                 onMemoListClick = {
-                    // TODO: Navigate to the memo detail/list page when that screen is implemented.
+                    navController.navigate(HangshaDestinations.MyMemos.route)
                 },
                 onMemoEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))

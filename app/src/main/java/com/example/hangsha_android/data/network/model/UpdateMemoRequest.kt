@@ -4,5 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class UpdateMemoRequest(
     @SerializedName("content")
-    val content: String
+    val content: String? = null,
+    @SerializedName("tagNames")
+    val tagNames: List<String>? = null
 )
