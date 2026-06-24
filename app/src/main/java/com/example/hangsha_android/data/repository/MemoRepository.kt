@@ -31,11 +31,15 @@ class MemoRepository @Inject constructor(
 
     suspend fun updateMemo(
         memoId: Long,
-        content: String
+        content: String? = null,
+        tagNames: List<String>? = null
     ): Response<MemoResponse> {
         return memoApi.updateMemo(
             memoId = memoId,
-            request = UpdateMemoRequest(content = content)
+            request = UpdateMemoRequest(
+                content = content,
+                tagNames = tagNames
+            )
         )
     }
 }

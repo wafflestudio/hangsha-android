@@ -118,7 +118,6 @@ fun EventDetailMemoSection(
                 )
             }
 
-            // TODO: Connect tag creation/update API for existing memos when the backend contract is ready.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

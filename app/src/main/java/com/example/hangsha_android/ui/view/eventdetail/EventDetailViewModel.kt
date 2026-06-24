@@ -139,7 +139,10 @@ class EventDetailViewModel @Inject constructor(
         val currentState = _uiState.value
         val currentItem = currentState.item ?: return
         val content = currentState.memoContent.trim()
-        if (content.isBlank()) {
+        val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (currentState.savedMemo == null && content.isBlank()) {
             _uiState.update {
                 it.copy(memoSaveMessage = "메모를 입력해주세요.")
             }
@@ -158,9 +161,6 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 val savedMemo = currentState.savedMemo
                 if (savedMemo == null) {
-                    val tagNames = (currentState.memoTagNames + currentState.memoTagInput.trim())
-                        .filter { it.isNotBlank() }
-                        .distinct()
                     memoRepository.createMemo(
                         eventId = currentItem.id,
                         content = content,
@@ -169,7 +169,8 @@ class EventDetailViewModel @Inject constructor(
                 } else {
                     memoRepository.updateMemo(
                         memoId = savedMemo.id,
-                        content = content
+                        content = content,
+                        tagNames = tagNames
                     ).requireBody("Memo response was empty.")
                 }
             }.fold(
