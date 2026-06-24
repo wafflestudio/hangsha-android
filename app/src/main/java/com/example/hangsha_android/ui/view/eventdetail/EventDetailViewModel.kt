@@ -166,6 +166,12 @@ class EventDetailViewModel @Inject constructor(
                         content = content,
                         tagNames = tagNames
                     ).requireBody("Memo response was empty.")
+                } else if (content.isBlank() && tagNames.isEmpty()) {
+                    val response = memoRepository.deleteMemo(savedMemo.id)
+                    if (!response.isSuccessful) {
+                        throw HttpException(response)
+                    }
+                    null
                 } else {
                     memoRepository.updateMemo(
                         memoId = savedMemo.id,
@@ -176,16 +182,28 @@ class EventDetailViewModel @Inject constructor(
             }.fold(
                 onSuccess = { memo ->
                     _uiState.update {
-                        val savedMemo = memo.toEventDetailMemo()
-                        it.copy(
-                            isMemoEditorOpen = false,
-                            memoContent = savedMemo.content,
-                            memoTagInput = "",
-                            memoTagNames = savedMemo.tagNames,
-                            savedMemo = savedMemo,
-                            isMemoSaving = false,
-                            memoSaveMessage = "메모가 저장되었습니다."
-                        )
+                        if (memo == null) {
+                            it.copy(
+                                isMemoEditorOpen = false,
+                                memoContent = "",
+                                memoTagInput = "",
+                                memoTagNames = emptyList(),
+                                savedMemo = null,
+                                isMemoSaving = false,
+                                memoSaveMessage = "메모가 삭제되었습니다."
+                            )
+                        } else {
+                            val savedMemo = memo.toEventDetailMemo()
+                            it.copy(
+                                isMemoEditorOpen = false,
+                                memoContent = savedMemo.content,
+                                memoTagInput = "",
+                                memoTagNames = savedMemo.tagNames,
+                                savedMemo = savedMemo,
+                                isMemoSaving = false,
+                                memoSaveMessage = "메모가 저장되었습니다."
+                            )
+                        }
                     }
                 },
                 onFailure = { error ->

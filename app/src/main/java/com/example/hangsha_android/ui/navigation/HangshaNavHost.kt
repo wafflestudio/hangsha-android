@@ -451,11 +451,24 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val myMemosViewModel: MyMemosViewModel = hiltViewModel()
             val myMemosUiState by myMemosViewModel.uiState.collectAsState()
             val context = LocalContext.current
+            val myMemosLifecycleOwner = LocalLifecycleOwner.current
 
             LaunchedEffect(myMemosUiState.toastMessage) {
                 val message = myMemosUiState.toastMessage ?: return@LaunchedEffect
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 myMemosViewModel.onToastMessageConsumed()
+            }
+
+            DisposableEffect(myMemosLifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        myMemosViewModel.loadMemos()
+                    }
+                }
+                myMemosLifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    myMemosLifecycleOwner.lifecycle.removeObserver(observer)
+                }
             }
 
             MyMemosScreen(

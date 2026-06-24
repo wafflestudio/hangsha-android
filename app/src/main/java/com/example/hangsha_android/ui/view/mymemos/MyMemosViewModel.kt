@@ -27,43 +27,53 @@ class MyMemosViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyMemosUiState())
     val uiState: StateFlow<MyMemosUiState> = _uiState.asStateFlow()
+    private var isLoadInFlight = false
 
     init {
         loadMemos()
     }
 
     fun loadMemos() {
+        if (isLoadInFlight) {
+            return
+        }
+
+        isLoadInFlight = true
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isLoading = true, errorMessage = null)
+            try {
+                _uiState.update {
+                    it.copy(isLoading = it.groupedMemos.isEmpty(), errorMessage = null)
+                }
+
+                runCatching {
+                    val response = memoRepository.getMemos()
+                    if (!response.isSuccessful) {
+                        throw HttpException(response)
+                    }
+
+                    response.body() ?: throw IllegalStateException("Memos response was empty.")
+                }.fold(
+                    onSuccess = { body ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = null,
+                                groupedMemos = body.items.toMyMemoDateGroups()
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = mapErrorMessage(error)
+                            )
+                        }
+                    }
+                )
+            } finally {
+                isLoadInFlight = false
             }
-
-            runCatching {
-                val response = memoRepository.getMemos()
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
-
-                response.body() ?: throw IllegalStateException("Memos response was empty.")
-            }.fold(
-                onSuccess = { body ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = null,
-                            groupedMemos = body.items.toMyMemoDateGroups()
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = mapErrorMessage(error)
-                        )
-                    }
-                }
-            )
         }
     }
 
