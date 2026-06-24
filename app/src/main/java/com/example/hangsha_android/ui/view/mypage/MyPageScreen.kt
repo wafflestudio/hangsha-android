@@ -151,6 +151,8 @@ fun MyPageScreen(
                             onMoreClick = onBookmarksClick
                         )
                         Spacer(modifier = Modifier.height(28.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(17.dp))
                         MemosPreviewSection(
                             items = uiState.memoItems,
                             isLoading = uiState.isMemosPreviewLoading,
@@ -871,62 +873,6 @@ private fun MemoPreviewTagChip(text: String) {
             fontSize = 11.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-// 빈 목록 안내 영역
-@Composable
-private fun EmptyShortcutSection(
-    title: String,
-    icon: @Composable () -> Unit,
-    emptyTitle: String,
-    emptyDescription: String,
-    onClick: (() -> Unit)? = null
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(3.dp))
-            icon()
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = "$title 이동",
-                tint = MutedIconColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = "$emptyTitle\n$emptyDescription",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
-            fontSize = 10.sp,
-            lineHeight = 13.sp,
-            textAlign = TextAlign.Center
         )
     }
 }

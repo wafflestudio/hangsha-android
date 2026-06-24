@@ -465,6 +465,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
                 onDeleteMemoClick = { memoId -> myMemosViewModel.deleteMemo(memoId) },
+                onStartEditMemo = { memo -> myMemosViewModel.startEditMemo(memo) },
+                onEditContentChanged = { value -> myMemosViewModel.onEditContentChanged(value) },
+                onStartAddingTag = { myMemosViewModel.startAddingTag() },
+                onEditTagInputChanged = { value -> myMemosViewModel.onEditTagInputChanged(value) },
+                onAddEditTag = { myMemosViewModel.addEditTag() },
+                onRemoveEditTag = { tagName -> myMemosViewModel.removeEditTag(tagName) },
+                onSaveEditedMemo = { myMemosViewModel.saveEditedMemo() },
                 onRetryClick = { myMemosViewModel.loadMemos() }
             )
         }
