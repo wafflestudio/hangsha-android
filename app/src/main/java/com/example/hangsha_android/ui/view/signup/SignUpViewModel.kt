@@ -53,6 +53,7 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
+    // TODO(SIGN_UP_VM): Reconnect this after the UI-only sign-up pass is approved.
     fun signUp() {
         val currentState = _uiState.value
 

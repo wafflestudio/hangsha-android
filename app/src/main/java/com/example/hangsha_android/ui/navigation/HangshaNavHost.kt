@@ -166,6 +166,12 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 } else {
                     googleLoginLauncher.launch(googleSignInClient.signInIntent)
                 }
+            },
+            onKakaoLoginClick = {
+                // TODO(KAKAO_LOGIN): Connect Kakao social login after the UI pass.
+            },
+            onNaverLoginClick = {
+                // TODO(NAVER_LOGIN): Connect Naver social login after the UI pass.
             }
         )
     }
@@ -222,9 +228,8 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
             onPasswordConfirmationChanged = { value ->
                 signUpViewModel.onPasswordConfirmationChanged(value)
             },
-            onSignUpClick = { signUpViewModel.signUp() },
-            onNavigateBack = {
-                navController.popBackStack()
+            onSignUpClick = {
+                // TODO(SIGN_UP_VM): Wire account creation after the sign-up UI pass.
             }
         )
     }

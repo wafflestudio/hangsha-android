@@ -36,6 +36,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.R
@@ -50,12 +51,16 @@ private val AuthBorder = Color(0xFFE0E0E0)
 private val AuthPlaceholder = Color(0xFF8F8F8F)
 private val AuthError = Color(0xFFFF4058)
 private val AuthYellow = Color(0xFFFFD344)
+private val KakaoYellow = Color(0xFFFFE812)
+private val NaverGreen = Color(0xFF03C75A)
 
 @Composable
 fun OpeningScreen(
     loginUiState: LoginUiState,
     onEmailLoginClick: () -> Unit,
     onGoogleLoginClick: () -> Unit,
+    onKakaoLoginClick: () -> Unit,
+    onNaverLoginClick: () -> Unit,
     onSignUpClick: () -> Unit
 ) {
     Box(
@@ -88,6 +93,34 @@ fun OpeningScreen(
                         painter = painterResource(id = R.drawable.ic_google_logo),
                         contentDescription = null,
                         modifier = Modifier.size(22.dp)
+                    )
+                }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OpeningButton(
+                text = "카카오톡 계정으로 계속하기",
+                onClick = onKakaoLoginClick,
+                enabled = !loginUiState.isAnyLoginLoading,
+                leadingIcon = {
+                    SocialBadge(
+                        text = "TALK",
+                        containerColor = AuthBlack,
+                        contentColor = KakaoYellow,
+                        fontSize = 6.sp
+                    )
+                }
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OpeningButton(
+                text = "네이버 계정으로 계속하기",
+                onClick = onNaverLoginClick,
+                enabled = !loginUiState.isAnyLoginLoading,
+                leadingIcon = {
+                    SocialBadge(
+                        text = "N",
+                        containerColor = NaverGreen,
+                        contentColor = AuthWhite,
+                        fontSize = 16.sp
                     )
                 }
             )
@@ -255,6 +288,30 @@ private fun OpeningButton(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SocialBadge(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    fontSize: TextUnit
+) {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .background(containerColor, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = contentColor,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
