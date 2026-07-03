@@ -15,6 +15,12 @@ class MemoRepository @Inject constructor(
         return memoApi.getMemos()
     }
 
+    suspend fun getMemoByEvent(
+        eventId: Long
+    ): Response<MemoResponse> {
+        return memoApi.getMemoByEvent(eventId = eventId)
+    }
+
     suspend fun createMemo(
         eventId: Long,
         content: String,

@@ -285,11 +285,14 @@ class EventDetailViewModel @Inject constructor(
         memoLoadJob?.cancel()
         memoLoadJob = viewModelScope.launch {
             runCatching {
-                memoRepository.getMemos()
-                    .requireBody("Memo list response was empty.")
-                    .items
-                    .firstOrNull { it.eventId == eventId }
-                    ?.toEventDetailMemo()
+                val response = memoRepository.getMemoByEvent(eventId)
+                if (response.code() == 404) {
+                    null
+                } else if (!response.isSuccessful) {
+                    throw HttpException(response)
+                } else {
+                    response.body()?.toEventDetailMemo()
+                }
             }.onSuccess { memo ->
                 _uiState.update {
                     it.copy(

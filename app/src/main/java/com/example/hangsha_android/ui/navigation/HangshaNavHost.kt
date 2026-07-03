@@ -586,6 +586,15 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onInterestPriorityClick = {
                     navController.navigate(HangshaDestinations.InterestPriority.route)
                 },
+                onTimetableClick = {
+                    navController.navigate(BottomTab.Timetable.route) {
+                        popUpTo(HangshaDestinations.Main.route) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
                 onBookmarksClick = {
                     navController.navigate(HangshaDestinations.MyBookmarks.route)
                 },
