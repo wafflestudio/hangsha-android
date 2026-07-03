@@ -17,7 +17,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,21 +46,20 @@ import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
+import com.example.hangsha_android.ui.view.login.OpeningScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
 import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
-import com.example.hangsha_android.ui.view.serverhealth.ServerHealthViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
+    data object CredentialLogin : HangshaDestinations("credential_login")
     data object SignUp : HangshaDestinations("sign_up")
     data object Main : HangshaDestinations("main")
     data object InterestPriority : HangshaDestinations("interest_priority")
@@ -108,10 +106,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
     composable(HangshaDestinations.Login.route) {
         val loginViewModel: LoginViewModel = hiltViewModel()
         val loginUiState by loginViewModel.uiState.collectAsState()
-        val serverHealthViewModel: ServerHealthViewModel = hiltViewModel()
-        val serverHealthUiState by serverHealthViewModel.uiState.collectAsState()
         val context = LocalContext.current
-        val coroutineScope = rememberCoroutineScope()
         val googleSignInOptions = remember(BuildConfig.GOOGLE_SERVER_CLIENT_ID) {
             GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
@@ -157,40 +152,44 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
             loginViewModel.onLoginSuccessConsumed()
         }
 
-        LoginScreen(
-            onLoginClick = { loginViewModel.loginWithCredentials() },
+        OpeningScreen(
+            loginUiState = loginUiState,
+            onEmailLoginClick = {
+                navController.navigate(HangshaDestinations.CredentialLogin.route)
+            },
             onSignUpClick = {
                 navController.navigate(HangshaDestinations.SignUp.route)
             },
-            onUsernameChanged = { value -> loginViewModel.onUsernameChanged(value) },
-            onPasswordChanged = { value -> loginViewModel.onPasswordChanged(value) },
             onGoogleLoginClick = {
                 if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isBlank()) {
                     loginViewModel.onGoogleLoginConfigMissing()
                 } else {
                     googleLoginLauncher.launch(googleSignInClient.signInIntent)
                 }
-            },
-            onClearGoogleLoginHistoryClick = {
-                loginViewModel.onGoogleHistoryClearStarted()
-                coroutineScope.launch {
-                    runCatching {
-                        googleSignInClient.signOut().await()
-                    }.fold(
-                        onSuccess = {
-                            loginViewModel.onGoogleHistoryCleared()
-                        },
-                        onFailure = { error ->
-                            loginViewModel.onGoogleLoginError(
-                                error.message ?: "Failed to clear Google login history."
-                            )
-                        }
-                    )
-                }
-            },
-            onCheckServerClick = { serverHealthViewModel.checkServer() },
-            loginUiState = loginUiState,
-            serverHealthUiState = serverHealthUiState
+            }
+        )
+    }
+
+    composable(HangshaDestinations.CredentialLogin.route) {
+        val loginViewModel: LoginViewModel = hiltViewModel()
+        val loginUiState by loginViewModel.uiState.collectAsState()
+
+        LaunchedEffect(loginUiState.isLoginSuccessful) {
+            if (!loginUiState.isLoginSuccessful) {
+                return@LaunchedEffect
+            }
+
+            navController.navigate(HangshaDestinations.Main.route) {
+                popUpTo(HangshaDestinations.Login.route) { inclusive = true }
+            }
+            loginViewModel.onLoginSuccessConsumed()
+        }
+
+        LoginScreen(
+            onLoginClick = { loginViewModel.loginWithCredentials() },
+            onUsernameChanged = { value -> loginViewModel.onUsernameChanged(value) },
+            onPasswordChanged = { value -> loginViewModel.onPasswordChanged(value) },
+            loginUiState = loginUiState
         )
     }
 }

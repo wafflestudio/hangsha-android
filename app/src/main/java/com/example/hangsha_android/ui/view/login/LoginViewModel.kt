@@ -54,21 +54,21 @@ class LoginViewModel @Inject constructor(
         val password = currentState.password
 
         when {
-            email.isBlank() -> onAuthFailure("Please enter your email.")
-            password.isBlank() -> onAuthFailure("Please enter your password.")
+            email.isBlank() -> onAuthFailure("이메일을 입력해주세요.")
+            password.isBlank() -> onAuthFailure("비밀번호를 입력해주세요.")
             else -> viewModelScope.launch {
                 onCredentialLoginStarted()
 
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
-                    saveAccessTokenFromResponse(response, "login")
+                    saveAccessTokenFromResponse(response)
                     loadOrganizationNames()
                     loadExcludedKeywords()
                 }
 
                 result.fold(
                     onSuccess = {
-                        onAuthSuccess("Login succeeded.")
+                        onAuthSuccess("로그인되었습니다.")
                     },
                     onFailure = { error ->
                         onAuthFailure(error, "login")
@@ -79,11 +79,11 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onGoogleLoginConfigMissing() {
-        onAuthFailure("GOOGLE_SERVER_CLIENT_ID is not configured.")
+        onAuthFailure("Google 로그인이 아직 설정되지 않았습니다.")
     }
 
     fun onGoogleLoginCancelled() {
-        onAuthFailure("Google login was cancelled.")
+        onAuthFailure("Google 로그인이 취소되었습니다.")
     }
 
     fun onGoogleLoginError(message: String) {
@@ -103,7 +103,7 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isGoogleHistoryClearing = false,
-                loginMessage = "Cleared local Google sign-in history."
+                loginMessage = "Google 로그인 기록을 지웠습니다."
             )
         }
     }
@@ -115,7 +115,7 @@ class LoginViewModel @Inject constructor(
         }
 
         if (serverAuthCode.isNullOrBlank()) {
-            onGoogleLoginError("Google login did not return a server auth code.")
+            onGoogleLoginError("Google 로그인 정보를 가져오지 못했습니다.")
             return
         }
 
@@ -124,14 +124,14 @@ class LoginViewModel @Inject constructor(
 
             val result = runCatching {
                 val response = authRepository.loginWithGoogle(serverAuthCode)
-                saveAccessTokenFromResponse(response, "Google login")
+                saveAccessTokenFromResponse(response)
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }
 
             result.fold(
                 onSuccess = {
-                    onAuthSuccess("Google login succeeded.")
+                    onAuthSuccess("Google 로그인이 완료되었습니다.")
                 },
                 onFailure = { error ->
                     onAuthFailure(error, "Google login")
@@ -169,8 +169,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun saveAccessTokenFromResponse(
-        response: retrofit2.Response<com.example.hangsha_android.data.network.model.LoginResponse>,
-        actionLabel: String
+        response: retrofit2.Response<com.example.hangsha_android.data.network.model.LoginResponse>
     ) {
         if (!response.isSuccessful) {
             throw HttpException(response)
@@ -178,7 +177,7 @@ class LoginViewModel @Inject constructor(
 
         val accessToken = response.body()?.accessToken
         if (accessToken.isNullOrBlank()) {
-            throw IllegalStateException("$actionLabel succeeded but access token was missing.")
+            throw IllegalStateException("로그인 응답에 필요한 토큰이 없습니다.")
         }
 
         authTokenStorage.saveAccessToken(accessToken)
@@ -221,20 +220,24 @@ class LoginViewModel @Inject constructor(
 
     private fun onAuthFailure(error: Throwable, actionLabel: String) {
         val message = when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "인터넷 연결을 확인해주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해주세요."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid $actionLabel request."
-                401 -> "Incorrect email or password."
-                403 -> "You do not have permission to continue."
-                404 -> "Account information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "${actionLabel.replaceFirstChar(Char::titlecase)} failed with code ${error.code()}."
+                400 -> "입력한 정보를 확인해주세요."
+                401 -> if (actionLabel == "login") {
+                    "이메일 또는 비밀번호가 일치하지 않습니다."
+                } else {
+                    "Google 로그인에 실패했습니다."
+                }
+                403 -> "계속 진행할 권한이 없습니다."
+                404 -> "계정 정보를 찾을 수 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+                else -> "로그인에 실패했습니다. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해주세요."
             is IllegalStateException -> error.message
-                ?: "${actionLabel.replaceFirstChar(Char::titlecase)} failed."
-            else -> error.message ?: "${actionLabel.replaceFirstChar(Char::titlecase)} failed."
+                ?: "로그인에 실패했습니다."
+            else -> error.message ?: "로그인에 실패했습니다."
         }
 
         onAuthFailure(message)
