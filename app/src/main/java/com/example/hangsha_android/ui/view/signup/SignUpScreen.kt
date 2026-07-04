@@ -49,7 +49,6 @@ private val SignUpErrorContainer = Color(0xFFFFD8DE)
 fun SignUpScreen(
     uiState: SignUpUiState,
     onEmailChanged: (String) -> Unit,
-    onUsernameChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onPasswordConfirmationChanged: (String) -> Unit,
     onSignUpClick: () -> Unit
@@ -80,25 +79,18 @@ fun SignUpScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "이메일, 사용자명과 비밀번호를 설정해주세요",
+                text = "이메일과 비밀번호를 설정해주세요",
                 color = SignUpBlack,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp
             )
-            Spacer(modifier = Modifier.height(34.dp))
+            Spacer(modifier = Modifier.height(46.dp))
             SignUpTextField(
                 value = uiState.email,
                 onValueChange = onEmailChanged,
                 placeholder = "email@snu.ac.kr",
                 keyboardType = KeyboardType.Email
-            )
-            Spacer(modifier = Modifier.height(22.dp))
-            SignUpTextField(
-                value = uiState.username,
-                onValueChange = onUsernameChanged,
-                placeholder = "사용자명",
-                keyboardType = KeyboardType.Text
             )
             Spacer(modifier = Modifier.height(22.dp))
             SignUpTextField(
@@ -124,7 +116,7 @@ fun SignUpScreen(
                 placeholder = "비밀번호 확인",
                 isError = hasPasswordConfirmationError,
                 keyboardType = KeyboardType.Password,
-                visualTransformation = VisualTransformation.None
+                visualTransformation = PasswordVisualTransformation()
             )
             if (hasPasswordConfirmationError) {
                 Spacer(modifier = Modifier.height(12.dp))

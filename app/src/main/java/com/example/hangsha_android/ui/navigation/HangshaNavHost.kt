@@ -51,6 +51,8 @@ import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
 import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
+import com.example.hangsha_android.ui.view.onboarding.OnboardingScreen
+import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -61,6 +63,7 @@ sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
     data object CredentialLogin : HangshaDestinations("credential_login")
     data object SignUp : HangshaDestinations("sign_up")
+    data object Onboarding : HangshaDestinations("onboarding")
     data object Main : HangshaDestinations("main")
     data object InterestPriority : HangshaDestinations("interest_priority")
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
@@ -98,6 +101,7 @@ fun HangshaNavHost(
     ) {
         loginGraph(navController = navController)
         signUpGraph(navController = navController)
+        onboardingGraph(navController = navController)
         mainGraph(navController = navController)
     }
 }
@@ -220,7 +224,7 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
                 return@LaunchedEffect
             }
 
-            navController.navigate(HangshaDestinations.Main.route) {
+            navController.navigate(HangshaDestinations.Onboarding.route) {
                 popUpTo(HangshaDestinations.Login.route) { inclusive = true }
             }
             signUpViewModel.onSignUpSuccessConsumed()
@@ -229,12 +233,43 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
         SignUpScreen(
             uiState = signUpUiState,
             onEmailChanged = { value -> signUpViewModel.onEmailChanged(value) },
-            onUsernameChanged = { value -> signUpViewModel.onUsernameChanged(value) },
             onPasswordChanged = { value -> signUpViewModel.onPasswordChanged(value) },
             onPasswordConfirmationChanged = { value ->
                 signUpViewModel.onPasswordConfirmationChanged(value)
             },
             onSignUpClick = { signUpViewModel.signUp() }
+        )
+    }
+}
+
+fun NavGraphBuilder.onboardingGraph(navController: NavHostController) {
+    composable(HangshaDestinations.Onboarding.route) {
+        val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+        val onboardingUiState by onboardingViewModel.uiState.collectAsState()
+        val context = LocalContext.current
+
+        LaunchedEffect(onboardingUiState.onboardingMessage) {
+            val message = onboardingUiState.onboardingMessage ?: return@LaunchedEffect
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onboardingViewModel.onOnboardingMessageConsumed()
+        }
+
+        LaunchedEffect(onboardingUiState.isUsernameSaved) {
+            if (!onboardingUiState.isUsernameSaved) {
+                return@LaunchedEffect
+            }
+
+            // TODO(ONBOARDING): Add the remaining onboarding steps after username setup.
+            navController.navigate(HangshaDestinations.Main.route) {
+                popUpTo(HangshaDestinations.Onboarding.route) { inclusive = true }
+            }
+            onboardingViewModel.onUsernameSavedConsumed()
+        }
+
+        OnboardingScreen(
+            uiState = onboardingUiState,
+            onUsernameChanged = { value -> onboardingViewModel.onUsernameChanged(value) },
+            onContinueClick = { onboardingViewModel.saveUsername() }
         )
     }
 }

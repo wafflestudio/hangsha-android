@@ -41,16 +41,6 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
-    fun onUsernameChanged(username: String) {
-        _uiState.update {
-            it.copy(
-                username = username,
-                isSignUpSuccessful = false,
-                signUpMessage = null
-            )
-        }
-    }
-
     fun onPasswordChanged(password: String) {
         _uiState.update {
             it.copy(
@@ -75,7 +65,7 @@ class SignUpViewModel @Inject constructor(
         val currentState = _uiState.value
 
         if (!currentState.isSubmitEnabled) {
-            onSignUpFailure("Please check your email, username, and password inputs.")
+            onSignUpFailure("Please check your email and password inputs.")
             return
         }
 
@@ -92,7 +82,7 @@ class SignUpViewModel @Inject constructor(
                 val response = authRepository.register(
                     email = currentState.email.trim(),
                     password = currentState.password,
-                    username = currentState.username.trim()
+                    username = ""
                 )
 
                 saveAccessTokenFromResponse(response)

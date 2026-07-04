@@ -2,7 +2,6 @@ package com.example.hangsha_android.ui.view.signup
 
 data class SignUpUiState(
     val email: String = "",
-    val username: String = "",
     val password: String = "",
     val passwordConfirmation: String = "",
     val signUpMessage: String? = null,
@@ -11,7 +10,6 @@ data class SignUpUiState(
 ) {
     val isSubmitEnabled: Boolean
         get() = email.isNotBlank() &&
-            username.isNotBlank() &&
             password.isNotBlank() &&
             password.isValidSignUpPassword() &&
             passwordConfirmation.isNotBlank() &&
