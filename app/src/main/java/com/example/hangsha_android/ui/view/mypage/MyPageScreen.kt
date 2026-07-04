@@ -89,6 +89,7 @@ fun MyPageScreen(
     onDraftProfileImageDeleted: () -> Unit,
     onSaveProfileEdit: () -> Unit,
     onInterestPriorityClick: () -> Unit,
+    onTimetableClick: () -> Unit,
     onBookmarksClick: () -> Unit,
     onBookmarkedEventClick: (Long) -> Unit,
     onMemoListClick: () -> Unit,
@@ -139,7 +140,7 @@ fun MyPageScreen(
                             onClick = onInterestPriorityClick
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TimetableRegistrationRow()
+                        TimetableRegistrationRow(onClick = onTimetableClick)
                         Spacer(modifier = Modifier.height(29.dp))
                         BookmarksPreviewSection(
                             items = uiState.bookmarkedEvents,
@@ -457,9 +458,13 @@ private fun PriorityChip(
 
 // 시간표 등록 영역
 @Composable
-private fun TimetableRegistrationRow() {
+private fun TimetableRegistrationRow(
+    onClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = PureWhite,
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)

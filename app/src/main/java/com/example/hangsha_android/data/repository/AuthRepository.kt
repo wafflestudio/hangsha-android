@@ -32,12 +32,16 @@ class AuthRepository @Inject constructor(
     }
 
     // 회원가입
-    suspend fun register(email: String, password: String): Response<LoginResponse> {
+    suspend fun register(
+        email: String,
+        password: String,
+        username: String
+    ): Response<LoginResponse> {
         return authApi.register(
             RegisterRequest(
                 email = email,
                 password = password,
-                username = "username" // TODO: username이 가야되긴 하는데, 웹에서도 입력받는 부분이 없어서 임시로 고정값 넣어둠. 나중에 수정 필요
+                username = username
             )
         )
     }

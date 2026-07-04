@@ -16,6 +16,11 @@ interface MemoApi {
     @GET("api/v1/memos")
     suspend fun getMemos(): Response<MemoListResponse>
 
+    @GET("api/v1/memos/by-event/{eventId}")
+    suspend fun getMemoByEvent(
+        @Path("eventId") eventId: Long
+    ): Response<MemoResponse>
+
     @POST("api/v1/memos")
     suspend fun createMemo(
         @Body request: CreateMemoRequest

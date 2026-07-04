@@ -11,7 +11,20 @@ data class SignUpUiState(
     val isSubmitEnabled: Boolean
         get() = email.isNotBlank() &&
             password.isNotBlank() &&
+            password.isValidSignUpPassword() &&
             passwordConfirmation.isNotBlank() &&
             password == passwordConfirmation &&
             !isSignUpLoading
+}
+
+private fun String.isValidSignUpPassword(): Boolean {
+    val hasLetter = any(Char::isLetter)
+    val hasDigit = any(Char::isDigit)
+    val hasSpecial = any { !it.isLetterOrDigit() && !it.isWhitespace() }
+
+    return length >= 8 &&
+        hasLetter &&
+        hasDigit &&
+        hasSpecial &&
+        none(Char::isWhitespace)
 }
