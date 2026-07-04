@@ -16,8 +16,14 @@ fun HangshaApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val showBottomBar =
+    val isOnboardingInterestPriority =
+        currentDestination?.route == HangshaDestinations.InterestPriority.route &&
+            navBackStackEntry?.arguments
+                ?.getString(HangshaDestinations.InterestPriority.sourceArg) ==
+            HangshaDestinations.InterestPriority.sourceOnboarding
+    val isMainGraphDestination =
         currentDestination?.hierarchy?.any { it.route == HangshaDestinations.Main.route } == true
+    val showBottomBar = isMainGraphDestination && !isOnboardingInterestPriority
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

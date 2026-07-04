@@ -59,7 +59,6 @@ private val OnboardingError = Color(0xFFFF4058)
 private val OnboardingAvatarBackground = Color(0xFFD9D9D9)
 private val OnboardingCameraIcon = Color(0xFF8F8F8F)
 
-// TODO: 추후 관심사 설정 화면으로도 이동이 필요함
 @Composable
 fun OnboardingScreen(
     uiState: OnboardingUiState,

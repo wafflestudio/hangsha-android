@@ -53,6 +53,7 @@ import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
 import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingScreen
 import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
+import com.example.hangsha_android.ui.view.onboarding.OnboardingWelcomeScreen
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -64,8 +65,18 @@ sealed class HangshaDestinations(val route: String) {
     data object CredentialLogin : HangshaDestinations("credential_login")
     data object SignUp : HangshaDestinations("sign_up")
     data object Onboarding : HangshaDestinations("onboarding")
+    data object OnboardingWelcome : HangshaDestinations("onboarding_welcome")
     data object Main : HangshaDestinations("main")
-    data object InterestPriority : HangshaDestinations("interest_priority")
+    data object InterestPriority : HangshaDestinations("interest_priority?source={source}") {
+        const val baseRoute = "interest_priority"
+        const val sourceArg = "source"
+        const val sourceMyPage = "mypage"
+        const val sourceOnboarding = "onboarding"
+
+        fun createRoute(source: String = sourceMyPage): String {
+            return "$baseRoute?$sourceArg=$source"
+        }
+    }
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
     data object MyMemos : HangshaDestinations("my_memos")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
@@ -259,10 +270,11 @@ fun NavGraphBuilder.onboardingGraph(navController: NavHostController) {
                 return@LaunchedEffect
             }
 
-            // TODO(ONBOARDING): Add the remaining onboarding steps after profile setup.
-            navController.navigate(HangshaDestinations.Main.route) {
-                popUpTo(HangshaDestinations.Onboarding.route) { inclusive = true }
-            }
+            navController.navigate(
+                HangshaDestinations.InterestPriority.createRoute(
+                    source = HangshaDestinations.InterestPriority.sourceOnboarding
+                )
+            )
             onboardingViewModel.onProfileSavedConsumed()
         }
 
@@ -276,6 +288,27 @@ fun NavGraphBuilder.onboardingGraph(navController: NavHostController) {
                 onboardingViewModel.markProfileImageDeleted()
             },
             onContinueClick = { onboardingViewModel.saveProfile() }
+        )
+    }
+
+    composable(HangshaDestinations.OnboardingWelcome.route) {
+        OnboardingWelcomeScreen(
+            onMyPageClick = {
+                navController.navigate(BottomTab.MyPage.route) {
+                    popUpTo(HangshaDestinations.OnboardingWelcome.route) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+            },
+            onCalendarClick = {
+                navController.navigate(HangshaDestinations.Main.route) {
+                    popUpTo(HangshaDestinations.OnboardingWelcome.route) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+            }
         )
     }
 }
@@ -537,20 +570,41 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onRetryClick = { myMemosViewModel.loadMemos() }
             )
         }
-        composable(HangshaDestinations.InterestPriority.route) {
+        composable(
+            route = HangshaDestinations.InterestPriority.route,
+            arguments = listOf(
+                navArgument(HangshaDestinations.InterestPriority.sourceArg) {
+                    type = NavType.StringType
+                    defaultValue = HangshaDestinations.InterestPriority.sourceMyPage
+                }
+            )
+        ) { backStackEntry ->
             val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
             val interestPriorityUiState by interestPriorityViewModel.uiState.collectAsState()
+            val source = backStackEntry.arguments
+                ?.getString(HangshaDestinations.InterestPriority.sourceArg)
+                ?: HangshaDestinations.InterestPriority.sourceMyPage
+            val isOnboardingFlow =
+                source == HangshaDestinations.InterestPriority.sourceOnboarding
 
-            LaunchedEffect(interestPriorityUiState.isSaveSuccessful) {
+            LaunchedEffect(interestPriorityUiState.isSaveSuccessful, isOnboardingFlow) {
                 if (!interestPriorityUiState.isSaveSuccessful) {
                     return@LaunchedEffect
                 }
 
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    InterestPriorityNavigationKeys.updatedKey,
-                    true
-                )
-                navController.popBackStack()
+                if (isOnboardingFlow) {
+                    navController.navigate(HangshaDestinations.OnboardingWelcome.route) {
+                        popUpTo(HangshaDestinations.Onboarding.route) {
+                            inclusive = true
+                        }
+                    }
+                } else {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        InterestPriorityNavigationKeys.updatedKey,
+                        true
+                    )
+                    navController.popBackStack()
+                }
                 interestPriorityViewModel.onSaveSuccessConsumed()
             }
 
@@ -633,7 +687,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 },
                 onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
                 onInterestPriorityClick = {
-                    navController.navigate(HangshaDestinations.InterestPriority.route)
+                    navController.navigate(HangshaDestinations.InterestPriority.createRoute())
                 },
                 onTimetableClick = {
                     navController.navigate(BottomTab.Timetable.route) {
