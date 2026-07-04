@@ -254,22 +254,28 @@ fun NavGraphBuilder.onboardingGraph(navController: NavHostController) {
             onboardingViewModel.onOnboardingMessageConsumed()
         }
 
-        LaunchedEffect(onboardingUiState.isUsernameSaved) {
-            if (!onboardingUiState.isUsernameSaved) {
+        LaunchedEffect(onboardingUiState.isProfileSaved) {
+            if (!onboardingUiState.isProfileSaved) {
                 return@LaunchedEffect
             }
 
-            // TODO(ONBOARDING): Add the remaining onboarding steps after username setup.
+            // TODO(ONBOARDING): Add the remaining onboarding steps after profile setup.
             navController.navigate(HangshaDestinations.Main.route) {
                 popUpTo(HangshaDestinations.Onboarding.route) { inclusive = true }
             }
-            onboardingViewModel.onUsernameSavedConsumed()
+            onboardingViewModel.onProfileSavedConsumed()
         }
 
         OnboardingScreen(
             uiState = onboardingUiState,
             onUsernameChanged = { value -> onboardingViewModel.onUsernameChanged(value) },
-            onContinueClick = { onboardingViewModel.saveUsername() }
+            onProfileImageSelected = { uri ->
+                onboardingViewModel.onProfileImageSelected(uri)
+            },
+            onProfileImageDeleted = {
+                onboardingViewModel.markProfileImageDeleted()
+            },
+            onContinueClick = { onboardingViewModel.saveProfile() }
         )
     }
 }
