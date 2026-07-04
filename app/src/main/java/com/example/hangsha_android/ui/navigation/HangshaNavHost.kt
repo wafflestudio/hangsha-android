@@ -172,6 +172,9 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
             },
             onNaverLoginClick = {
                 // TODO(NAVER_LOGIN): Connect Naver social login after the UI pass.
+            },
+            onGuestContinueClick = {
+                // TODO(GUEST_CONTINUE): Connect guest-mode navigation after the UI pass.
             }
         )
     }
@@ -217,20 +220,21 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
                 return@LaunchedEffect
             }
 
-            navController.popBackStack()
+            navController.navigate(HangshaDestinations.Main.route) {
+                popUpTo(HangshaDestinations.Login.route) { inclusive = true }
+            }
             signUpViewModel.onSignUpSuccessConsumed()
         }
 
         SignUpScreen(
             uiState = signUpUiState,
             onEmailChanged = { value -> signUpViewModel.onEmailChanged(value) },
+            onUsernameChanged = { value -> signUpViewModel.onUsernameChanged(value) },
             onPasswordChanged = { value -> signUpViewModel.onPasswordChanged(value) },
             onPasswordConfirmationChanged = { value ->
                 signUpViewModel.onPasswordConfirmationChanged(value)
             },
-            onSignUpClick = {
-                // TODO(SIGN_UP_VM): Wire account creation after the sign-up UI pass.
-            }
+            onSignUpClick = { signUpViewModel.signUp() }
         )
     }
 }

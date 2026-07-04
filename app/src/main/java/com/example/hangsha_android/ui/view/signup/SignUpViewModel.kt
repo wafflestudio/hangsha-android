@@ -2,7 +2,11 @@ package com.example.hangsha_android.ui.view.signup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
+import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
+import com.example.hangsha_android.data.repository.UserRepository
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -14,10 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import retrofit2.Response
 
 @HiltViewModel
 class SignUpViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val authTokenStorage: AuthTokenStorage,
+    private val userRepository: UserRepository,
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SignUpUiState())
@@ -27,6 +35,16 @@ class SignUpViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 email = email,
+                isSignUpSuccessful = false,
+                signUpMessage = null
+            )
+        }
+    }
+
+    fun onUsernameChanged(username: String) {
+        _uiState.update {
+            it.copy(
+                username = username,
                 isSignUpSuccessful = false,
                 signUpMessage = null
             )
@@ -53,12 +71,11 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
-    // TODO(SIGN_UP_VM): Reconnect this after the UI-only sign-up pass is approved.
     fun signUp() {
         val currentState = _uiState.value
 
         if (!currentState.isSubmitEnabled) {
-            onSignUpFailure("Please check your email and password inputs.")
+            onSignUpFailure("Please check your email, username, and password inputs.")
             return
         }
 
@@ -74,12 +91,13 @@ class SignUpViewModel @Inject constructor(
             runCatching {
                 val response = authRepository.register(
                     email = currentState.email.trim(),
-                    password = currentState.password
+                    password = currentState.password,
+                    username = currentState.username.trim()
                 )
 
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
+                saveAccessTokenFromResponse(response)
+                loadOrganizationNames()
+                loadExcludedKeywords()
             }.fold(
                 onSuccess = {
                     onSignUpSuccess()
@@ -128,6 +146,31 @@ class SignUpViewModel @Inject constructor(
         }
 
         onSignUpFailure(message)
+    }
+
+    private fun saveAccessTokenFromResponse(response: Response<LoginResponse>) {
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+
+        val accessToken = response.body()?.accessToken
+        if (accessToken.isNullOrBlank()) {
+            throw IllegalStateException("Sign-up response did not include an access token.")
+        }
+
+        authTokenStorage.saveAccessToken(accessToken)
+    }
+
+    private suspend fun loadOrganizationNames() {
+        runCatching {
+            userRepository.ensureOrganizationNamesLoaded()
+        }
+    }
+
+    private suspend fun loadExcludedKeywords() {
+        runCatching {
+            excludedKeywordsRepository.refreshExcludedKeywords()
+        }
     }
 
     private fun onSignUpSuccess() {

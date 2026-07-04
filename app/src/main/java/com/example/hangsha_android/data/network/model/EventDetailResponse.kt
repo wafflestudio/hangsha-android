@@ -4,7 +4,7 @@ data class EventDetailResponse(
     val id: Long,
     val title: String,
     val imageUrl: String?,
-    val operationMode: String,
+    val operationMode: String?,
     val statusId: Long,
     val eventTypeId: Long,
     val orgId: Long,

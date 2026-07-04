@@ -4,9 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +51,7 @@ private val AuthBorder = Color(0xFFE0E0E0)
 private val AuthPlaceholder = Color(0xFF8F8F8F)
 private val AuthError = Color(0xFFFF4058)
 private val AuthYellow = Color(0xFFFFD344)
+private val AuthMuted = Color(0xFF777777)
 private val KakaoYellow = Color(0xFFFFE812)
 private val NaverGreen = Color(0xFF03C75A)
 
@@ -61,7 +62,8 @@ fun OpeningScreen(
     onGoogleLoginClick: () -> Unit,
     onKakaoLoginClick: () -> Unit,
     onNaverLoginClick: () -> Unit,
-    onSignUpClick: () -> Unit
+    onSignUpClick: () -> Unit,
+    onGuestContinueClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -133,6 +135,19 @@ fun OpeningScreen(
                 contentColor = AuthBlack,
                 borderColor = AuthYellow,
                 shadowElevation = 2.dp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "로그인 없이 게스트로 계속",
+                modifier = Modifier.clickable(
+                    enabled = !loginUiState.isAnyLoginLoading,
+                    onClick = onGuestContinueClick
+                ),
+                color = AuthMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.sp,
+                textAlign = TextAlign.Center
             )
             loginUiState.loginMessage?.let { message ->
                 Spacer(modifier = Modifier.height(18.dp))
@@ -216,24 +231,14 @@ fun LoginScreen(
 
 @Composable
 private fun HangshaBrand() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.hangsha_logo),
-            contentDescription = "행샤 로고",
-            modifier = Modifier.size(86.dp),
-            contentScale = ContentScale.Fit
-        )
-        Spacer(modifier = Modifier.width(22.dp))
-        Text(
-            text = "행샤",
-            color = AuthBlack,
-            fontSize = 29.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.sp
-        )
-    }
+    Image(
+        painter = painterResource(id = R.drawable.logo_with_text),
+        contentDescription = "행샤 로고",
+        modifier = Modifier
+            .width(170.dp)
+            .height(86.dp),
+        contentScale = ContentScale.Fit
+    )
 }
 
 @Composable
