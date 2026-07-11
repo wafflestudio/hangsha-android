@@ -3,6 +3,7 @@ package com.example.hangsha_android.data.repository
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.model.LoginRequest
 import com.example.hangsha_android.data.network.model.LoginResponse
+import com.example.hangsha_android.data.network.model.RefreshTokenRequest
 import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
 import javax.inject.Inject
@@ -43,6 +44,12 @@ class AuthRepository @Inject constructor(
                 password = password,
                 username = username
             )
+        )
+    }
+
+    suspend fun logout(refreshToken: String): Response<Unit> {
+        return authApi.logout(
+            RefreshTokenRequest(refreshToken = refreshToken)
         )
     }
 
