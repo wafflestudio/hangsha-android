@@ -53,6 +53,12 @@ class AuthRepository @Inject constructor(
         )
     }
 
+    suspend fun refresh(refreshToken: String): Response<LoginResponse> {
+        return authApi.refresh(
+            RefreshTokenRequest(refreshToken = refreshToken)
+        )
+    }
+
     companion object {
         private const val GOOGLE_PROVIDER = "GOOGLE"
     }

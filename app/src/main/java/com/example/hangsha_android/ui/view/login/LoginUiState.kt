@@ -3,6 +3,7 @@ package com.example.hangsha_android.ui.view.login
 data class LoginUiState(
     val username: String = "",
     val password: String = "",
+    val isAutoLoginLoading: Boolean = false,
     val isCredentialLoginLoading: Boolean = false,
     val isGoogleLoginLoading: Boolean = false,
     val isGoogleHistoryClearing: Boolean = false,
@@ -10,5 +11,5 @@ data class LoginUiState(
     val loginMessage: String? = null
 ) {
     val isAnyLoginLoading: Boolean
-        get() = isCredentialLoginLoading || isGoogleLoginLoading
+        get() = isAutoLoginLoading || isCredentialLoginLoading || isGoogleLoginLoading
 }

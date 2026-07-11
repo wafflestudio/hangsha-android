@@ -156,6 +156,10 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
             loginViewModel.loginWithGoogle(serverAuthCode)
         }
 
+        LaunchedEffect(Unit) {
+            loginViewModel.tryAutoLogin()
+        }
+
         LaunchedEffect(loginUiState.isLoginSuccessful) {
             if (!loginUiState.isLoginSuccessful) {
                 return@LaunchedEffect
