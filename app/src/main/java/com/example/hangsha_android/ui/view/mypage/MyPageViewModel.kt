@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MemoResponse
+import com.example.hangsha_android.data.repository.AuthRepository
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.MemoRepository
@@ -33,6 +34,7 @@ import retrofit2.HttpException
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val bugReportRepository: BugReportRepository,
@@ -370,7 +372,7 @@ class MyPageViewModel @Inject constructor(
         }
         if (title.isBlank() || content.isBlank()) {
             _uiState.update {
-                it.copy(bugReportToastMessage = "제목과 내용을 모두 입력해 주세요.")
+                it.copy(bugReportToastMessage = "Please enter both a title and description.")
             }
             return
         }
@@ -398,7 +400,7 @@ class MyPageViewModel @Inject constructor(
                             bugReportTitle = "",
                             bugReportContent = "",
                             isSubmittingBugReport = false,
-                            bugReportToastMessage = "버그 신고가 접수되었습니다."
+                            bugReportToastMessage = "Your bug report was submitted."
                         )
                     }
                 },
@@ -421,9 +423,18 @@ class MyPageViewModel @Inject constructor(
     }
 
     fun logout() {
-        authTokenStorage.clearAccessToken()
-        _uiState.update {
-            it.copy(isLoggedOut = true)
+        viewModelScope.launch {
+            val refreshToken = authTokenStorage.getRefreshToken()
+            if (!refreshToken.isNullOrBlank()) {
+                runCatching {
+                    authRepository.logout(refreshToken)
+                }
+            }
+
+            authTokenStorage.clearTokens()
+            _uiState.update {
+                it.copy(isLoggedOut = true)
+            }
         }
     }
 
@@ -447,7 +458,7 @@ class MyPageViewModel @Inject constructor(
                 }
             }.fold(
                 onSuccess = {
-                    authTokenStorage.clearAccessToken()
+                    authTokenStorage.clearTokens()
                     _uiState.update {
                         it.copy(
                             isDeletingAccount = false,
@@ -513,7 +524,7 @@ class MyPageViewModel @Inject constructor(
     private fun validateDraftUsername(username: String): String? {
         val trimmedUsername = username.trim()
         if (trimmedUsername.isBlank()) {
-            return "사용자 이름을 입력해 주세요."
+            return "Please enter a username."
         }
 
         val maxLength = if (trimmedUsername.any { char -> char.isKorean() }) {
@@ -522,7 +533,7 @@ class MyPageViewModel @Inject constructor(
             ENGLISH_USERNAME_MAX_LENGTH
         }
         return if (trimmedUsername.length > maxLength) {
-            "사용자 이름은 ${maxLength}자 이하여야 합니다."
+            "Username must be $maxLength characters or less."
         } else {
             null
         }
@@ -530,7 +541,7 @@ class MyPageViewModel @Inject constructor(
 
     private fun mapProfileSaveErrorMessage(error: Throwable): String {
         return when (error) {
-            is IllegalArgumentException -> error.message ?: "프로필 입력값을 확인해 주세요."
+            is IllegalArgumentException -> error.message ?: "Please check your profile input."
             else -> mapErrorMessage(error)
         }
     }
@@ -538,58 +549,58 @@ class MyPageViewModel @Inject constructor(
     private fun mapAccountDeletionErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "로그인이 필요합니다."
-                403 -> "회원 탈퇴 권한이 없습니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "회원 탈퇴에 실패했습니다. (${error.code()})"
+                401 -> "Login is required."
+                403 -> "You do not have permission to delete this account."
+                in 500..599 -> "A server error occurred. Please try again later."
+                else -> "Failed to delete the account. (${error.code()})"
             }
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            else -> error.message ?: "회원 탈퇴에 실패했습니다."
+            is UnknownHostException -> "Please check your internet connection."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is IOException -> "A network error occurred. Please try again."
+            else -> error.message ?: "Failed to delete the account."
         }
     }
 
     private fun mapBugReportErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                400 -> "버그 신고 내용을 확인해 주세요."
-                401 -> "로그인이 필요합니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "버그 신고에 실패했습니다. (${error.code()})"
+                400 -> "Please check your bug report content."
+                401 -> "Login is required."
+                in 500..599 -> "A server error occurred. Please try again later."
+                else -> "Failed to submit the bug report. (${error.code()})"
             }
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            else -> error.message ?: "버그 신고에 실패했습니다."
+            is UnknownHostException -> "Please check your internet connection."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is IOException -> "A network error occurred. Please try again."
+            else -> error.message ?: "Failed to submit the bug report."
         }
     }
 
     private fun mapBookmarksPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "로그인이 필요합니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "찜 목록을 불러오지 못했습니다. (${error.code()})"
+                401 -> "Login is required."
+                in 500..599 -> "A server error occurred. Please try again later."
+                else -> "Failed to load bookmarks. (${error.code()})"
             }
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            else -> error.message ?: "찜 목록을 불러오지 못했습니다."
+            is UnknownHostException -> "Please check your internet connection."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is IOException -> "A network error occurred. Please try again."
+            else -> error.message ?: "Failed to load bookmarks."
         }
     }
 
     private fun mapMemosPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "로그인이 필요합니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "메모 목록을 불러오지 못했습니다. (${error.code()})"
+                401 -> "Login is required."
+                in 500..599 -> "A server error occurred. Please try again later."
+                else -> "Failed to load memos. (${error.code()})"
             }
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            else -> error.message ?: "메모 목록을 불러오지 못했습니다."
+            is UnknownHostException -> "Please check your internet connection."
+            is SocketTimeoutException -> "The request timed out. Please try again."
+            is IOException -> "A network error occurred. Please try again."
+            else -> error.message ?: "Failed to load memos."
         }
     }
 
@@ -621,11 +632,11 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
-            diff == 0L -> "지원 D-day"
-            diff > 0L -> "지원 D-$diff"
-            else -> "지원 D$diff"
+            diff == 0L -> "Apply D-day"
+            diff > 0L -> "Apply D-$diff"
+            else -> "Apply D$diff"
         }
-    } ?: "지원 -"
+    } ?: "Apply -"
 
     return BookmarkedEventItem(
         id = id,

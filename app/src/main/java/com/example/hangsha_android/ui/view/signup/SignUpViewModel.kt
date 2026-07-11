@@ -7,10 +7,10 @@ import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,7 +85,7 @@ class SignUpViewModel @Inject constructor(
                     username = ""
                 )
 
-                saveAccessTokenFromResponse(response)
+                saveTokensFromResponse(response)
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }.fold(
@@ -138,17 +138,22 @@ class SignUpViewModel @Inject constructor(
         onSignUpFailure(message)
     }
 
-    private fun saveAccessTokenFromResponse(response: Response<LoginResponse>) {
+    private fun saveTokensFromResponse(response: Response<LoginResponse>) {
         if (!response.isSuccessful) {
             throw HttpException(response)
         }
 
-        val accessToken = response.body()?.accessToken
-        if (accessToken.isNullOrBlank()) {
-            throw IllegalStateException("Sign-up response did not include an access token.")
+        val authTokens = response.body()
+        val accessToken = authTokens?.accessToken
+        val refreshToken = authTokens?.refreshToken
+        if (accessToken.isNullOrBlank() || refreshToken.isNullOrBlank()) {
+            throw IllegalStateException("Sign-up response did not include auth tokens.")
         }
 
-        authTokenStorage.saveAccessToken(accessToken)
+        authTokenStorage.saveTokens(
+            accessToken = accessToken,
+            refreshToken = refreshToken
+        )
     }
 
     private suspend fun loadOrganizationNames() {

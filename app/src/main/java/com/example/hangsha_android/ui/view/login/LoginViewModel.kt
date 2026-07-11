@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import retrofit2.Response
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -29,6 +31,7 @@ class LoginViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private var hasAttemptedAutoLogin = false
 
     fun onUsernameChanged(username: String) {
         _uiState.update {
@@ -48,27 +51,67 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    fun tryAutoLogin() {
+        if (hasAttemptedAutoLogin) {
+            return
+        }
+        hasAttemptedAutoLogin = true
+
+        val refreshToken = authTokenStorage.getRefreshToken()
+        if (refreshToken.isNullOrBlank()) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isAutoLoginLoading = true,
+                    loginMessage = null
+                )
+            }
+
+            val result = runCatching {
+                val response = authRepository.refresh(refreshToken)
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                saveTokensFromResponse(response)
+                loadOrganizationNames()
+                loadExcludedKeywords()
+            }
+
+            result.fold(
+                onSuccess = {
+                    onAuthSuccess("Logged in automatically.")
+                },
+                onFailure = { error ->
+                    onAutoLoginFailure(error)
+                }
+            )
+        }
+    }
+
     fun loginWithCredentials() {
         val currentState = _uiState.value
         val email = currentState.username.trim()
         val password = currentState.password
 
         when {
-            email.isBlank() -> onAuthFailure("이메일을 입력해주세요.")
-            password.isBlank() -> onAuthFailure("비밀번호를 입력해주세요.")
+            email.isBlank() -> onAuthFailure("Please enter your email.")
+            password.isBlank() -> onAuthFailure("Please enter your password.")
             else -> viewModelScope.launch {
                 onCredentialLoginStarted()
 
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
-                    saveAccessTokenFromResponse(response)
+                    saveTokensFromResponse(response)
                     loadOrganizationNames()
                     loadExcludedKeywords()
                 }
 
                 result.fold(
                     onSuccess = {
-                        onAuthSuccess("로그인되었습니다.")
+                        onAuthSuccess("Logged in successfully.")
                     },
                     onFailure = { error ->
                         onAuthFailure(error, "login")
@@ -79,11 +122,11 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onGoogleLoginConfigMissing() {
-        onAuthFailure("Google 로그인이 아직 설정되지 않았습니다.")
+        onAuthFailure("Google login is not configured yet.")
     }
 
     fun onGoogleLoginCancelled() {
-        onAuthFailure("Google 로그인이 취소되었습니다.")
+        onAuthFailure("Google login was cancelled.")
     }
 
     fun onGoogleLoginError(message: String) {
@@ -103,7 +146,7 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isGoogleHistoryClearing = false,
-                loginMessage = "Google 로그인 기록을 지웠습니다."
+                loginMessage = "Google sign-in history was cleared."
             )
         }
     }
@@ -115,7 +158,7 @@ class LoginViewModel @Inject constructor(
         }
 
         if (serverAuthCode.isNullOrBlank()) {
-            onGoogleLoginError("Google 로그인 정보를 가져오지 못했습니다.")
+            onGoogleLoginError("Could not retrieve Google login information.")
             return
         }
 
@@ -124,14 +167,14 @@ class LoginViewModel @Inject constructor(
 
             val result = runCatching {
                 val response = authRepository.loginWithGoogle(serverAuthCode)
-                saveAccessTokenFromResponse(response)
+                saveTokensFromResponse(response)
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }
 
             result.fold(
                 onSuccess = {
-                    onAuthSuccess("Google 로그인이 완료되었습니다.")
+                    onAuthSuccess("Google login completed successfully.")
                 },
                 onFailure = { error ->
                     onAuthFailure(error, "Google login")
@@ -168,19 +211,22 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    private fun saveAccessTokenFromResponse(
-        response: retrofit2.Response<com.example.hangsha_android.data.network.model.LoginResponse>
-    ) {
+    private fun saveTokensFromResponse(response: Response<LoginResponse>) {
         if (!response.isSuccessful) {
             throw HttpException(response)
         }
 
-        val accessToken = response.body()?.accessToken
-        if (accessToken.isNullOrBlank()) {
-            throw IllegalStateException("로그인 응답에 필요한 토큰이 없습니다.")
+        val authTokens = response.body()
+        val accessToken = authTokens?.accessToken
+        val refreshToken = authTokens?.refreshToken
+        if (accessToken.isNullOrBlank() || refreshToken.isNullOrBlank()) {
+            throw IllegalStateException("Authentication response did not include auth tokens.")
         }
 
-        authTokenStorage.saveAccessToken(accessToken)
+        authTokenStorage.saveTokens(
+            accessToken = accessToken,
+            refreshToken = refreshToken
+        )
     }
 
     private suspend fun loadOrganizationNames() {
@@ -198,6 +244,7 @@ class LoginViewModel @Inject constructor(
     private fun onAuthSuccess(message: String) {
         _uiState.update {
             it.copy(
+                isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
                 isLoginSuccessful = true,
@@ -209,6 +256,7 @@ class LoginViewModel @Inject constructor(
     private fun onAuthFailure(message: String) {
         _uiState.update {
             it.copy(
+                isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
                 isGoogleHistoryClearing = false,
@@ -220,26 +268,57 @@ class LoginViewModel @Inject constructor(
 
     private fun onAuthFailure(error: Throwable, actionLabel: String) {
         val message = when (error) {
-            is UnknownHostException -> "인터넷 연결을 확인해주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해주세요."
+            is UnknownHostException -> "Please check your internet connection."
+            is SocketTimeoutException -> "The request timed out. Please try again."
             is HttpException -> when (error.code()) {
-                400 -> "입력한 정보를 확인해주세요."
+                400 -> "Please check the information you entered."
                 401 -> if (actionLabel == "login") {
-                    "이메일 또는 비밀번호가 일치하지 않습니다."
+                    "Your email or password is incorrect."
                 } else {
-                    "Google 로그인에 실패했습니다."
+                    "Google login failed."
                 }
-                403 -> "계속 진행할 권한이 없습니다."
-                404 -> "계정 정보를 찾을 수 없습니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                else -> "로그인에 실패했습니다. (${error.code()})"
+                403 -> "You do not have permission to continue."
+                404 -> "Account information could not be found."
+                in 500..599 -> "A server error occurred. Please try again later."
+                else -> "Login failed. (${error.code()})"
             }
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해주세요."
-            is IllegalStateException -> error.message
-                ?: "로그인에 실패했습니다."
-            else -> error.message ?: "로그인에 실패했습니다."
+            is IOException -> "A network error occurred. Please try again."
+            is IllegalStateException -> error.message ?: "Login failed."
+            else -> error.message ?: "Login failed."
         }
 
         onAuthFailure(message)
+    }
+
+    private fun onAutoLoginFailure(error: Throwable) {
+        when (error) {
+            is HttpException -> {
+                if (error.code() == 404) {
+                    authTokenStorage.clearTokens()
+                    _uiState.update {
+                        it.copy(
+                            isAutoLoginLoading = false,
+                            isLoginSuccessful = false,
+                            loginMessage = null
+                        )
+                    }
+                    return
+                }
+
+                if (error.code() == 401) {
+                    authTokenStorage.clearTokens()
+                    _uiState.update {
+                        it.copy(
+                            isAutoLoginLoading = false,
+                            isLoginSuccessful = false,
+                            loginMessage = "Your session has expired. Please log in again."
+                        )
+                    }
+                    return
+                }
+            }
+        }
+
+        onAuthFailure(error, "auto login")
     }
 }
