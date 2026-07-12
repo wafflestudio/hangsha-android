@@ -6,13 +6,13 @@ import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.network.model.RefreshTokenRequest
 import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
+import com.example.hangsha_android.data.network.model.SocialLoginResponse
 import javax.inject.Inject
 import retrofit2.Response
 
 class AuthRepository @Inject constructor(
     private val authApi: AuthApi
 ) {
-    // 로그인
     suspend fun login(email: String, password: String): Response<LoginResponse> {
         return authApi.login(
             LoginRequest(
@@ -22,7 +22,7 @@ class AuthRepository @Inject constructor(
         )
     }
 
-    suspend fun loginWithGoogle(serverAuthCode: String): Response<LoginResponse> {
+    suspend fun loginWithGoogle(serverAuthCode: String): Response<SocialLoginResponse> {
         return authApi.loginWithSocial(
             SocialLoginRequest(
                 provider = GOOGLE_PROVIDER,
@@ -32,7 +32,12 @@ class AuthRepository @Inject constructor(
         )
     }
 
-    // 회원가입
+    suspend fun createMobileSession(accessToken: String): Response<LoginResponse> {
+        return authApi.createMobileSession(
+            authorization = "Bearer $accessToken"
+        )
+    }
+
     suspend fun register(
         email: String,
         password: String,

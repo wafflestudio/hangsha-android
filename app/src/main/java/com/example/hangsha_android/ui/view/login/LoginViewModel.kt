@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.LoginResponse
+import com.example.hangsha_android.data.network.model.SocialLoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
@@ -166,8 +167,11 @@ class LoginViewModel @Inject constructor(
             onGoogleLoginStarted()
 
             val result = runCatching {
-                val response = authRepository.loginWithGoogle(serverAuthCode)
-                saveTokensFromResponse(response)
+                val socialResponse = authRepository.loginWithGoogle(serverAuthCode)
+                val sessionResponse = authRepository.createMobileSession(
+                    accessToken = getSocialAccessTokenFromResponse(socialResponse)
+                )
+                saveTokensFromResponse(sessionResponse)
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }
@@ -227,6 +231,18 @@ class LoginViewModel @Inject constructor(
             accessToken = accessToken,
             refreshToken = refreshToken
         )
+    }
+
+    private fun getSocialAccessTokenFromResponse(response: Response<SocialLoginResponse>): String {
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+
+        val accessToken = response.body()?.accessToken
+        if (accessToken.isNullOrBlank()) {
+            throw IllegalStateException("Social login response did not include an access token.")
+        }
+        return accessToken
     }
 
     private suspend fun loadOrganizationNames() {
