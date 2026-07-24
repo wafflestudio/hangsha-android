@@ -1,9 +1,12 @@
 package com.example.hangsha_android.data.local
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
+import java.security.GeneralSecurityException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,15 +14,7 @@ import javax.inject.Singleton
 class AuthTokenStorage @Inject constructor(
     @ApplicationContext context: Context
 ) {
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        FILE_NAME,
-        MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences = createEncryptedSharedPreferences(context)
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         sharedPreferences.edit()
@@ -57,6 +52,33 @@ class AuthTokenStorage @Inject constructor(
 
     fun clearAccessToken() {
         clearTokens()
+    }
+
+    private fun createEncryptedSharedPreferences(context: Context): SharedPreferences {
+        return try {
+            buildEncryptedSharedPreferences(context)
+        } catch (error: GeneralSecurityException) {
+            recreateEncryptedSharedPreferences(context)
+        } catch (error: IOException) {
+            recreateEncryptedSharedPreferences(context)
+        }
+    }
+
+    private fun recreateEncryptedSharedPreferences(context: Context): SharedPreferences {
+        context.deleteSharedPreferences(FILE_NAME)
+        return buildEncryptedSharedPreferences(context)
+    }
+
+    private fun buildEncryptedSharedPreferences(context: Context): SharedPreferences {
+        return EncryptedSharedPreferences.create(
+            context,
+            FILE_NAME,
+            MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     companion object {
