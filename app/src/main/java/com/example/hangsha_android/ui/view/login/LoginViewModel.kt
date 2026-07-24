@@ -126,11 +126,27 @@ class LoginViewModel @Inject constructor(
         onAuthFailure("Google login is not configured yet.")
     }
 
+    fun onKakaoLoginConfigMissing() {
+        onAuthFailure("Kakao login is not configured yet.")
+    }
+
+    fun onNaverLoginConfigMissing() {
+        onAuthFailure("Naver login requires a client secret handling decision before enabling.")
+    }
+
     fun onGoogleLoginCancelled() {
         onAuthFailure("Google login was cancelled.")
     }
 
     fun onGoogleLoginError(message: String) {
+        onAuthFailure(message)
+    }
+
+    fun onKakaoLoginError(message: String) {
+        onAuthFailure(message)
+    }
+
+    fun onNaverLoginError(message: String) {
         onAuthFailure(message)
     }
 
@@ -187,9 +203,62 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    fun loginWithKakao(accessToken: String?) {
+        loginWithSocialAccessToken(
+            accessToken = accessToken,
+            actionLabel = "Kakao login",
+            onStarted = ::onKakaoLoginStarted,
+            login = authRepository::loginWithKakao
+        )
+    }
+
+    fun loginWithNaver(accessToken: String?) {
+        loginWithSocialAccessToken(
+            accessToken = accessToken,
+            actionLabel = "Naver login",
+            onStarted = ::onNaverLoginStarted,
+            login = authRepository::loginWithNaver
+        )
+    }
+
     fun onLoginSuccessConsumed() {
         _uiState.update {
             it.copy(isLoginSuccessful = false)
+        }
+    }
+
+    private fun loginWithSocialAccessToken(
+        accessToken: String?,
+        actionLabel: String,
+        onStarted: () -> Unit,
+        login: suspend (String) -> Response<SocialLoginResponse>
+    ) {
+        if (accessToken.isNullOrBlank()) {
+            onAuthFailure("Could not retrieve ${actionLabel.lowercase()} information.")
+            return
+        }
+
+        viewModelScope.launch {
+            onStarted()
+
+            val result = runCatching {
+                val socialResponse = login(accessToken)
+                val sessionResponse = authRepository.createMobileSession(
+                    accessToken = getSocialAccessTokenFromResponse(socialResponse)
+                )
+                saveTokensFromResponse(sessionResponse)
+                loadOrganizationNames()
+                loadExcludedKeywords()
+            }
+
+            result.fold(
+                onSuccess = {
+                    onAuthSuccess("$actionLabel completed successfully.")
+                },
+                onFailure = { error ->
+                    onAuthFailure(error, actionLabel)
+                }
+            )
         }
     }
 
@@ -197,6 +266,34 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isGoogleLoginLoading = true,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = false,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = null
+            )
+        }
+    }
+
+    private fun onKakaoLoginStarted() {
+        _uiState.update {
+            it.copy(
+                isGoogleLoginLoading = false,
+                isKakaoLoginLoading = true,
+                isNaverLoginLoading = false,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = null
+            )
+        }
+    }
+
+    private fun onNaverLoginStarted() {
+        _uiState.update {
+            it.copy(
+                isGoogleLoginLoading = false,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = true,
                 isGoogleHistoryClearing = false,
                 isLoginSuccessful = false,
                 loginMessage = null
@@ -208,6 +305,9 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isCredentialLoginLoading = true,
+                isGoogleLoginLoading = false,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = false,
                 isGoogleHistoryClearing = false,
                 isLoginSuccessful = false,
                 loginMessage = null
@@ -263,6 +363,8 @@ class LoginViewModel @Inject constructor(
                 isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = false,
                 isLoginSuccessful = true,
                 loginMessage = message
             )
@@ -275,6 +377,8 @@ class LoginViewModel @Inject constructor(
                 isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = false,
                 isGoogleHistoryClearing = false,
                 isLoginSuccessful = false,
                 loginMessage = message
@@ -291,7 +395,7 @@ class LoginViewModel @Inject constructor(
                 401 -> if (actionLabel == "login") {
                     "Your email or password is incorrect."
                 } else {
-                    "Google login failed."
+                    "$actionLabel failed."
                 }
                 403 -> "You do not have permission to continue."
                 404 -> "Account information could not be found."
