@@ -28,6 +28,10 @@ fun String.escapeForBuildConfig(): String {
     return replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
+val kakaoNativeAppKey = readBuildConfigString("KAKAO_NATIVE_APP_KEY")
+val naverClientId = readBuildConfigString("NAVER_CLIENT_ID")
+val naverClientName = readBuildConfigString("NAVER_CLIENT_NAME").ifBlank { "Hangsha" }
+
 android {
     namespace = "com.example.hangsha_android"
     compileSdk {
@@ -52,6 +56,23 @@ android {
             "GOOGLE_SERVER_CLIENT_ID",
             "\"${readBuildConfigString("GOOGLE_SERVER_CLIENT_ID").escapeForBuildConfig()}\""
         )
+
+        buildConfigField(
+            "String",
+            "KAKAO_NATIVE_APP_KEY",
+            "\"${kakaoNativeAppKey.escapeForBuildConfig()}\""
+        )
+        buildConfigField(
+            "String",
+            "NAVER_CLIENT_ID",
+            "\"${naverClientId.escapeForBuildConfig()}\""
+        )
+        buildConfigField(
+            "String",
+            "NAVER_CLIENT_NAME",
+            "\"${naverClientName.escapeForBuildConfig()}\""
+        )
+        manifestPlaceholders["kakaoNativeAppKey"] = kakaoNativeAppKey
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -111,6 +132,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
+    implementation("com.kakao.sdk:v2-user:2.24.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.coil.compose)
     implementation("androidx.emoji2:emoji2-emojipicker:1.4.0")

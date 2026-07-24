@@ -1,6 +1,6 @@
 package com.example.hangsha_android.ui.navigation
 
-import android.app.Activity
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,6 +59,10 @@ import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.kakao.sdk.auth.model.OAuthToken
+import com.kakao.sdk.common.model.ClientError
+import com.kakao.sdk.common.model.ClientErrorCause
+import com.kakao.sdk.user.UserApiClient
 
 sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
@@ -134,26 +138,41 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         val googleLoginLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.StartActivityForResult()
         ) { result ->
-            if (result.resultCode != Activity.RESULT_OK) {
-                loginViewModel.onGoogleLoginCancelled()
-                return@rememberLauncherForActivityResult
-            }
+            Log.d("AuthLog", "Google sign-in resultCode=${result.resultCode}")
 
-            val serverAuthCode = runCatching {
+            val serverAuthCode = try {
                 GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
                     .serverAuthCode
-            }.getOrElse { error ->
-                val message = if (error is ApiException) {
+            } catch (error: ApiException) {
+                Log.e(
+                    "AuthLog",
+                    "Google sign-in failed: statusCode=${error.statusCode}, message=${error.message}",
+                    error
+                )
+                loginViewModel.onGoogleLoginError(
                     "Google sign-in failed with status ${error.statusCode}"
-                } else {
-                    error.message ?: "Google sign-in failed."
-                }
-                loginViewModel.onGoogleLoginError(message)
+                )
+                return@rememberLauncherForActivityResult
+            } catch (error: Exception) {
+                Log.e(
+                    "AuthLog",
+                    "Google sign-in failed: message=${error.message}",
+                    error
+                )
+                loginViewModel.onGoogleLoginError(error.message ?: "Google sign-in failed.")
                 return@rememberLauncherForActivityResult
             }
 
             loginViewModel.loginWithGoogle(serverAuthCode)
+        }
+        val kakaoLoginCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
+            if (error != null) {
+                Log.e("AuthLog", "Kakao login failed: message=${error.message}", error)
+                loginViewModel.onKakaoLoginError(error.message ?: "Kakao login failed.")
+            } else {
+                loginViewModel.loginWithKakao(token?.accessToken)
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -187,10 +206,39 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 }
             },
             onKakaoLoginClick = {
-                // TODO(KAKAO_LOGIN): Connect Kakao social login after the UI pass.
+                // TODO(KAKAO_SETUP): Add KAKAO_NATIVE_APP_KEY and register package/key hash in Kakao Developers before release testing.
+                if (BuildConfig.KAKAO_NATIVE_APP_KEY.isBlank()) {
+                    loginViewModel.onKakaoLoginConfigMissing()
+                } else if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
+                    UserApiClient.instance.loginWithKakaoTalk(context) { token, error ->
+                        if (error != null) {
+                            Log.e(
+                                "AuthLog",
+                                "Kakao Talk login failed: message=${error.message}",
+                                error
+                            )
+                            if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
+                                loginViewModel.onKakaoLoginError("Kakao login was cancelled.")
+                                return@loginWithKakaoTalk
+                            }
+                            UserApiClient.instance.loginWithKakaoAccount(
+                                context,
+                                callback = kakaoLoginCallback
+                            )
+                        } else {
+                            loginViewModel.loginWithKakao(token?.accessToken)
+                        }
+                    }
+                } else {
+                    UserApiClient.instance.loginWithKakaoAccount(
+                        context,
+                        callback = kakaoLoginCallback
+                    )
+                }
             },
             onNaverLoginClick = {
-                // TODO(NAVER_LOGIN): Connect Naver social login after the UI pass.
+                // TODO(NAVER_LOGIN): Decide how to handle Naver client secret before enabling the native SDK login flow.
+                loginViewModel.onNaverLoginConfigMissing()
             },
             onGuestContinueClick = {
                 // TODO(GUEST_CONTINUE): Connect guest-mode navigation after the UI pass.
@@ -728,7 +776,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
     }
 }
 
-// 그냥 임시로 페이지 만들어주는 거.
+// Temporary placeholder page.
 @Composable
 fun SimplePageText(text: String) {
     Box(
