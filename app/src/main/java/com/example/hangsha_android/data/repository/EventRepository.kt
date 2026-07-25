@@ -37,7 +37,7 @@ class EventRepository @Inject constructor(
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
-            excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() }
+            excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() && isLoggedIn() }
         )
     }
 
@@ -60,7 +60,7 @@ class EventRepository @Inject constructor(
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
-            excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() }
+            excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() && isLoggedIn() }
         )
     }
 
@@ -94,6 +94,6 @@ class EventRepository @Inject constructor(
     }
 
     private fun isLoggedIn(): Boolean {
-        return !authTokenStorage.getAccessToken().isNullOrBlank()
+        return authTokenStorage.hasAccessToken()
     }
 }

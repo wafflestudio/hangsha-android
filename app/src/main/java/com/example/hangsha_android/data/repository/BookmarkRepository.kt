@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -35,7 +35,12 @@ class BookmarkRepository @Inject constructor(
 
     init {
         repositoryScope.launch {
-            localDataSource.bookmarkedEventIds.collectLatest { eventIds ->
+            combine(
+                authTokenStorage.isLoggedIn,
+                localDataSource.bookmarkSets
+            ) { isLoggedIn, bookmarkSets ->
+                bookmarkSets.forAuthState(isLoggedIn)
+            }.collectLatest { eventIds ->
                 _bookmarkedEventIds.value = eventIds
             }
         }
@@ -44,7 +49,7 @@ class BookmarkRepository @Inject constructor(
     fun currentBookmarkedEventIds(): Set<Long> = _bookmarkedEventIds.value
 
     fun isLoggedIn(): Boolean {
-        return !authTokenStorage.getAccessToken().isNullOrBlank()
+        return authTokenStorage.hasAccessToken()
     }
 
     suspend fun setBookmark(
@@ -52,10 +57,15 @@ class BookmarkRepository @Inject constructor(
         isBookmarked: Boolean
     ): Set<Long> {
         return mutationMutex.withLock {
-            val previousEventIds = localDataSource.bookmarkedEventIds.first()
-            val updatedEventIds = localDataSource.setBookmarked(eventId, isBookmarked)
+            val isLoggedIn = isLoggedIn()
+            val previousEventIds = localDataSource.getBookmarkedEventIds(isLoggedIn)
+            val updatedEventIds = localDataSource.setBookmarked(
+                eventId = eventId,
+                isBookmarked = isBookmarked,
+                isLoggedIn = isLoggedIn
+            )
 
-            if (!isLoggedIn()) {
+            if (!isLoggedIn) {
                 return@withLock updatedEventIds
             }
 
@@ -65,7 +75,10 @@ class BookmarkRepository @Inject constructor(
                 eventApi.deleteBookmark(eventId)
             }
             if (!response.isSuccessful) {
-                localDataSource.replaceBookmarkedEventIds(previousEventIds)
+                localDataSource.replaceBookmarkedEventIds(
+                    eventIds = previousEventIds,
+                    isLoggedIn = true
+                )
                 throw HttpException(response)
             }
 
@@ -83,20 +96,23 @@ class BookmarkRepository @Inject constructor(
     suspend fun syncKnownRemoteBookmarks(
         remoteBookmarks: Map<Long, Boolean>
     ): Set<Long> {
-        // FIXME: 북마크 목록 전용 API가 생기면, 화면에 보이는 이벤트만 갱신하지 말고 서버 전체 목록으로 local을 replace.
-        if (!isLoggedIn() || remoteBookmarks.isEmpty()) {
-            return localDataSource.bookmarkedEventIds.first()
+        if (!isLoggedIn()) {
+            return localDataSource.getBookmarkedEventIds(isLoggedIn = false)
+        }
+        if (remoteBookmarks.isEmpty()) {
+            return localDataSource.getBookmarkedEventIds(isLoggedIn = true)
         }
 
         return mutationMutex.withLock {
-            val currentEventIds = localDataSource.bookmarkedEventIds.first()
+            val currentEventIds = localDataSource.getBookmarkedEventIds(isLoggedIn = true)
             val knownEventIds = remoteBookmarks.keys
             val remoteBookmarkedEventIds = remoteBookmarks
                 .filterValues { it }
                 .keys
 
             localDataSource.replaceBookmarkedEventIds(
-                (currentEventIds - knownEventIds) + remoteBookmarkedEventIds
+                eventIds = (currentEventIds - knownEventIds) + remoteBookmarkedEventIds,
+                isLoggedIn = true
             )
         }
     }

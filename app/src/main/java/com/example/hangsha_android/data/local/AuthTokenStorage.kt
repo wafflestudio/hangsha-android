@@ -9,24 +9,31 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 @Singleton
 class AuthTokenStorage @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val sharedPreferences = createEncryptedSharedPreferences(context)
+    private val _isLoggedIn = MutableStateFlow(!getAccessToken().isNullOrBlank())
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     fun saveTokens(accessToken: String, refreshToken: String) {
         sharedPreferences.edit()
             .putString(KEY_ACCESS_TOKEN, accessToken)
             .putString(KEY_REFRESH_TOKEN, refreshToken)
             .apply()
+        _isLoggedIn.value = accessToken.isNotBlank()
     }
 
     fun saveAccessToken(accessToken: String) {
         sharedPreferences.edit()
             .putString(KEY_ACCESS_TOKEN, accessToken)
             .apply()
+        _isLoggedIn.value = accessToken.isNotBlank()
     }
 
     fun saveRefreshToken(refreshToken: String) {
@@ -43,11 +50,16 @@ class AuthTokenStorage @Inject constructor(
         return sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
     }
 
+    fun hasAccessToken(): Boolean {
+        return !getAccessToken().isNullOrBlank()
+    }
+
     fun clearTokens() {
         sharedPreferences.edit()
             .remove(KEY_ACCESS_TOKEN)
             .remove(KEY_REFRESH_TOKEN)
             .apply()
+        _isLoggedIn.value = false
     }
 
     fun clearAccessToken() {
