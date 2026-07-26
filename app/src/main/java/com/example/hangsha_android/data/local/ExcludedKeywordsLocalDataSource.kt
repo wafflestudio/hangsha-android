@@ -1,6 +1,7 @@
 package com.example.hangsha_android.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -20,11 +21,11 @@ private val Context.excludedKeywordsDataStore by preferencesDataStore(name = "ex
 
 @Singleton
 class ExcludedKeywordsLocalDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val gson = Gson()
 
-    val excludedKeywordItems: Flow<List<StoredExcludedKeywordItem>> =
+    val excludedKeywordSets: Flow<StoredExcludedKeywordSets> =
         context.excludedKeywordsDataStore.data
             .catch { exception ->
                 if (exception is IOException) {
@@ -33,57 +34,98 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
                     throw exception
                 }
             }
-            .map { preferences ->
-                val json = preferences[EXCLUDED_KEYWORDS_JSON].orEmpty()
-                if (json.isBlank()) {
-                    emptyList()
-                } else {
-                    runCatching {
-                        gson.fromJson<List<StoredExcludedKeywordItem>>(json, storedItemListType)
-                    }.getOrDefault(emptyList())
-                }
-            }
+            .map { preferences -> preferences.toStoredExcludedKeywordSets() }
 
-    suspend fun replaceItems(items: List<StoredExcludedKeywordItem>): List<StoredExcludedKeywordItem> {
+    fun excludedKeywordItems(isLoggedIn: Boolean): Flow<List<StoredExcludedKeywordItem>> {
+        return excludedKeywordSets.map { sets -> sets.forAuthState(isLoggedIn) }
+    }
+
+    suspend fun getExcludedKeywordItems(isLoggedIn: Boolean): List<StoredExcludedKeywordItem> {
+        return excludedKeywordItems(isLoggedIn).first()
+    }
+
+    suspend fun replaceItems(
+        items: List<StoredExcludedKeywordItem>,
+        isLoggedIn: Boolean
+    ): List<StoredExcludedKeywordItem> {
         val normalizedItems = items.normalizeItems()
+        val key = excludedKeywordsKey(isLoggedIn)
         context.excludedKeywordsDataStore.edit { preferences ->
-            preferences[EXCLUDED_KEYWORDS_JSON] = gson.toJson(normalizedItems)
+            preferences[key] = gson.toJson(normalizedItems)
         }
         return normalizedItems
     }
 
-    suspend fun addKeyword(keyword: String): List<StoredExcludedKeywordItem> {
+    suspend fun addKeyword(
+        keyword: String,
+        isLoggedIn: Boolean
+    ): List<StoredExcludedKeywordItem> {
         val normalizedKeyword = keyword.trim()
         if (normalizedKeyword.isBlank()) {
-            return excludedKeywordItems.first()
+            return getExcludedKeywordItems(isLoggedIn)
         }
 
-        val currentItems = excludedKeywordItems.first()
+        val currentItems = getExcludedKeywordItems(isLoggedIn)
         if (currentItems.any { it.keyword == normalizedKeyword }) {
             return currentItems
         }
 
         return replaceItems(
-            currentItems + StoredExcludedKeywordItem(
+            items = currentItems + StoredExcludedKeywordItem(
                 id = null,
                 keyword = normalizedKeyword,
                 createdAt = null
-            )
+            ),
+            isLoggedIn = isLoggedIn
         )
     }
 
-    suspend fun removeKeyword(keyword: String): List<StoredExcludedKeywordItem> {
+    suspend fun removeKeyword(
+        keyword: String,
+        isLoggedIn: Boolean
+    ): List<StoredExcludedKeywordItem> {
         val normalizedKeyword = keyword.trim()
         if (normalizedKeyword.isBlank()) {
-            return excludedKeywordItems.first()
+            return getExcludedKeywordItems(isLoggedIn)
         }
 
-        val currentItems = excludedKeywordItems.first()
-        return replaceItems(currentItems.filterNot { it.keyword == normalizedKeyword })
+        val currentItems = getExcludedKeywordItems(isLoggedIn)
+        return replaceItems(
+            items = currentItems.filterNot { it.keyword == normalizedKeyword },
+            isLoggedIn = isLoggedIn
+        )
+    }
+
+    private fun Preferences.toStoredExcludedKeywordSets(): StoredExcludedKeywordSets {
+        return StoredExcludedKeywordSets(
+            guestItems = parseItems(this[GUEST_EXCLUDED_KEYWORDS_JSON]),
+            authenticatedItems = parseItems(this[AUTH_EXCLUDED_KEYWORDS_JSON])
+        )
+    }
+
+    private fun parseItems(json: String?): List<StoredExcludedKeywordItem> {
+        if (json.isNullOrBlank()) {
+            return emptyList()
+        }
+
+        return runCatching {
+            gson.fromJson<List<StoredExcludedKeywordItem>>(json, storedItemListType)
+        }.getOrDefault(emptyList()).normalizeItems()
+    }
+
+    private fun excludedKeywordsKey(isLoggedIn: Boolean): Preferences.Key<String> {
+        return if (isLoggedIn) {
+            AUTH_EXCLUDED_KEYWORDS_JSON
+        } else {
+            GUEST_EXCLUDED_KEYWORDS_JSON
+        }
     }
 
     companion object {
-        private val EXCLUDED_KEYWORDS_JSON = stringPreferencesKey("excluded_keywords_json")
+        private val GUEST_EXCLUDED_KEYWORDS_JSON =
+            stringPreferencesKey("guest_excluded_keywords_json")
+        private val AUTH_EXCLUDED_KEYWORDS_JSON =
+            stringPreferencesKey("authenticated_excluded_keywords_json")
         private val storedItemListType =
             object : TypeToken<List<StoredExcludedKeywordItem>>() {}.type
     }
@@ -94,6 +136,15 @@ data class StoredExcludedKeywordItem(
     val keyword: String,
     val createdAt: String?
 )
+
+data class StoredExcludedKeywordSets(
+    val guestItems: List<StoredExcludedKeywordItem>,
+    val authenticatedItems: List<StoredExcludedKeywordItem>
+) {
+    fun forAuthState(isLoggedIn: Boolean): List<StoredExcludedKeywordItem> {
+        return if (isLoggedIn) authenticatedItems else guestItems
+    }
+}
 
 private fun List<StoredExcludedKeywordItem>.normalizeItems(): List<StoredExcludedKeywordItem> {
     return mapNotNull { item ->

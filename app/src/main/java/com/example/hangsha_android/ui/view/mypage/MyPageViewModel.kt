@@ -423,17 +423,17 @@ class MyPageViewModel @Inject constructor(
     }
 
     fun logout() {
-        viewModelScope.launch {
-            val refreshToken = authTokenStorage.getRefreshToken()
-            if (!refreshToken.isNullOrBlank()) {
+        val refreshToken = authTokenStorage.getRefreshToken()
+        authTokenStorage.clearTokens()
+        _uiState.update {
+            it.copy(isLoggedOut = true)
+        }
+
+        if (!refreshToken.isNullOrBlank()) {
+            viewModelScope.launch {
                 runCatching {
                     authRepository.logout(refreshToken)
                 }
-            }
-
-            authTokenStorage.clearTokens()
-            _uiState.update {
-                it.copy(isLoggedOut = true)
             }
         }
     }
@@ -632,11 +632,11 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
-            diff == 0L -> "Apply D-day"
-            diff > 0L -> "Apply D-$diff"
-            else -> "Apply D$diff"
+            diff == 0L -> "D-day"
+            diff > 0L -> "D-$diff"
+            else -> "D$diff"
         }
-    } ?: "Apply -"
+    } ?: "-"
 
     return BookmarkedEventItem(
         id = id,

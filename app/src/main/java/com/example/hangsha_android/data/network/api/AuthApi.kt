@@ -5,8 +5,10 @@ import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.network.model.RefreshTokenRequest
 import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
+import com.example.hangsha_android.data.network.model.SocialLoginResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface AuthApi {
@@ -18,6 +20,11 @@ interface AuthApi {
     @POST("api/v1/auth/login/social")
     suspend fun loginWithSocial(
         @Body request: SocialLoginRequest
+    ): Response<SocialLoginResponse>
+
+    @POST("api/v1/mobile/auth/session")
+    suspend fun createMobileSession(
+        @Header("Authorization") authorization: String
     ): Response<LoginResponse>
 
     @POST("api/v1/mobile/auth/register")

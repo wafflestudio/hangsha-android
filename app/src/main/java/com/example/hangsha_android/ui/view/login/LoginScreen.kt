@@ -86,7 +86,7 @@ fun OpeningScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             OpeningButton(
-                text = "구글 계정으로 계속하기",
+                text = "Google 계정으로 계속하기",
                 onClick = onGoogleLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isGoogleLoginLoading,
@@ -103,6 +103,7 @@ fun OpeningScreen(
                 text = "카카오톡 계정으로 계속하기",
                 onClick = onKakaoLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
+                isLoading = loginUiState.isKakaoLoginLoading,
                 leadingIcon = {
                     SocialBadge(
                         text = "TALK",
@@ -117,6 +118,7 @@ fun OpeningScreen(
                 text = "네이버 계정으로 계속하기",
                 onClick = onNaverLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
+                isLoading = loginUiState.isNaverLoginLoading,
                 leadingIcon = {
                     SocialBadge(
                         text = "N",
@@ -233,7 +235,7 @@ fun LoginScreen(
 private fun HangshaBrand() {
     Image(
         painter = painterResource(id = R.drawable.logo_with_text),
-        contentDescription = "행샤 로고",
+        contentDescription = "항샤 로고",
         modifier = Modifier
             .width(170.dp)
             .height(86.dp),

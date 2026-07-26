@@ -39,8 +39,10 @@ data class DailyEventsUiState(
 data class DailyEventItem(
     val id: Long,
     val title: String,
+    val imageUrl: String?,
     val organization: String?,
     val eventEndDisplay: String,
+    val applyPeriodDisplay: String,
     val dDayLabel: String,
     val accentColor: Color,
     val isBookmarked: Boolean,

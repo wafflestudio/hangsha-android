@@ -1,6 +1,6 @@
 package com.example.hangsha_android.ui.navigation
 
-import android.app.Activity
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +44,9 @@ import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
+import com.example.hangsha_android.ui.view.mypage.GuestMyPageScreen
+import com.example.hangsha_android.ui.view.guest.GuestMyPageViewModel
+import com.example.hangsha_android.ui.view.guest.LoginRequiredScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
 import com.example.hangsha_android.ui.view.login.OpeningScreen
@@ -59,6 +62,10 @@ import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.kakao.sdk.auth.model.OAuthToken
+import com.kakao.sdk.common.model.ClientError
+import com.kakao.sdk.common.model.ClientErrorCause
+import com.kakao.sdk.user.UserApiClient
 
 sealed class HangshaDestinations(val route: String) {
     data object Login : HangshaDestinations("login")
@@ -134,26 +141,41 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         val googleLoginLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.StartActivityForResult()
         ) { result ->
-            if (result.resultCode != Activity.RESULT_OK) {
-                loginViewModel.onGoogleLoginCancelled()
-                return@rememberLauncherForActivityResult
-            }
+            Log.d("AuthLog", "Google sign-in resultCode=${result.resultCode}")
 
-            val serverAuthCode = runCatching {
+            val serverAuthCode = try {
                 GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
                     .serverAuthCode
-            }.getOrElse { error ->
-                val message = if (error is ApiException) {
+            } catch (error: ApiException) {
+                Log.e(
+                    "AuthLog",
+                    "Google sign-in failed: statusCode=${error.statusCode}, message=${error.message}",
+                    error
+                )
+                loginViewModel.onGoogleLoginError(
                     "Google sign-in failed with status ${error.statusCode}"
-                } else {
-                    error.message ?: "Google sign-in failed."
-                }
-                loginViewModel.onGoogleLoginError(message)
+                )
+                return@rememberLauncherForActivityResult
+            } catch (error: Exception) {
+                Log.e(
+                    "AuthLog",
+                    "Google sign-in failed: message=${error.message}",
+                    error
+                )
+                loginViewModel.onGoogleLoginError(error.message ?: "Google sign-in failed.")
                 return@rememberLauncherForActivityResult
             }
 
             loginViewModel.loginWithGoogle(serverAuthCode)
+        }
+        val kakaoLoginCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
+            if (error != null) {
+                Log.e("AuthLog", "Kakao login failed: message=${error.message}", error)
+                loginViewModel.onKakaoLoginError(error.message ?: "Kakao login failed.")
+            } else {
+                loginViewModel.loginWithKakao(token?.accessToken)
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -187,13 +209,45 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 }
             },
             onKakaoLoginClick = {
-                // TODO(KAKAO_LOGIN): Connect Kakao social login after the UI pass.
+                // TODO(KAKAO_SETUP): Add KAKAO_NATIVE_APP_KEY and register package/key hash in Kakao Developers before release testing.
+                if (BuildConfig.KAKAO_NATIVE_APP_KEY.isBlank()) {
+                    loginViewModel.onKakaoLoginConfigMissing()
+                } else if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
+                    UserApiClient.instance.loginWithKakaoTalk(context) { token, error ->
+                        if (error != null) {
+                            Log.e(
+                                "AuthLog",
+                                "Kakao Talk login failed: message=${error.message}",
+                                error
+                            )
+                            if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
+                                loginViewModel.onKakaoLoginError("Kakao login was cancelled.")
+                                return@loginWithKakaoTalk
+                            }
+                            UserApiClient.instance.loginWithKakaoAccount(
+                                context,
+                                callback = kakaoLoginCallback
+                            )
+                        } else {
+                            loginViewModel.loginWithKakao(token?.accessToken)
+                        }
+                    }
+                } else {
+                    UserApiClient.instance.loginWithKakaoAccount(
+                        context,
+                        callback = kakaoLoginCallback
+                    )
+                }
             },
             onNaverLoginClick = {
-                // TODO(NAVER_LOGIN): Connect Naver social login after the UI pass.
+                // TODO(NAVER_LOGIN): Decide how to handle Naver client secret before enabling the native SDK login flow.
+                loginViewModel.onNaverLoginConfigMissing()
             },
             onGuestContinueClick = {
-                // TODO(GUEST_CONTINUE): Connect guest-mode navigation after the UI pass.
+                loginViewModel.continueAsGuest()
+                navController.navigate(HangshaDestinations.Main.route) {
+                    popUpTo(HangshaDestinations.Login.route) { inclusive = true }
+                }
             }
         )
     }
@@ -476,103 +530,138 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             SimplePageText("timetable")
         }
         composable(BottomTab.Bookmarks.route) {
-            SimplePageText("bookmark events")
-        }
-        composable(HangshaDestinations.MyBookmarks.route) {
-            val bookmarksViewModel: BookmarksViewModel = hiltViewModel()
-            val bookmarksUiState by bookmarksViewModel.uiState.collectAsState()
-            val myBookmarksSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-            val bookmarkChanged = myBookmarksSavedStateHandle
-                ?.get<Boolean>(MyBookmarksNavigationKeys.bookmarkChangedKey)
-            val lifecycleOwner = LocalLifecycleOwner.current
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
-            LaunchedEffect(Unit) {
-                bookmarksViewModel.refreshFromServerKeepingScroll()
-            }
-
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        bookmarksViewModel.refreshFromServerKeepingScroll()
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
-
-            LaunchedEffect(bookmarkChanged) {
-                if (bookmarkChanged != true) {
-                    return@LaunchedEffect
-                }
-
-                bookmarksViewModel.refreshFromServerKeepingScroll()
-                myBookmarksSavedStateHandle.remove<Boolean>(
-                    MyBookmarksNavigationKeys.bookmarkChangedKey
+            if (isLoggedIn) {
+                SimplePageText("bookmark events")
+            } else {
+                LoginRequiredScreen(
+                    title = "북마크 목록은 로그인 후 이용할 수 있습니다.",
+                    message = "게스트로 추가한 북마크는 캘린더 안에서 이 기기에만 저장됩니다.",
+                    onLoginClick = { navController.navigateToLoginFromMain() }
                 )
             }
-
-            BookmarksScreen(
-                uiState = bookmarksUiState,
-                onNavigateBack = { navController.popBackStack() },
-                onEventClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onBookmarkClick = { eventId ->
-                    bookmarksViewModel.removeBookmark(eventId)
-                },
-                onRetryClick = { bookmarksViewModel.loadFirstPage() },
-                onLoadNextPage = { bookmarksViewModel.loadNextPage() },
-                onScrollPositionChanged = { index, offset, itemId ->
-                    bookmarksViewModel.saveScrollPosition(
-                        firstVisibleItemIndex = index,
-                        firstVisibleItemOffset = offset,
-                        firstVisibleItemId = itemId
-                    )
-                }
-            )
         }
-        composable(HangshaDestinations.MyMemos.route) {
-            val myMemosViewModel: MyMemosViewModel = hiltViewModel()
-            val myMemosUiState by myMemosViewModel.uiState.collectAsState()
-            val context = LocalContext.current
-            val myMemosLifecycleOwner = LocalLifecycleOwner.current
+        composable(HangshaDestinations.MyBookmarks.route) {
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
-            LaunchedEffect(myMemosUiState.toastMessage) {
-                val message = myMemosUiState.toastMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                myMemosViewModel.onToastMessageConsumed()
-            }
+            if (!isLoggedIn) {
+                LoginRequiredScreen(
+                    title = "내 북마크는 로그인 후 이용할 수 있습니다.",
+                    message = "계정에 저장된 북마크 목록을 보려면 로그인해 주세요.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            } else {
+                val bookmarksViewModel: BookmarksViewModel = hiltViewModel()
+                val bookmarksUiState by bookmarksViewModel.uiState.collectAsState()
+                val myBookmarksSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+                val bookmarkChanged = myBookmarksSavedStateHandle
+                    ?.get<Boolean>(MyBookmarksNavigationKeys.bookmarkChangedKey)
+                val lifecycleOwner = LocalLifecycleOwner.current
 
-            DisposableEffect(myMemosLifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        myMemosViewModel.loadMemos()
+                LaunchedEffect(Unit) {
+                    bookmarksViewModel.refreshFromServerKeepingScroll()
+                }
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            bookmarksViewModel.refreshFromServerKeepingScroll()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
                     }
                 }
-                myMemosLifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    myMemosLifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
 
-            MyMemosScreen(
-                uiState = myMemosUiState,
-                onNavigateBack = { navController.popBackStack() },
-                onMemoClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onDeleteMemoClick = { memoId -> myMemosViewModel.deleteMemo(memoId) },
-                onStartEditMemo = { memo -> myMemosViewModel.startEditMemo(memo) },
-                onEditContentChanged = { value -> myMemosViewModel.onEditContentChanged(value) },
-                onStartAddingTag = { myMemosViewModel.startAddingTag() },
-                onEditTagInputChanged = { value -> myMemosViewModel.onEditTagInputChanged(value) },
-                onAddEditTag = { myMemosViewModel.addEditTag() },
-                onRemoveEditTag = { tagName -> myMemosViewModel.removeEditTag(tagName) },
-                onSaveEditedMemo = { myMemosViewModel.saveEditedMemo() },
-                onRetryClick = { myMemosViewModel.loadMemos() }
-            )
+                LaunchedEffect(bookmarkChanged) {
+                    if (bookmarkChanged != true) {
+                        return@LaunchedEffect
+                    }
+
+                    bookmarksViewModel.refreshFromServerKeepingScroll()
+                    myBookmarksSavedStateHandle.remove<Boolean>(
+                        MyBookmarksNavigationKeys.bookmarkChangedKey
+                    )
+                }
+
+                BookmarksScreen(
+                    uiState = bookmarksUiState,
+                    onNavigateBack = { navController.popBackStack() },
+                    onEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onBookmarkClick = { eventId ->
+                        bookmarksViewModel.removeBookmark(eventId)
+                    },
+                    onRetryClick = { bookmarksViewModel.loadFirstPage() },
+                    onLoadNextPage = { bookmarksViewModel.loadNextPage() },
+                    onScrollPositionChanged = { index, offset, itemId ->
+                        bookmarksViewModel.saveScrollPosition(
+                            firstVisibleItemIndex = index,
+                            firstVisibleItemOffset = offset,
+                            firstVisibleItemId = itemId
+                        )
+                    }
+                )
+            }
+        }
+        composable(HangshaDestinations.MyMemos.route) {
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
+
+            if (!isLoggedIn) {
+                LoginRequiredScreen(
+                    title = "내 메모는 로그인 후 이용할 수 있습니다.",
+                    message = "게스트 메모는 행사 상세 화면에서 이 기기에만 보관됩니다.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            } else {
+                val myMemosViewModel: MyMemosViewModel = hiltViewModel()
+                val myMemosUiState by myMemosViewModel.uiState.collectAsState()
+                val context = LocalContext.current
+                val myMemosLifecycleOwner = LocalLifecycleOwner.current
+
+                LaunchedEffect(myMemosUiState.toastMessage) {
+                    val message = myMemosUiState.toastMessage ?: return@LaunchedEffect
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    myMemosViewModel.onToastMessageConsumed()
+                }
+
+                DisposableEffect(myMemosLifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            myMemosViewModel.loadMemos()
+                        }
+                    }
+                    myMemosLifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        myMemosLifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
+                MyMemosScreen(
+                    uiState = myMemosUiState,
+                    onNavigateBack = { navController.popBackStack() },
+                    onMemoClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onDeleteMemoClick = { memoId -> myMemosViewModel.deleteMemo(memoId) },
+                    onStartEditMemo = { memo -> myMemosViewModel.startEditMemo(memo) },
+                    onEditContentChanged = { value -> myMemosViewModel.onEditContentChanged(value) },
+                    onStartAddingTag = { myMemosViewModel.startAddingTag() },
+                    onEditTagInputChanged = { value -> myMemosViewModel.onEditTagInputChanged(value) },
+                    onAddEditTag = { myMemosViewModel.addEditTag() },
+                    onRemoveEditTag = { tagName -> myMemosViewModel.removeEditTag(tagName) },
+                    onSaveEditedMemo = { myMemosViewModel.saveEditedMemo() },
+                    onRetryClick = { myMemosViewModel.loadMemos() }
+                )
+            }
         }
         composable(
             route = HangshaDestinations.InterestPriority.route,
@@ -583,152 +672,220 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 }
             )
         ) { backStackEntry ->
-            val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
-            val interestPriorityUiState by interestPriorityViewModel.uiState.collectAsState()
-            val source = backStackEntry.arguments
-                ?.getString(HangshaDestinations.InterestPriority.sourceArg)
-                ?: HangshaDestinations.InterestPriority.sourceMyPage
-            val isOnboardingFlow =
-                source == HangshaDestinations.InterestPriority.sourceOnboarding
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
-            LaunchedEffect(interestPriorityUiState.isSaveSuccessful, isOnboardingFlow) {
-                if (!interestPriorityUiState.isSaveSuccessful) {
-                    return@LaunchedEffect
-                }
+            if (!isLoggedIn) {
+                LoginRequiredScreen(
+                    title = "관심 우선순위는 로그인 후 설정할 수 있습니다.",
+                    message = "계정에 저장되는 개인화 설정입니다.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            } else {
+                val interestPriorityViewModel: InterestPriorityViewModel = hiltViewModel()
+                val interestPriorityUiState by interestPriorityViewModel.uiState.collectAsState()
+                val source = backStackEntry.arguments
+                    ?.getString(HangshaDestinations.InterestPriority.sourceArg)
+                    ?: HangshaDestinations.InterestPriority.sourceMyPage
+                val isOnboardingFlow =
+                    source == HangshaDestinations.InterestPriority.sourceOnboarding
 
-                if (isOnboardingFlow) {
-                    navController.navigate(HangshaDestinations.OnboardingWelcome.route) {
-                        popUpTo(HangshaDestinations.Onboarding.route) {
-                            inclusive = true
-                        }
+                LaunchedEffect(interestPriorityUiState.isSaveSuccessful, isOnboardingFlow) {
+                    if (!interestPriorityUiState.isSaveSuccessful) {
+                        return@LaunchedEffect
                     }
-                } else {
-                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                        InterestPriorityNavigationKeys.updatedKey,
-                        true
-                    )
-                    navController.popBackStack()
-                }
-                interestPriorityViewModel.onSaveSuccessConsumed()
-            }
 
-            InterestPriorityScreen(
-                uiState = interestPriorityUiState,
-                onNavigateBack = { navController.popBackStack() },
-                onCategoryClick = { categoryId ->
-                    interestPriorityViewModel.toggleCategory(categoryId)
-                },
-                onRetryClick = { interestPriorityViewModel.load() },
-                onDoneClick = { interestPriorityViewModel.save() }
-            )
+                    if (isOnboardingFlow) {
+                        navController.navigate(HangshaDestinations.OnboardingWelcome.route) {
+                            popUpTo(HangshaDestinations.Onboarding.route) {
+                                inclusive = true
+                            }
+                        }
+                    } else {
+                        navController.previousBackStackEntry?.savedStateHandle?.set(
+                            InterestPriorityNavigationKeys.updatedKey,
+                            true
+                        )
+                        navController.popBackStack()
+                    }
+                    interestPriorityViewModel.onSaveSuccessConsumed()
+                }
+
+                InterestPriorityScreen(
+                    uiState = interestPriorityUiState,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCategoryClick = { categoryId ->
+                        interestPriorityViewModel.toggleCategory(categoryId)
+                    },
+                    onRetryClick = { interestPriorityViewModel.load() },
+                    onDoneClick = { interestPriorityViewModel.save() }
+                )
+            }
         }
         composable(BottomTab.MyPage.route) {
-            val myPageViewModel: MyPageViewModel = hiltViewModel()
-            val myPageUiState by myPageViewModel.uiState.collectAsState()
-            val context = LocalContext.current
-            val myPageSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-            val interestPriorityUpdated = myPageSavedStateHandle
-                ?.get<Boolean>(InterestPriorityNavigationKeys.updatedKey)
-            val myPageLifecycleOwner = LocalLifecycleOwner.current
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
-            LaunchedEffect(myPageUiState.profileSaveToastMessage) {
-                val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                myPageViewModel.onProfileSaveToastConsumed()
-            }
+            if (!isLoggedIn) {
+                val guestMyPageViewModel: GuestMyPageViewModel = hiltViewModel()
+                val guestMyPageUiState by guestMyPageViewModel.uiState.collectAsState()
+                val context = LocalContext.current
 
-            LaunchedEffect(interestPriorityUpdated) {
-                if (interestPriorityUpdated != true) {
-                    return@LaunchedEffect
+                LaunchedEffect(guestMyPageUiState.bugReportToastMessage) {
+                    val message = guestMyPageUiState.bugReportToastMessage ?: return@LaunchedEffect
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    guestMyPageViewModel.onBugReportToastConsumed()
                 }
 
-                myPageViewModel.loadMyProfile()
-                myPageSavedStateHandle.remove<Boolean>(InterestPriorityNavigationKeys.updatedKey)
-            }
-
-            LaunchedEffect(myPageUiState.bugReportToastMessage) {
-                val message = myPageUiState.bugReportToastMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                myPageViewModel.onBugReportToastConsumed()
-            }
-
-            DisposableEffect(myPageLifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        myPageViewModel.loadBookmarkedEventPreview()
-                        myPageViewModel.loadMemoPreview()
-                    }
-                }
-                myPageLifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    myPageLifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
-
-            LaunchedEffect(myPageUiState.isLoggedOut) {
-                if (!myPageUiState.isLoggedOut) {
-                    return@LaunchedEffect
-                }
-
-                navController.navigate(HangshaDestinations.Login.route) {
-                    popUpTo(HangshaDestinations.Main.route) { inclusive = true }
-                }
-                myPageViewModel.onLogoutNavigationConsumed()
-            }
-
-            MyPageScreen(
-                uiState = myPageUiState,
-                onRetryClick = { myPageViewModel.loadMyProfile() },
-                onStartProfileEdit = { myPageViewModel.startProfileEdit() },
-                onDraftUsernameChanged = { value ->
-                    myPageViewModel.onDraftUsernameChanged(value)
-                },
-                onDraftProfileImageSelected = { uri ->
-                    myPageViewModel.onDraftProfileImageSelected(uri)
-                },
-                onDraftProfileImageDeleted = {
-                    myPageViewModel.markDraftProfileImageDeleted()
-                },
-                onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
-                onInterestPriorityClick = {
-                    navController.navigate(HangshaDestinations.InterestPriority.createRoute())
-                },
-                onTimetableClick = {
-                    navController.navigate(BottomTab.Timetable.route) {
-                        popUpTo(HangshaDestinations.Main.route) {
-                            saveState = true
+                GuestMyPageScreen(
+                    uiState = guestMyPageUiState,
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onInterestPriorityClick = {
+                        navController.navigate(HangshaDestinations.InterestPriority.createRoute())
+                    },
+                    onTimetableClick = {
+                        navController.navigate(BottomTab.Timetable.route) {
+                            popUpTo(HangshaDestinations.Main.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
+                    },
+                    onBookmarksClick = {
+                        navController.navigate(HangshaDestinations.MyBookmarks.route)
+                    },
+                    onBookmarkedEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onMemoListClick = {
+                        navController.navigate(HangshaDestinations.MyMemos.route)
+                    },
+                    onMemoEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onBugReportTitleChanged = { value ->
+                        guestMyPageViewModel.onBugReportTitleChanged(value)
+                    },
+                    onBugReportContentChanged = { value ->
+                        guestMyPageViewModel.onBugReportContentChanged(value)
+                    },
+                    onSubmitBugReportClick = {
+                        guestMyPageViewModel.submitBugReport()
                     }
-                },
-                onBookmarksClick = {
-                    navController.navigate(HangshaDestinations.MyBookmarks.route)
-                },
-                onBookmarkedEventClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onMemoListClick = {
-                    navController.navigate(HangshaDestinations.MyMemos.route)
-                },
-                onMemoEventClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onLogoutClick = { myPageViewModel.logout() },
-                onBugReportTitleChanged = { value ->
-                    myPageViewModel.onBugReportTitleChanged(value)
-                },
-                onBugReportContentChanged = { value ->
-                    myPageViewModel.onBugReportContentChanged(value)
-                },
-                onSubmitBugReportClick = { myPageViewModel.submitBugReport() },
-                onDeleteAccountClick = { myPageViewModel.deleteMyAccount() }
-            )
+                )
+            } else {
+                val myPageViewModel: MyPageViewModel = hiltViewModel()
+                val myPageUiState by myPageViewModel.uiState.collectAsState()
+                val context = LocalContext.current
+                val myPageSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+                val interestPriorityUpdated = myPageSavedStateHandle
+                    ?.get<Boolean>(InterestPriorityNavigationKeys.updatedKey)
+                val myPageLifecycleOwner = LocalLifecycleOwner.current
+
+                LaunchedEffect(myPageUiState.profileSaveToastMessage) {
+                    val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    myPageViewModel.onProfileSaveToastConsumed()
+                }
+
+                LaunchedEffect(interestPriorityUpdated) {
+                    if (interestPriorityUpdated != true) {
+                        return@LaunchedEffect
+                    }
+
+                    myPageViewModel.loadMyProfile()
+                    myPageSavedStateHandle.remove<Boolean>(InterestPriorityNavigationKeys.updatedKey)
+                }
+
+                LaunchedEffect(myPageUiState.bugReportToastMessage) {
+                    val message = myPageUiState.bugReportToastMessage ?: return@LaunchedEffect
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    myPageViewModel.onBugReportToastConsumed()
+                }
+
+                DisposableEffect(myPageLifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            myPageViewModel.loadBookmarkedEventPreview()
+                            myPageViewModel.loadMemoPreview()
+                        }
+                    }
+                    myPageLifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        myPageLifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
+                LaunchedEffect(myPageUiState.isLoggedOut) {
+                    if (!myPageUiState.isLoggedOut) {
+                        return@LaunchedEffect
+                    }
+
+                    navController.navigate(HangshaDestinations.Login.route) {
+                        popUpTo(HangshaDestinations.Main.route) { inclusive = true }
+                    }
+                    myPageViewModel.onLogoutNavigationConsumed()
+                }
+
+                MyPageScreen(
+                    uiState = myPageUiState,
+                    onRetryClick = { myPageViewModel.loadMyProfile() },
+                    onStartProfileEdit = { myPageViewModel.startProfileEdit() },
+                    onDraftUsernameChanged = { value ->
+                        myPageViewModel.onDraftUsernameChanged(value)
+                    },
+                    onDraftProfileImageSelected = { uri ->
+                        myPageViewModel.onDraftProfileImageSelected(uri)
+                    },
+                    onDraftProfileImageDeleted = {
+                        myPageViewModel.markDraftProfileImageDeleted()
+                    },
+                    onSaveProfileEdit = { myPageViewModel.saveProfileEdit() },
+                    onInterestPriorityClick = {
+                        navController.navigate(HangshaDestinations.InterestPriority.createRoute())
+                    },
+                    onTimetableClick = {
+                        navController.navigate(BottomTab.Timetable.route) {
+                            popUpTo(HangshaDestinations.Main.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onBookmarksClick = {
+                        navController.navigate(HangshaDestinations.MyBookmarks.route)
+                    },
+                    onBookmarkedEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onMemoListClick = {
+                        navController.navigate(HangshaDestinations.MyMemos.route)
+                    },
+                    onMemoEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onLogoutClick = {
+                        myPageViewModel.logout()
+                        navController.navigateToLoginFromMain()
+                    },
+                    onBugReportTitleChanged = { value ->
+                        myPageViewModel.onBugReportTitleChanged(value)
+                    },
+                    onBugReportContentChanged = { value ->
+                        myPageViewModel.onBugReportContentChanged(value)
+                    },
+                    onSubmitBugReportClick = { myPageViewModel.submitBugReport() },
+                    onDeleteAccountClick = { myPageViewModel.deleteMyAccount() }
+                )
+            }
         }
     }
 }
 
-// 그냥 임시로 페이지 만들어주는 거.
+// Temporary placeholder page.
 @Composable
 fun SimplePageText(text: String) {
     Box(
@@ -741,6 +898,19 @@ fun SimplePageText(text: String) {
     }
 }
 
+private fun NavHostController.navigateToLoginFromMain() {
+    navigate(HangshaDestinations.Login.route) {
+        popUpTo(HangshaDestinations.Main.route) { inclusive = true }
+        launchSingleTop = true
+    }
+}
+
+private fun NavHostController.navigateToSignUpFromMain() {
+    navigate(HangshaDestinations.SignUp.route) {
+        popUpTo(HangshaDestinations.Main.route) { inclusive = true }
+        launchSingleTop = true
+    }
+}
 private object CalendarFilterNavigationKeys {
     const val bookmarkedOnlyKey = "calendar_bookmarked_only"
     const val interestedOnlyKey = "calendar_interested_only"
