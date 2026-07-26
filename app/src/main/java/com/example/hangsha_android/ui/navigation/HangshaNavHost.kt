@@ -867,7 +867,10 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     onMemoEventClick = { eventId ->
                         navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                     },
-                    onLogoutClick = { myPageViewModel.logout() },
+                    onLogoutClick = {
+                        myPageViewModel.logout()
+                        navController.navigateToLoginFromMain()
+                    },
                     onBugReportTitleChanged = { value ->
                         myPageViewModel.onBugReportTitleChanged(value)
                     },
