@@ -164,7 +164,8 @@ class EventDetailViewModel @Inject constructor(
                     memoRepository.createMemo(
                         eventId = currentItem.id,
                         content = content,
-                        tagNames = tagNames
+                        tagNames = tagNames,
+                        eventTitle = currentItem.title
                     ).requireBody("Memo response was empty.")
                 } else if (content.isBlank() && tagNames.isEmpty()) {
                     val response = memoRepository.deleteMemo(savedMemo.id)

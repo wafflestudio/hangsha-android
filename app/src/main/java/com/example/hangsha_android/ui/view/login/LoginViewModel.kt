@@ -33,6 +33,7 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
     private var hasAttemptedAutoLogin = false
+    private var isGuestModeRequested = false
 
     fun onUsernameChanged(username: String) {
         _uiState.update {
@@ -53,6 +54,9 @@ class LoginViewModel @Inject constructor(
     }
 
     fun tryAutoLogin() {
+        if (isGuestModeRequested) {
+            return
+        }
         if (hasAttemptedAutoLogin) {
             return
         }
@@ -75,6 +79,9 @@ class LoginViewModel @Inject constructor(
                 val response = authRepository.refresh(refreshToken)
                 if (!response.isSuccessful) {
                     throw HttpException(response)
+                }
+                if (isGuestModeRequested) {
+                    return@launch
                 }
                 saveTokensFromResponse(response)
                 loadOrganizationNames()
@@ -224,6 +231,23 @@ class LoginViewModel @Inject constructor(
     fun onLoginSuccessConsumed() {
         _uiState.update {
             it.copy(isLoginSuccessful = false)
+        }
+    }
+
+    fun continueAsGuest() {
+        isGuestModeRequested = true
+        authTokenStorage.clearTokens()
+        _uiState.update {
+            it.copy(
+                isAutoLoginLoading = false,
+                isCredentialLoginLoading = false,
+                isGoogleLoginLoading = false,
+                isKakaoLoginLoading = false,
+                isNaverLoginLoading = false,
+                isGoogleHistoryClearing = false,
+                isLoginSuccessful = false,
+                loginMessage = null
+            )
         }
     }
 
