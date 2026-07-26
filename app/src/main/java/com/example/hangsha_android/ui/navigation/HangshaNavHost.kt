@@ -45,6 +45,7 @@ import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
 import com.example.hangsha_android.ui.view.guest.GuestMyPageScreen
+import com.example.hangsha_android.ui.view.guest.GuestMyPageViewModel
 import com.example.hangsha_android.ui.view.guest.LoginRequiredScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
@@ -727,7 +728,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
             if (!isLoggedIn) {
+                val guestMyPageViewModel: GuestMyPageViewModel = hiltViewModel()
+                val guestMyPageUiState by guestMyPageViewModel.uiState.collectAsState()
+
                 GuestMyPageScreen(
+                    uiState = guestMyPageUiState,
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onSignUpClick = { navController.navigateToSignUpFromMain() },
                     onCalendarClick = {
@@ -747,9 +752,14 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onBookmarkedEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onMemoEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                     }
-                )
-            } else {
+                )            } else {
                 val myPageViewModel: MyPageViewModel = hiltViewModel()
                 val myPageUiState by myPageViewModel.uiState.collectAsState()
                 val context = LocalContext.current
