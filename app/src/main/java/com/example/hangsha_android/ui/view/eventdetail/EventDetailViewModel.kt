@@ -375,6 +375,8 @@ class EventDetailViewModel @Inject constructor(
 
 private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
+private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
+private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
 private fun EventDetailItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapshot {
     return StoredGuestBookmarkSnapshot(
@@ -383,6 +385,7 @@ private fun EventDetailItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapsh
         imageUrl = imageUrl,
         organization = organization,
         dDayLabel = dDayLabel,
+        applyPeriodDisplay = applyPeriodDisplay,
         eventTypeId = 0L,
         updatedAt = OffsetDateTime.now().toString()
     )
@@ -418,6 +421,7 @@ private fun EventDetailResponse.toEventDetailItem(
         eventEndDisplay = formatEventEnd(eventEnd)
             ?: eventEndDate?.format(DetailDateFormatter)
             ?: "-",
+        applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
         eventTypeLabel = eventTypeLabel(eventTypeId),
         eventTypeColor = eventTypeColor(eventTypeId),
@@ -428,13 +432,16 @@ private fun EventDetailResponse.toEventDetailItem(
 }
 
 private fun formatPeriod(start: String?, end: String?): String {
-    val startText = formatDateTime(start)
-    val endText = formatDateTime(end)
+    val startDate = parseEventDate(start)
+    val endDate = parseEventDate(end)
 
     return when {
-        startText != null && endText != null -> "$startText - $endText"
-        startText != null -> startText
-        endText != null -> endText
+        startDate != null && endDate != null && startDate.year == endDate.year ->
+            "${startDate.format(DetailFullDateFormatter)}~${endDate.format(DetailMonthDayFormatter)}"
+        startDate != null && endDate != null ->
+            "${startDate.format(DetailFullDateFormatter)}~${endDate.format(DetailFullDateFormatter)}"
+        startDate != null -> startDate.format(DetailFullDateFormatter)
+        endDate != null -> endDate.format(DetailFullDateFormatter)
         else -> "-"
     }
 }

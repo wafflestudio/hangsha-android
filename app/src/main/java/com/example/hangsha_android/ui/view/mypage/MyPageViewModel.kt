@@ -632,11 +632,11 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
-            diff == 0L -> "Apply D-day"
-            diff > 0L -> "Apply D-$diff"
-            else -> "Apply D$diff"
+            diff == 0L -> "D-day"
+            diff > 0L -> "D-$diff"
+            else -> "D$diff"
         }
-    } ?: "Apply -"
+    } ?: "-"
 
     return BookmarkedEventItem(
         id = id,

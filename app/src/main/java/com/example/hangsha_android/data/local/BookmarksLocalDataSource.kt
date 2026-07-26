@@ -190,6 +190,7 @@ data class StoredGuestBookmarkSnapshot(
     val imageUrl: String?,
     val organization: String?,
     val dDayLabel: String?,
+    val applyPeriodDisplay: String? = null,
     val eventTypeId: Long,
     val updatedAt: String
 )

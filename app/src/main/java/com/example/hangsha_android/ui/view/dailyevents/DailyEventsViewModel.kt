@@ -504,6 +504,8 @@ private data class DailyEventsLoadResult(
 
 private val ItemDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
+private val ItemFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
+private val ItemMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
 private fun List<EventSummaryResponse>.toDailyEventItems(
     selectedDate: LocalDate
@@ -537,6 +539,7 @@ private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): Dail
         imageUrl = imageUrl,
         organization = organization,
         eventEndDisplay = eventEndDisplay,
+        applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
         accentColor = eventTypeColor(eventTypeId),
         isBookmarked = isBookmarked,
@@ -556,6 +559,7 @@ private fun DailyEventItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapsho
         imageUrl = imageUrl,
         organization = organization,
         dDayLabel = dDayLabel,
+        applyPeriodDisplay = applyPeriodDisplay,
         eventTypeId = eventTypeId,
         updatedAt = OffsetDateTime.now().toString()
     )
@@ -597,6 +601,22 @@ private fun parseEventDate(value: String?): LocalDate? {
     }
 }
 
+private fun formatPeriod(
+    startValue: String?,
+    endValue: String?
+): String {
+    val start = parseEventDate(startValue)
+    val end = parseEventDate(endValue)
+    return when {
+        start != null && end != null && start.year == end.year ->
+            "${start.format(ItemFullDateFormatter)}~${end.format(ItemMonthDayFormatter)}"
+        start != null && end != null ->
+            "${start.format(ItemFullDateFormatter)}~${end.format(ItemFullDateFormatter)}"
+        start != null -> start.format(ItemFullDateFormatter)
+        end != null -> end.format(ItemFullDateFormatter)
+        else -> "-"
+    }
+}
 private fun formatEventEnd(value: String?): String? {
     if (value.isNullOrBlank()) {
         return null

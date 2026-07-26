@@ -96,6 +96,7 @@ data class GuestBookmarkPreviewItem(
     val imageUrl: String?,
     val organization: String?,
     val dDayLabel: String?,
+    val applyPeriodDisplay: String?,
     val eventTypeId: Long,
     val updatedAt: String
 )
@@ -121,6 +122,7 @@ private fun List<StoredGuestBookmarkSnapshot>.toGuestBookmarkPreviewItems(
                 imageUrl = null,
                 organization = null,
                 dDayLabel = null,
+                applyPeriodDisplay = null,
                 eventTypeId = 0L,
                 updatedAt = ""
             )
@@ -134,6 +136,7 @@ private fun StoredGuestBookmarkSnapshot.toGuestBookmarkPreviewItem(): GuestBookm
         imageUrl = imageUrl,
         organization = organization,
         dDayLabel = dDayLabel,
+        applyPeriodDisplay = applyPeriodDisplay,
         eventTypeId = eventTypeId,
         updatedAt = updatedAt
     )

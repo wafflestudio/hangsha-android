@@ -740,6 +740,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
                 GuestMyPageScreen(
                     uiState = guestMyPageUiState,
+                    onLoginClick = { navController.navigateToLoginFromMain() },
                     onInterestPriorityClick = {
                         navController.navigate(HangshaDestinations.InterestPriority.createRoute())
                     },
