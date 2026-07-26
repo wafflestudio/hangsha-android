@@ -1,5 +1,7 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
+
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.local.BookmarksLocalDataSource
 import com.example.hangsha_android.data.network.api.BookmarkApi
@@ -54,7 +56,8 @@ class BookmarkRepository @Inject constructor(
 
     suspend fun setBookmark(
         eventId: Long,
-        isBookmarked: Boolean
+        isBookmarked: Boolean,
+        guestSnapshot: StoredGuestBookmarkSnapshot? = null
     ): Set<Long> {
         return mutationMutex.withLock {
             val isLoggedIn = isLoggedIn()
@@ -62,7 +65,8 @@ class BookmarkRepository @Inject constructor(
             val updatedEventIds = localDataSource.setBookmarked(
                 eventId = eventId,
                 isBookmarked = isBookmarked,
-                isLoggedIn = isLoggedIn
+                isLoggedIn = isLoggedIn,
+                guestSnapshot = guestSnapshot
             )
 
             if (!isLoggedIn) {

@@ -66,6 +66,14 @@ import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.guest.GuestBookmarkPreviewItem
+import com.example.hangsha_android.ui.view.guest.GuestMemoPreviewItem
+import com.example.hangsha_android.ui.view.guest.GuestMyPageUiState
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val DividerColor = Color(0xFFE7E7E7)
 private val BorderColor = Color(0xFFCACACA)
@@ -248,6 +256,87 @@ fun MyPageScreen(
 }
 
 // 우선순위 목록 영역
+@Composable
+fun GuestMyPageScreen(
+    uiState: GuestMyPageUiState,
+    onInterestPriorityClick: () -> Unit,
+    onTimetableClick: () -> Unit,
+    onBookmarksClick: () -> Unit,
+    onBookmarkedEventClick: (Long) -> Unit,
+    onMemoListClick: () -> Unit,
+    onMemoEventClick: (Long) -> Unit,
+    onBugReportTitleChanged: (String) -> Unit,
+    onBugReportContentChanged: (String) -> Unit,
+    onSubmitBugReportClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 29.dp,
+                end = 29.dp,
+                top = 17.dp,
+                bottom = 28.dp
+            )
+        ) {
+            item {
+                PrioritySection(
+                    interests = emptyList(),
+                    onClick = onInterestPriorityClick
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TimetableRegistrationRow(onClick = onTimetableClick)
+                Spacer(modifier = Modifier.height(29.dp))
+                BookmarksPreviewSection(
+                    items = uiState.bookmarkItems
+                        .take(MY_PAGE_PREVIEW_SIZE)
+                        .map { item -> item.toBookmarkedEventItem() },
+                    isLoading = false,
+                    errorMessage = null,
+                    hasMoreItems = uiState.bookmarkItems.size > MY_PAGE_PREVIEW_SIZE,
+                    onHeaderClick = onBookmarksClick,
+                    onEventClick = onBookmarkedEventClick,
+                    onMoreClick = onBookmarksClick
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(17.dp))
+                MemosPreviewSection(
+                    items = uiState.memoItems
+                        .take(MY_PAGE_PREVIEW_SIZE)
+                        .map { item -> item.toMyPageMemoItem() },
+                    isLoading = false,
+                    errorMessage = null,
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = null,
+                            tint = MutedIconColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    onHeaderClick = onMemoListClick,
+                    onMemoClick = onMemoEventClick
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(17.dp))
+                BugReportSection(
+                    title = uiState.bugReportTitle,
+                    content = uiState.bugReportContent,
+                    isSubmitting = uiState.isSubmittingBugReport,
+                    onTitleChanged = onBugReportTitleChanged,
+                    onContentChanged = onBugReportContentChanged,
+                    onSubmitClick = onSubmitBugReportClick
+                )
+            }
+        }
+    }
+}
 @Composable
 private fun DeleteAccountDialog(
     email: String,
@@ -1094,6 +1183,50 @@ private fun MyPageErrorState(
 }
 
 // 구분선 영역
+private fun GuestBookmarkPreviewItem.toBookmarkedEventItem(): BookmarkedEventItem {
+    return BookmarkedEventItem(
+        id = eventId,
+        title = title,
+        imageUrl = imageUrl,
+        eventTypeId = eventTypeId,
+        statusId = 0L,
+        dDayLabel = dDayLabel ?: "Apply -",
+        applyPeriodDisplay = "-",
+        organization = organization,
+        isBookmarked = true
+    )
+}
+
+private fun GuestMemoPreviewItem.toMyPageMemoItem(): MyPageMemoItem {
+    return MyPageMemoItem(
+        id = id,
+        eventId = eventId,
+        eventTitle = eventTitle.ifBlank { "Event #$eventId" },
+        content = content,
+        tagNames = tagNames,
+        updatedDateDisplay = formatGuestMemoDate(updatedAt) ?: "-"
+    )
+}
+
+private fun formatGuestMemoDate(value: String?): String? {
+    val date = parseGuestDate(value)
+    return date?.format(GuestFullDateFormatter)
+}
+
+private fun parseGuestDate(value: String?): LocalDate? {
+    if (value.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+        runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
+            runCatching { LocalDate.parse(value) }.getOrNull()
+        }
+    }
+}
+
+private const val MY_PAGE_PREVIEW_SIZE = 20
+private val GuestFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 @Composable
 private fun Divider() {
     Spacer(

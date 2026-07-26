@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.BookmarksLocalDataSource
 import com.example.hangsha_android.data.local.GuestMemosLocalDataSource
+import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
 import com.example.hangsha_android.data.local.StoredGuestMemo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,29 +27,78 @@ class GuestMyPageViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 bookmarksLocalDataSource.bookmarkedEventIds(isLoggedIn = false),
+                bookmarksLocalDataSource.guestBookmarkSnapshots,
                 guestMemosLocalDataSource.memos
-            ) { bookmarkedEventIds, memos ->
+            ) { bookmarkedEventIds, bookmarkSnapshots, memos ->
+                val current = _uiState.value
                 GuestMyPageUiState(
-                    bookmarkedEventIds = bookmarkedEventIds,
-                    memoItems = memos.map { it.toGuestMemoPreviewItem() }
+                    bookmarkItems = bookmarkSnapshots.toGuestBookmarkPreviewItems(bookmarkedEventIds),
+                    bookmarkCount = bookmarkedEventIds.size,
+                    memoItems = memos.map { it.toGuestMemoPreviewItem() },
+                    bugReportTitle = current.bugReportTitle,
+                    bugReportContent = current.bugReportContent,
+                    isSubmittingBugReport = current.isSubmittingBugReport,
+                    bugReportToastMessage = current.bugReportToastMessage
                 )
             }.collect { nextState ->
                 _uiState.update { nextState }
             }
         }
     }
+
+    fun onBugReportTitleChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportTitle = value,
+                bugReportToastMessage = null
+            )
+        }
+    }
+
+    fun onBugReportContentChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportContent = value,
+                bugReportToastMessage = null
+            )
+        }
+    }
+
+    fun submitBugReport() {
+        _uiState.update {
+            it.copy(bugReportToastMessage = "Please log in to submit a bug report.")
+        }
+    }
+
+    fun onBugReportToastConsumed() {
+        _uiState.update {
+            it.copy(bugReportToastMessage = null)
+        }
+    }
 }
 
 data class GuestMyPageUiState(
-    val bookmarkedEventIds: Set<Long> = emptySet(),
-    val memoItems: List<GuestMemoPreviewItem> = emptyList()
+    val bookmarkItems: List<GuestBookmarkPreviewItem> = emptyList(),
+    val bookmarkCount: Int = 0,
+    val memoItems: List<GuestMemoPreviewItem> = emptyList(),
+    val bugReportTitle: String = "",
+    val bugReportContent: String = "",
+    val isSubmittingBugReport: Boolean = false,
+    val bugReportToastMessage: String? = null
 ) {
-    val bookmarkCount: Int
-        get() = bookmarkedEventIds.size
-
     val memoCount: Int
         get() = memoItems.size
 }
+
+data class GuestBookmarkPreviewItem(
+    val eventId: Long,
+    val title: String,
+    val imageUrl: String?,
+    val organization: String?,
+    val dDayLabel: String?,
+    val eventTypeId: Long,
+    val updatedAt: String
+)
 
 data class GuestMemoPreviewItem(
     val id: Long,
@@ -58,6 +108,36 @@ data class GuestMemoPreviewItem(
     val tagNames: List<String>,
     val updatedAt: String
 )
+
+private fun List<StoredGuestBookmarkSnapshot>.toGuestBookmarkPreviewItems(
+    bookmarkedEventIds: Set<Long>
+): List<GuestBookmarkPreviewItem> {
+    val snapshotsByEventId = associateBy { it.eventId }
+    return bookmarkedEventIds.map { eventId ->
+        snapshotsByEventId[eventId]?.toGuestBookmarkPreviewItem()
+            ?: GuestBookmarkPreviewItem(
+                eventId = eventId,
+                title = "Event #$eventId",
+                imageUrl = null,
+                organization = null,
+                dDayLabel = null,
+                eventTypeId = 0L,
+                updatedAt = ""
+            )
+    }.sortedByDescending { it.updatedAt }
+}
+
+private fun StoredGuestBookmarkSnapshot.toGuestBookmarkPreviewItem(): GuestBookmarkPreviewItem {
+    return GuestBookmarkPreviewItem(
+        eventId = eventId,
+        title = title,
+        imageUrl = imageUrl,
+        organization = organization,
+        dDayLabel = dDayLabel,
+        eventTypeId = eventTypeId,
+        updatedAt = updatedAt
+    )
+}
 
 private fun StoredGuestMemo.toGuestMemoPreviewItem(): GuestMemoPreviewItem {
     return GuestMemoPreviewItem(

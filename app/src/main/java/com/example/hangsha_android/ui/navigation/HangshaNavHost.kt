@@ -44,7 +44,7 @@ import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
-import com.example.hangsha_android.ui.view.guest.GuestMyPageScreen
+import com.example.hangsha_android.ui.view.mypage.GuestMyPageScreen
 import com.example.hangsha_android.ui.view.guest.GuestMyPageViewModel
 import com.example.hangsha_android.ui.view.guest.LoginRequiredScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
@@ -730,19 +730,18 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             if (!isLoggedIn) {
                 val guestMyPageViewModel: GuestMyPageViewModel = hiltViewModel()
                 val guestMyPageUiState by guestMyPageViewModel.uiState.collectAsState()
+                val context = LocalContext.current
+
+                LaunchedEffect(guestMyPageUiState.bugReportToastMessage) {
+                    val message = guestMyPageUiState.bugReportToastMessage ?: return@LaunchedEffect
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    guestMyPageViewModel.onBugReportToastConsumed()
+                }
 
                 GuestMyPageScreen(
                     uiState = guestMyPageUiState,
-                    onLoginClick = { navController.navigateToLoginFromMain() },
-                    onSignUpClick = { navController.navigateToSignUpFromMain() },
-                    onCalendarClick = {
-                        navController.navigate(BottomTab.Calendar.route) {
-                            popUpTo(HangshaDestinations.Main.route) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                    onInterestPriorityClick = {
+                        navController.navigate(HangshaDestinations.InterestPriority.createRoute())
                     },
                     onTimetableClick = {
                         navController.navigate(BottomTab.Timetable.route) {
@@ -753,13 +752,29 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                             restoreState = true
                         }
                     },
+                    onBookmarksClick = {
+                        navController.navigate(HangshaDestinations.MyBookmarks.route)
+                    },
                     onBookmarkedEventClick = { eventId ->
                         navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                     },
+                    onMemoListClick = {
+                        navController.navigate(HangshaDestinations.MyMemos.route)
+                    },
                     onMemoEventClick = { eventId ->
                         navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    },
+                    onBugReportTitleChanged = { value ->
+                        guestMyPageViewModel.onBugReportTitleChanged(value)
+                    },
+                    onBugReportContentChanged = { value ->
+                        guestMyPageViewModel.onBugReportContentChanged(value)
+                    },
+                    onSubmitBugReportClick = {
+                        guestMyPageViewModel.submitBugReport()
                     }
-                )            } else {
+                )
+            } else {
                 val myPageViewModel: MyPageViewModel = hiltViewModel()
                 val myPageUiState by myPageViewModel.uiState.collectAsState()
                 val context = LocalContext.current

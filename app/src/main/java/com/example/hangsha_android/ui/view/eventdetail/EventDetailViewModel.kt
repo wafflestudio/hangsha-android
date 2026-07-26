@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
+import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
+
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,7 +76,8 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 bookmarkRepository.setBookmark(
                     eventId = currentItem.id,
-                    isBookmarked = shouldBookmark
+                    isBookmarked = shouldBookmark,
+                    guestSnapshot = if (shouldBookmark) currentItem.toGuestBookmarkSnapshot() else null
                 )
             }.onFailure { error ->
                 _uiState.update { currentState ->
@@ -373,6 +376,17 @@ class EventDetailViewModel @Inject constructor(
 private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 
+private fun EventDetailItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapshot {
+    return StoredGuestBookmarkSnapshot(
+        eventId = id,
+        title = title,
+        imageUrl = imageUrl,
+        organization = organization,
+        dDayLabel = dDayLabel,
+        eventTypeId = 0L,
+        updatedAt = OffsetDateTime.now().toString()
+    )
+}
 private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
     return EventDetailMemo(
         id = id,
