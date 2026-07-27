@@ -2,7 +2,10 @@ package com.example.hangsha_android.ui.view.timetable
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
+import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
 import com.example.hangsha_android.data.network.model.TimetableResponse
+import com.example.hangsha_android.data.network.model.UpdateCustomTimetableEnrollRequest
 import com.example.hangsha_android.data.repository.TimetableRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -23,17 +26,19 @@ class TimetableViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(TimetableApiUiState())
     val uiState: StateFlow<TimetableApiUiState> = _uiState.asStateFlow()
 
-    private var isLoadInFlight = false
+    private var loadingTimetableKey: Pair<Int, String>? = null
+    private var isEnrollLoadInFlight = false
 
     fun loadTimetables(
         year: Int,
         semester: String
     ) {
-        if (isLoadInFlight) {
+        val loadKey = year to semester
+        if (loadingTimetableKey == loadKey) {
             return
         }
 
-        isLoadInFlight = true
+        loadingTimetableKey = loadKey
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -53,24 +58,30 @@ class TimetableViewModel @Inject constructor(
                 response.body()?.items ?: throw IllegalStateException("Timetable list response was empty.")
             }.fold(
                 onSuccess = { timetables ->
-                    _uiState.update {
-                        it.copy(
-                            isLoadingTimetables = false,
-                            loadTimetablesError = null,
-                            timetables = timetables
-                        )
+                    if (loadingTimetableKey == loadKey) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingTimetables = false,
+                                loadTimetablesError = null,
+                                timetables = timetables
+                            )
+                        }
                     }
                 },
                 onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoadingTimetables = false,
-                            loadTimetablesError = mapLoadErrorMessage(error)
-                        )
+                    if (loadingTimetableKey == loadKey) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingTimetables = false,
+                                loadTimetablesError = mapLoadErrorMessage(error)
+                            )
+                        }
                     }
                 }
             )
-            isLoadInFlight = false
+            if (loadingTimetableKey == loadKey) {
+                loadingTimetableKey = null
+            }
         }
     }
 
@@ -204,7 +215,9 @@ class TimetableViewModel @Inject constructor(
                             deletingTimetableId = null,
                             deleteTimetableError = null,
                             deletedTimetableId = timetableId,
-                            timetables = it.timetables.filterNot { timetable -> timetable.id == timetableId }
+                            timetables = it.timetables.filterNot { timetable -> timetable.id == timetableId },
+                            loadedEnrollsTimetableId = if (it.loadedEnrollsTimetableId == timetableId) null else it.loadedEnrollsTimetableId,
+                            enrolls = if (it.loadedEnrollsTimetableId == timetableId) emptyList() else it.enrolls
                         )
                     }
                 },
@@ -219,6 +232,344 @@ class TimetableViewModel @Inject constructor(
             )
         }
     }
+
+    fun loadEnrolls(timetableId: Long) {
+        if (isEnrollLoadInFlight && _uiState.value.loadingEnrollsTimetableId == timetableId) {
+            return
+        }
+
+        isEnrollLoadInFlight = true
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    loadingEnrollsTimetableId = timetableId,
+                    loadEnrollsError = null
+                )
+            }
+
+            runCatching {
+                val response = timetableRepository.getEnrolls(timetableId = timetableId)
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body()?.items ?: throw IllegalStateException("Enroll list response was empty.")
+            }.fold(
+                onSuccess = { enrolls ->
+                    _uiState.update {
+                        it.copy(
+                            loadingEnrollsTimetableId = null,
+                            loadedEnrollsTimetableId = timetableId,
+                            loadEnrollsError = null,
+                            enrolls = enrolls
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            loadingEnrollsTimetableId = null,
+                            loadEnrollsError = mapEnrollErrorMessage("load", error)
+                        )
+                    }
+                }
+            )
+            isEnrollLoadInFlight = false
+        }
+    }
+
+    fun loadEnroll(
+        timetableId: Long,
+        enrollId: Long
+    ) {
+        if (_uiState.value.loadingEnrollId != null) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    loadingEnrollId = enrollId,
+                    loadEnrollError = null,
+                    loadedEnroll = null
+                )
+            }
+
+            runCatching {
+                val response = timetableRepository.getEnroll(
+                    timetableId = timetableId,
+                    enrollId = enrollId
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body() ?: throw IllegalStateException("Enroll response was empty.")
+            }.fold(
+                onSuccess = { enroll ->
+                    _uiState.update {
+                        it.copy(
+                            loadingEnrollId = null,
+                            loadEnrollError = null,
+                            loadedEnroll = enroll
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            loadingEnrollId = null,
+                            loadEnrollError = mapEnrollErrorMessage("load", error),
+                            loadedEnroll = null
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun createCustomEnroll(
+        timetableId: Long,
+        year: Int,
+        semester: String,
+        courseTitle: String,
+        timeSlots: List<CreateCustomTimetableEnrollTimeSlotRequest>,
+        courseNumber: String? = null,
+        lectureNumber: String? = null,
+        credit: Int? = null,
+        instructor: String? = null
+    ) {
+        val normalizedTitle = courseTitle.trim()
+        if (normalizedTitle.isBlank() || timeSlots.isEmpty() || _uiState.value.isCreatingCustomEnroll) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isCreatingCustomEnroll = true,
+                    createCustomEnrollError = null,
+                    createdCustomEnroll = null
+                )
+            }
+
+            runCatching {
+                val response = timetableRepository.createCustomEnroll(
+                    timetableId = timetableId,
+                    year = year,
+                    semester = semester,
+                    courseTitle = normalizedTitle,
+                    timeSlots = timeSlots,
+                    courseNumber = courseNumber,
+                    lectureNumber = lectureNumber,
+                    credit = credit,
+                    instructor = instructor
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body() ?: throw IllegalStateException("Enroll response was empty.")
+            }.fold(
+                onSuccess = { enroll ->
+                    _uiState.update {
+                        val updatedEnrolls = if (it.loadedEnrollsTimetableId == timetableId) {
+                            it.enrolls.filterNot { current -> current.enrollId == enroll.enrollId } + enroll
+                        } else {
+                            listOf(enroll)
+                        }
+                        it.copy(
+                            isCreatingCustomEnroll = false,
+                            createCustomEnrollError = null,
+                            createdCustomEnroll = enroll,
+                            loadedEnrollsTimetableId = timetableId,
+                            enrolls = updatedEnrolls
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isCreatingCustomEnroll = false,
+                            createCustomEnrollError = mapEnrollErrorMessage("create", error),
+                            createdCustomEnroll = null
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+
+    fun updateCustomEnroll(
+        timetableId: Long,
+        enrollId: Long,
+        request: UpdateCustomTimetableEnrollRequest
+    ) {
+        if (_uiState.value.updatingEnrollId != null) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    updatingEnrollId = enrollId,
+                    updateEnrollError = null,
+                    updatedEnroll = null
+                )
+            }
+
+            runCatching {
+                val response = timetableRepository.updateCustomEnroll(
+                    timetableId = timetableId,
+                    enrollId = enrollId,
+                    request = request
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body() ?: throw IllegalStateException("Enroll response was empty.")
+            }.fold(
+                onSuccess = { enroll ->
+                    _uiState.update {
+                        it.copy(
+                            updatingEnrollId = null,
+                            updateEnrollError = null,
+                            updatedEnroll = enroll,
+                            loadedEnroll = if (it.loadedEnroll?.enrollId == enroll.enrollId) enroll else it.loadedEnroll,
+                            enrolls = if (it.loadedEnrollsTimetableId == timetableId) {
+                                it.enrolls.map { current ->
+                                    if (current.enrollId == enroll.enrollId) enroll else current
+                                }
+                            } else {
+                                it.enrolls
+                            }
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            updatingEnrollId = null,
+                            updateEnrollError = mapEnrollErrorMessage("update", error),
+                            updatedEnroll = null
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onUpdatedEnrollConsumed() {
+        _uiState.update {
+            it.copy(updatedEnroll = null)
+        }
+    }
+
+    fun clearUpdateEnrollError() {
+        _uiState.update {
+            it.copy(updateEnrollError = null)
+        }
+    }
+
+    fun deleteEnroll(
+        timetableId: Long,
+        enrollId: Long
+    ) {
+        if (_uiState.value.deletingEnrollId != null) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    deletingEnrollId = enrollId,
+                    deleteEnrollError = null
+                )
+            }
+
+            runCatching {
+                val response = timetableRepository.deleteEnroll(
+                    timetableId = timetableId,
+                    enrollId = enrollId
+                )
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            deletingEnrollId = null,
+                            deletedEnrollId = enrollId,
+                            deleteEnrollError = null,
+                            enrolls = if (it.loadedEnrollsTimetableId == timetableId) {
+                                it.enrolls.filterNot { enroll -> enroll.enrollId == enrollId }
+                            } else {
+                                it.enrolls
+                            }
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            deletingEnrollId = null,
+                            deleteEnrollError = mapEnrollErrorMessage("delete", error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onCreatedCustomEnrollConsumed() {
+        _uiState.update {
+            it.copy(createdCustomEnroll = null)
+        }
+    }
+
+    fun onDeletedEnrollConsumed() {
+        _uiState.update {
+            it.copy(deletedEnrollId = null)
+        }
+    }
+
+    fun clearCreateCustomEnrollError() {
+        _uiState.update {
+            it.copy(createCustomEnrollError = null)
+        }
+    }
+
+    fun clearDeleteEnrollError() {
+        _uiState.update {
+            it.copy(deleteEnrollError = null)
+        }
+    }
+
+    fun clearLoadEnrollError() {
+        _uiState.update {
+            it.copy(loadEnrollError = null)
+        }
+    }
+
+    fun clearLoadEnrollsError() {
+        _uiState.update {
+            it.copy(loadEnrollsError = null)
+        }
+    }
+
+    fun clearLoadedEnrolls() {
+        _uiState.update {
+            it.copy(
+                loadingEnrollsTimetableId = null,
+                loadedEnrollsTimetableId = null,
+                loadEnrollsError = null,
+                enrolls = emptyList(),
+                loadingEnrollId = null,
+                loadedEnroll = null,
+                loadEnrollError = null
+            )
+        }
+    }
+
 
     fun onUpdatedTimetableConsumed() {
         _uiState.update {
@@ -302,6 +653,35 @@ class TimetableViewModel @Inject constructor(
             else -> error.message ?: "시간표 삭제에 실패했습니다."
         }
     }
+    private fun mapEnrollErrorMessage(action: String, error: Throwable): String {
+        val actionLabel = enrollActionLabel(action)
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                400 -> "\uC218\uC5C5 \uC815\uBCF4\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC774 \uC2DC\uAC04\uD45C\uC5D0 \uB300\uD55C \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uC2DC\uAC04\uD45C\uB098 \uC218\uC5C5\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "$actionLabel\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> error.message ?: "$actionLabel\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
+            else -> error.message ?: "$actionLabel\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
+        }
+    }
+
+    private fun enrollActionLabel(action: String): String {
+        return when (action) {
+            "load" -> "\uC218\uC5C5 \uBAA9\uB85D \uBD88\uB7EC\uC624\uAE30"
+            "create" -> "\uC218\uC5C5 \uCD94\uAC00"
+            "update" -> "\uC218\uC5C5 \uC218\uC815"
+            "delete" -> "\uC218\uC5C5 \uC0AD\uC81C"
+            else -> "\uC218\uC5C5 \uC694\uCCAD"
+        }
+    }
+
     private fun mapCreateErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
@@ -323,6 +703,22 @@ data class TimetableApiUiState(
     val isLoadingTimetables: Boolean = false,
     val loadTimetablesError: String? = null,
     val timetables: List<TimetableResponse> = emptyList(),
+    val loadingEnrollsTimetableId: Long? = null,
+    val loadedEnrollsTimetableId: Long? = null,
+    val loadEnrollsError: String? = null,
+    val enrolls: List<TimetableEnrollResponse> = emptyList(),
+    val loadingEnrollId: Long? = null,
+    val loadedEnroll: TimetableEnrollResponse? = null,
+    val loadEnrollError: String? = null,
+    val isCreatingCustomEnroll: Boolean = false,
+    val createCustomEnrollError: String? = null,
+    val createdCustomEnroll: TimetableEnrollResponse? = null,
+    val updatingEnrollId: Long? = null,
+    val updatedEnroll: TimetableEnrollResponse? = null,
+    val updateEnrollError: String? = null,
+    val deletingEnrollId: Long? = null,
+    val deletedEnrollId: Long? = null,
+    val deleteEnrollError: String? = null,
     val isCreatingTimetable: Boolean = false,
     val createTimetableError: String? = null,
     val createdTimetable: TimetableResponse? = null,
