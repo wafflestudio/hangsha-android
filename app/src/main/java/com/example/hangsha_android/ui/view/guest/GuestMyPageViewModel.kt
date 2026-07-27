@@ -30,15 +30,10 @@ class GuestMyPageViewModel @Inject constructor(
                 bookmarksLocalDataSource.guestBookmarkSnapshots,
                 guestMemosLocalDataSource.memos
             ) { bookmarkedEventIds, bookmarkSnapshots, memos ->
-                val current = _uiState.value
                 GuestMyPageUiState(
                     bookmarkItems = bookmarkSnapshots.toGuestBookmarkPreviewItems(bookmarkedEventIds),
                     bookmarkCount = bookmarkedEventIds.size,
-                    memoItems = memos.map { it.toGuestMemoPreviewItem() },
-                    bugReportTitle = current.bugReportTitle,
-                    bugReportContent = current.bugReportContent,
-                    isSubmittingBugReport = current.isSubmittingBugReport,
-                    bugReportToastMessage = current.bugReportToastMessage
+                    memoItems = memos.map { it.toGuestMemoPreviewItem() }
                 )
             }.collect { nextState ->
                 _uiState.update { nextState }
@@ -46,45 +41,12 @@ class GuestMyPageViewModel @Inject constructor(
         }
     }
 
-    fun onBugReportTitleChanged(value: String) {
-        _uiState.update {
-            it.copy(
-                bugReportTitle = value,
-                bugReportToastMessage = null
-            )
-        }
-    }
-
-    fun onBugReportContentChanged(value: String) {
-        _uiState.update {
-            it.copy(
-                bugReportContent = value,
-                bugReportToastMessage = null
-            )
-        }
-    }
-
-    fun submitBugReport() {
-        _uiState.update {
-            it.copy(bugReportToastMessage = "Please log in to submit a bug report.")
-        }
-    }
-
-    fun onBugReportToastConsumed() {
-        _uiState.update {
-            it.copy(bugReportToastMessage = null)
-        }
-    }
 }
 
 data class GuestMyPageUiState(
     val bookmarkItems: List<GuestBookmarkPreviewItem> = emptyList(),
     val bookmarkCount: Int = 0,
-    val memoItems: List<GuestMemoPreviewItem> = emptyList(),
-    val bugReportTitle: String = "",
-    val bugReportContent: String = "",
-    val isSubmittingBugReport: Boolean = false,
-    val bugReportToastMessage: String? = null
+    val memoItems: List<GuestMemoPreviewItem> = emptyList()
 ) {
     val memoCount: Int
         get() = memoItems.size
