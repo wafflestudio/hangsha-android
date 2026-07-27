@@ -11,6 +11,7 @@ import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
 import com.example.hangsha_android.data.network.api.MemoApi
 import com.example.hangsha_android.data.network.api.ServerHealthApi
+import com.example.hangsha_android.data.network.api.TimetableApi
 import com.example.hangsha_android.data.network.api.UserApi
 import dagger.Module
 import dagger.Provides
@@ -174,6 +175,14 @@ object NetworkModule {
         @Named("app") retrofit: Retrofit
     ): CategoryApi {
         return retrofit.create(CategoryApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTimetableApi(
+        @Named("app") retrofit: Retrofit
+    ): TimetableApi {
+        return retrofit.create(TimetableApi::class.java)
     }
 
     private val AUTH_PATH_PREFIXES = listOf(

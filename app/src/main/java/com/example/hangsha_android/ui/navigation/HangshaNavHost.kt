@@ -60,6 +60,7 @@ import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingWelcomeScreen
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
+import com.example.hangsha_android.ui.view.timetable.TimetableScreen
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -528,7 +529,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             )
         }
         composable(BottomTab.Timetable.route) {
-            SimplePageText("timetable")
+            TimetableScreen()
         }
         composable(BottomTab.Bookmarks.route) {
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
