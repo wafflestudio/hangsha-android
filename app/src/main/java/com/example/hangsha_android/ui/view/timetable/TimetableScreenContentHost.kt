@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -63,15 +68,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
+import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
+import java.time.LocalDate
 
 private const val GridStartMinute = 9 * 60
 private const val GridEndMinute = 18 * 60
 private const val DayCount = 5
-private const val DefaultYear = 2026
-private const val DefaultSemester = "FALL"
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridLineColor = Color(0xFFE8E8E8)
@@ -83,6 +89,15 @@ private val AddButtonColor = Color(0xFFF08AA0)
 private val EditButtonColor = Color(0xFF72D3EC)
 private val DeleteButtonColor = Color(0xFFF08AA0)
 private val PanelHintColor = Color(0xFFB4B4B4)
+private val YearOptions = buildYearOptions()
+private val SemesterOptions = listOf(
+    TimetableSemesterOption("SPRING", "1\uD559\uAE30"),
+    TimetableSemesterOption("SUMMER", "\uC5EC\uB984\uD559\uAE30"),
+    TimetableSemesterOption("FALL", "2\uD559\uAE30"),
+    TimetableSemesterOption("WINTER", "\uACA8\uC6B8\uD559\uAE30")
+)
+private val DefaultYear = LocalDate.now().year
+private val DefaultSemester = semesterForMonth(LocalDate.now().monthValue).apiValue
 private val WeekdayLabels = listOf("월", "화", "수", "목", "금")
 private val CourseColors = listOf(
     Color(0xFF55B9DC),
@@ -92,6 +107,25 @@ private val CourseColors = listOf(
     Color(0xFF54C987),
     Color(0xFF8F56EC)
 )
+private data class TimetableSemesterOption(
+    val apiValue: String,
+    val label: String
+)
+
+private fun buildYearOptions(): List<Int> {
+    val currentYear = LocalDate.now().year
+    return (currentYear - 2..currentYear + 2).toList()
+}
+
+private fun semesterForMonth(month: Int): TimetableSemesterOption {
+    return when (month) {
+        in 3..6 -> SemesterOptions[0]
+        in 7..8 -> SemesterOptions[1]
+        in 9..12 -> SemesterOptions[2]
+        else -> SemesterOptions[3]
+    }
+}
+
 private val EmptyTimetable = TimetableUiModel(
     id = "empty",
     name = "시간표 이름",
@@ -105,16 +139,17 @@ private val EmptyTimetable = TimetableUiModel(
 internal fun TimetableScreenContentHost() {
     val timetableViewModel: TimetableViewModel = hiltViewModel()
     val apiUiState by timetableViewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val events = remember { emptyList<TimetableEventItem>() }
     var timetables by remember { mutableStateOf(emptyList<TimetableUiModel>()) }
+    var selectedYear by rememberSaveable { mutableStateOf(DefaultYear) }
+    var selectedSemester by rememberSaveable { mutableStateOf(DefaultSemester) }
     var selectedTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
     var isEventOverlayEnabled by rememberSaveable { mutableStateOf(false) }
     var isTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
     var isCreateTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
     var isEditTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
     var isAddCoursePanelOpen by rememberSaveable { mutableStateOf(false) }
-    var nextTimetableId by rememberSaveable { mutableStateOf(1L) }
-    var nextCourseId by rememberSaveable { mutableStateOf(1L) }
     var nextSlotId by rememberSaveable { mutableStateOf(2L) }
     var createTimetableName by rememberSaveable { mutableStateOf("") }
     var editTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -125,13 +160,21 @@ internal fun TimetableScreenContentHost() {
     var timeSlots by remember {
         mutableStateOf(listOf(defaultEditableTimeSlot(1L)))
     }
-    var isSubmitting by rememberSaveable { mutableStateOf(false) }
     var submitError by rememberSaveable { mutableStateOf<String?>(null) }
     var submitMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(selectedYear, selectedSemester) {
+        selectedTimetableId = null
+        timetables = emptyList()
+        isTimetablePanelOpen = false
+        isCreateTimetablePanelOpen = false
+        isEditTimetablePanelOpen = false
+        isAddCoursePanelOpen = false
+        submitError = null
+        submitMessage = null
+        timetableViewModel.clearLoadedEnrolls()
         timetableViewModel.loadTimetables(
-            year = DefaultYear,
-            semester = DefaultSemester
+            year = selectedYear,
+            semester = selectedSemester
         )
     }
 
@@ -202,13 +245,41 @@ internal fun TimetableScreenContentHost() {
         ?: timetables.firstOrNull()
         ?: EmptyTimetable
     val hasSelectedTimetable = timetables.any { it.id == selectedTimetableId }
+
+    LaunchedEffect(selectedTimetableId, hasSelectedTimetable) {
+        val timetableId = selectedTimetableId?.toLongOrNull() ?: return@LaunchedEffect
+        if (hasSelectedTimetable &&
+            apiUiState.loadedEnrollsTimetableId != timetableId &&
+            apiUiState.loadingEnrollsTimetableId != timetableId
+        ) {
+            timetableViewModel.loadEnrolls(timetableId = timetableId)
+        }
+    }
+
+    LaunchedEffect(apiUiState.loadedEnrollsTimetableId, apiUiState.enrolls) {
+        val timetableId = apiUiState.loadedEnrollsTimetableId?.toString() ?: return@LaunchedEffect
+        timetables = timetables.map { timetable ->
+            if (timetable.id == timetableId) {
+                timetable.copy(courses = apiUiState.enrolls.toCourseUiModels())
+            } else {
+                timetable
+            }
+        }
+    }
+
+    LaunchedEffect(apiUiState.loadEnrollsError) {
+        val message = apiUiState.loadEnrollsError ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        timetableViewModel.clearLoadEnrollsError()
+    }
+
     val validation = TimetableAddCourseValidator.validate(
         timetableId = selectedTimetableId.takeIf { hasSelectedTimetable },
         title = courseTitle,
         creditText = creditText,
         timeSlots = timeSlots,
         existingTimeSlots = selectedTimetable.courses.toExistingEditableSlots(),
-        isSubmitting = isSubmitting
+        isSubmitting = apiUiState.isCreatingCustomEnroll
     )
 
     fun closePanels() {
@@ -226,7 +297,17 @@ internal fun TimetableScreenContentHost() {
         submitMessage = message
     }
 
+    LaunchedEffect(apiUiState.createdCustomEnroll) {
+        apiUiState.createdCustomEnroll ?: return@LaunchedEffect
+        resetAddCourseForm(message = "Course added.")
+        timetableViewModel.onCreatedCustomEnrollConsumed()
+    }
+
     TimetableScreenContent(
+        selectedYear = selectedYear,
+        selectedSemester = selectedSemester,
+        yearOptions = YearOptions,
+        semesterOptions = SemesterOptions,
         selectedTimetable = selectedTimetable,
         timetables = timetables,
         events = events,
@@ -251,9 +332,11 @@ internal fun TimetableScreenContentHost() {
         creditText = creditText,
         timeSlots = timeSlots,
         validation = validation,
-        submitError = submitError,
+        submitError = apiUiState.createCustomEnrollError ?: submitError,
         submitMessage = submitMessage,
-        isSubmitting = isSubmitting,
+        isSubmitting = apiUiState.isCreatingCustomEnroll,
+        onYearSelected = { year -> selectedYear = year },
+        onSemesterSelected = { semester -> selectedSemester = semester.apiValue },
         onEventOverlayChanged = { isEventOverlayEnabled = it },
         onOpenTimetablePanel = {
             isAddCoursePanelOpen = false
@@ -293,8 +376,8 @@ internal fun TimetableScreenContentHost() {
             if (normalizedName.isNotEmpty()) {
                 timetableViewModel.createTimetable(
                     name = normalizedName,
-                    year = DefaultYear,
-                    semester = DefaultSemester
+                    year = selectedYear,
+                    semester = selectedSemester
                 )
             }
         },
@@ -318,11 +401,13 @@ internal fun TimetableScreenContentHost() {
             courseTitle = it
             submitError = null
             submitMessage = null
+            timetableViewModel.clearCreateCustomEnrollError()
         },
         onInstructorChange = { instructor = it },
         onCreditChange = {
             creditText = it.filter { char -> char.isDigit() }
             submitError = null
+            timetableViewModel.clearCreateCustomEnrollError()
         },
         onAddTimeSlot = {
             timeSlots = timeSlots + defaultEditableTimeSlot(nextSlotId++)
@@ -348,33 +433,25 @@ internal fun TimetableScreenContentHost() {
             }
         },
         onSubmitAddCourse = {
-            if (!validation.canSubmit || isSubmitting || selectedTimetableId == null) {
+            val timetableId = selectedTimetableId?.toLongOrNull()
+            if (!validation.canSubmit || apiUiState.isCreatingCustomEnroll || timetableId == null) {
                 return@TimetableScreenContent
             }
-            isSubmitting = true
-            val newCourse = CourseUiModel(
-                id = "local-course-${nextCourseId++}",
-                title = courseTitle.trim(),
-                instructor = instructor.trim().takeIf { it.isNotEmpty() },
-                credit = creditText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull(),
-                color = CourseColors[(nextCourseId.toInt() - 2).floorMod(CourseColors.size)],
+            timetableViewModel.createCustomEnroll(
+                timetableId = timetableId,
+                year = selectedTimetable.year,
+                semester = selectedTimetable.semester,
+                courseTitle = courseTitle,
                 timeSlots = timeSlots.map { slot ->
-                    CourseTimeSlot(
-                        weekday = slot.dayOfWeek.weekday,
-                        startMinute = slot.startAt,
-                        endMinute = slot.endAt
+                    CreateCustomTimetableEnrollTimeSlotRequest(
+                        dayOfWeek = slot.dayOfWeek.apiValue,
+                        startAt = slot.startAt,
+                        endAt = slot.endAt
                     )
-                }
+                },
+                credit = creditText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull(),
+                instructor = instructor
             )
-            timetables = timetables.map { timetable ->
-                if (timetable.id == selectedTimetableId) {
-                    timetable.copy(courses = timetable.courses + newCourse)
-                } else {
-                    timetable
-                }
-            }
-            isSubmitting = false
-            resetAddCourseForm(message = "수업을 추가했습니다")
         }
     )
 }
@@ -382,6 +459,10 @@ internal fun TimetableScreenContentHost() {
 // 화면 전체 레이아웃: 그리드, 플로팅 버튼, 하단 패널들을 한 화면 안에서 겹쳐 배치한다.
 @Composable
 private fun TimetableScreenContent(
+    selectedYear: Int,
+    selectedSemester: String,
+    yearOptions: List<Int>,
+    semesterOptions: List<TimetableSemesterOption>,
     selectedTimetable: TimetableUiModel,
     timetables: List<TimetableUiModel>,
     events: List<TimetableEventItem>,
@@ -409,6 +490,8 @@ private fun TimetableScreenContent(
     submitError: String?,
     submitMessage: String?,
     isSubmitting: Boolean,
+    onYearSelected: (Int) -> Unit,
+    onSemesterSelected: (TimetableSemesterOption) -> Unit,
     onEventOverlayChanged: (Boolean) -> Unit,
     onOpenTimetablePanel: () -> Unit,
     onClosePanels: () -> Unit,
@@ -445,6 +528,15 @@ private fun TimetableScreenContent(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(24.dp))
+            TimetableTermSelector(
+                selectedYear = selectedYear,
+                selectedSemester = selectedSemester,
+                yearOptions = yearOptions,
+                semesterOptions = semesterOptions,
+                onYearSelected = onYearSelected,
+                onSemesterSelected = onSemesterSelected
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             TimetableHeader(
                 name = selectedTimetable.name,
                 credits = selectedTimetable.totalCredits,
@@ -548,6 +640,101 @@ private fun TimetableScreenContent(
 }
 
 // 상단 헤더: 시간표 이름, 학점, 행사 보기 스위치를 표시한다.
+@Composable
+private fun TimetableTermSelector(
+    selectedYear: Int,
+    selectedSemester: String,
+    yearOptions: List<Int>,
+    semesterOptions: List<TimetableSemesterOption>,
+    onYearSelected: (Int) -> Unit,
+    onSemesterSelected: (TimetableSemesterOption) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "\uB098\uC758 \uC2DC\uAC04\uD45C",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink100,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TimetableDropdown(
+                text = "${selectedYear}\uD559\uB144\uB3C4",
+                contentDescription = "\uD559\uB144\uB3C4 \uC120\uD0DD",
+                options = yearOptions,
+                optionText = { year -> "${year}\uD559\uB144\uB3C4" },
+                onOptionSelected = onYearSelected
+            )
+            TimetableDropdown(
+                text = semesterOptions.firstOrNull { option -> option.apiValue == selectedSemester }?.label.orEmpty(),
+                contentDescription = "\uD559\uAE30 \uC120\uD0DD",
+                options = semesterOptions,
+                optionText = { semester -> semester.label },
+                onOptionSelected = onSemesterSelected
+            )
+        }
+    }
+}
+
+@Composable
+private fun <T> TimetableDropdown(
+    text: String,
+    contentDescription: String,
+    options: List<T>,
+    optionText: (T) -> String,
+    onOptionSelected: (T) -> Unit
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+        Row(
+            modifier = Modifier
+                .clickable { expanded = true }
+                .semantics { this.contentDescription = contentDescription },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink100,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                tint = Ink60,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = optionText(option),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 14.sp
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onOptionSelected(option)
+                    }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun TimetableHeader(
     name: String,
@@ -1074,6 +1261,30 @@ private fun List<CourseUiModel>.toCourseBlocks(): List<CourseBlockUiModel> {
             CourseBlockUiModel("${course.id}-$index", course.title, course.subtitle, course.color, slot.weekday, slot.startMinute, slot.endMinute)
         }
     }
+}
+
+private fun List<TimetableEnrollResponse>.toCourseUiModels(): List<CourseUiModel> {
+    return mapIndexed { index, enroll ->
+        CourseUiModel(
+            id = enroll.enrollId.toString(),
+            title = enroll.course.courseTitle,
+            instructor = enroll.course.instructor,
+            credit = enroll.course.credit,
+            color = CourseColors[index.floorMod(CourseColors.size)],
+            timeSlots = enroll.course.timeSlots.mapNotNull { slot ->
+                val weekday = slot.dayOfWeek.toTimetableWeekday() ?: return@mapNotNull null
+                CourseTimeSlot(
+                    weekday = weekday,
+                    startMinute = slot.startAt,
+                    endMinute = slot.endAt
+                )
+            }
+        )
+    }
+}
+
+private fun String.toTimetableWeekday(): Int? {
+    return TimetableDayOfWeek.values().firstOrNull { day -> day.apiValue == this }?.weekday
 }
 
 private fun List<CourseUiModel>.toExistingEditableSlots(): List<EditableTimeSlot> {
