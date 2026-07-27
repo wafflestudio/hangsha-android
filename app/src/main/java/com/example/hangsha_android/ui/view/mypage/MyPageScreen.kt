@@ -253,15 +253,11 @@ fun MyPageScreen(
 fun GuestMyPageScreen(
     uiState: GuestMyPageUiState,
     onLoginClick: () -> Unit,
-    onInterestPriorityClick: () -> Unit,
     onTimetableClick: () -> Unit,
     onBookmarksClick: () -> Unit,
     onBookmarkedEventClick: (Long) -> Unit,
     onMemoListClick: () -> Unit,
-    onMemoEventClick: (Long) -> Unit,
-    onBugReportTitleChanged: (String) -> Unit,
-    onBugReportContentChanged: (String) -> Unit,
-    onSubmitBugReportClick: () -> Unit
+    onMemoEventClick: (Long) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -280,11 +276,6 @@ fun GuestMyPageScreen(
             item {
                 GuestProfileLoginPrompt(onLoginClick = onLoginClick)
                 Spacer(modifier = Modifier.height(20.dp))
-                PrioritySection(
-                    interests = emptyList(),
-                    onClick = onInterestPriorityClick
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 TimetableRegistrationRow(onClick = onTimetableClick)
                 Spacer(modifier = Modifier.height(29.dp))
                 BookmarksPreviewSection(
@@ -318,17 +309,7 @@ fun GuestMyPageScreen(
                     onHeaderClick = onMemoListClick,
                     onMemoClick = onMemoEventClick
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(17.dp))
-                BugReportSection(
-                    title = uiState.bugReportTitle,
-                    content = uiState.bugReportContent,
-                    isSubmitting = uiState.isSubmittingBugReport,
-                    onTitleChanged = onBugReportTitleChanged,
-                    onContentChanged = onBugReportContentChanged,
-                    onSubmitClick = onSubmitBugReportClick
-                )
+
             }
         }
     }
