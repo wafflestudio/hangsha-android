@@ -60,6 +60,9 @@ import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingWelcomeScreen
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
+import com.example.hangsha_android.ui.view.splash.SplashNavigationTarget
+import com.example.hangsha_android.ui.view.splash.SplashScreen
+import com.example.hangsha_android.ui.view.splash.SplashViewModel
 import com.example.hangsha_android.ui.view.timetable.TimetableScreen
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -70,6 +73,7 @@ import com.kakao.sdk.common.model.ClientErrorCause
 import com.kakao.sdk.user.UserApiClient
 
 sealed class HangshaDestinations(val route: String) {
+    data object Splash : HangshaDestinations("splash")
     data object Login : HangshaDestinations("login")
     data object CredentialLogin : HangshaDestinations("credential_login")
     data object SignUp : HangshaDestinations("sign_up")
@@ -116,13 +120,41 @@ fun HangshaNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = HangshaDestinations.Login.route,
+        startDestination = HangshaDestinations.Splash.route,
         modifier = Modifier.padding(innerPadding)
     ) {
+        splashGraph(navController = navController)
         loginGraph(navController = navController)
         signUpGraph(navController = navController)
         onboardingGraph(navController = navController)
         mainGraph(navController = navController)
+    }
+}
+
+fun NavGraphBuilder.splashGraph(navController: NavHostController) {
+    composable(HangshaDestinations.Splash.route) {
+        val splashViewModel: SplashViewModel = hiltViewModel()
+        val splashUiState by splashViewModel.uiState.collectAsState()
+
+        LaunchedEffect(splashUiState.navigationTarget) {
+            when (splashUiState.navigationTarget) {
+                SplashNavigationTarget.Calendar -> {
+                    navController.navigate(HangshaDestinations.Main.route) {
+                        popUpTo(HangshaDestinations.Splash.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+                SplashNavigationTarget.Login -> {
+                    navController.navigate(HangshaDestinations.Login.route) {
+                        popUpTo(HangshaDestinations.Splash.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+                null -> Unit
+            }
+        }
+
+        SplashScreen()
     }
 }
 
@@ -178,10 +210,6 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
             } else {
                 loginViewModel.loginWithKakao(token?.accessToken)
             }
-        }
-
-        LaunchedEffect(Unit) {
-            loginViewModel.tryAutoLogin()
         }
 
         LaunchedEffect(loginUiState.isLoginSuccessful) {
