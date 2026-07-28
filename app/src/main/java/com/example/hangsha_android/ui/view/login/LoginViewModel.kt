@@ -32,8 +32,6 @@ class LoginViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
-    private var hasAttemptedAutoLogin = false
-    private var isGuestModeRequested = false
 
     fun onUsernameChanged(username: String) {
         _uiState.update {
@@ -49,52 +47,6 @@ class LoginViewModel @Inject constructor(
             it.copy(
                 password = password,
                 loginMessage = null
-            )
-        }
-    }
-
-    fun tryAutoLogin() {
-        if (isGuestModeRequested) {
-            return
-        }
-        if (hasAttemptedAutoLogin) {
-            return
-        }
-        hasAttemptedAutoLogin = true
-
-        val refreshToken = authTokenStorage.getRefreshToken()
-        if (refreshToken.isNullOrBlank()) {
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isAutoLoginLoading = true,
-                    loginMessage = null
-                )
-            }
-
-            val result = runCatching {
-                val response = authRepository.refresh(refreshToken)
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
-                if (isGuestModeRequested) {
-                    return@launch
-                }
-                saveTokensFromResponse(response)
-                loadOrganizationNames()
-                loadExcludedKeywords()
-            }
-
-            result.fold(
-                onSuccess = {
-                    onAuthSuccess("Logged in automatically.")
-                },
-                onFailure = { error ->
-                    onAutoLoginFailure(error)
-                }
             )
         }
     }
@@ -235,11 +187,9 @@ class LoginViewModel @Inject constructor(
     }
 
     fun continueAsGuest() {
-        isGuestModeRequested = true
         authTokenStorage.clearTokens()
         _uiState.update {
             it.copy(
-                isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
                 isKakaoLoginLoading = false,
@@ -384,7 +334,6 @@ class LoginViewModel @Inject constructor(
     private fun onAuthSuccess(message: String) {
         _uiState.update {
             it.copy(
-                isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
                 isKakaoLoginLoading = false,
@@ -398,7 +347,6 @@ class LoginViewModel @Inject constructor(
     private fun onAuthFailure(message: String) {
         _uiState.update {
             it.copy(
-                isAutoLoginLoading = false,
                 isCredentialLoginLoading = false,
                 isGoogleLoginLoading = false,
                 isKakaoLoginLoading = false,
@@ -434,35 +382,4 @@ class LoginViewModel @Inject constructor(
         onAuthFailure(message)
     }
 
-    private fun onAutoLoginFailure(error: Throwable) {
-        when (error) {
-            is HttpException -> {
-                if (error.code() == 404) {
-                    authTokenStorage.clearTokens()
-                    _uiState.update {
-                        it.copy(
-                            isAutoLoginLoading = false,
-                            isLoginSuccessful = false,
-                            loginMessage = null
-                        )
-                    }
-                    return
-                }
-
-                if (error.code() == 401) {
-                    authTokenStorage.clearTokens()
-                    _uiState.update {
-                        it.copy(
-                            isAutoLoginLoading = false,
-                            isLoginSuccessful = false,
-                            loginMessage = "Your session has expired. Please log in again."
-                        )
-                    }
-                    return
-                }
-            }
-        }
-
-        onAuthFailure(error, "auto login")
-    }
 }
