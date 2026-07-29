@@ -90,7 +90,7 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onNaverLoginConfigMissing() {
-        onAuthFailure("Naver login requires a client secret handling decision before enabling.")
+        onAuthFailure("Naver login is not configured yet.")
     }
 
     fun onGoogleLoginCancelled() {

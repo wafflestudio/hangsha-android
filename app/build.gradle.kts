@@ -30,6 +30,7 @@ fun String.escapeForBuildConfig(): String {
 
 val kakaoNativeAppKey = readBuildConfigString("KAKAO_NATIVE_APP_KEY")
 val naverClientId = readBuildConfigString("NAVER_CLIENT_ID")
+val naverClientSecret = readBuildConfigString("NAVER_CLIENT_SECRET")
 val naverClientName = readBuildConfigString("NAVER_CLIENT_NAME").ifBlank { "Hangsha" }
 
 android {
@@ -66,6 +67,11 @@ android {
             "String",
             "NAVER_CLIENT_ID",
             "\"${naverClientId.escapeForBuildConfig()}\""
+        )
+        buildConfigField(
+            "String",
+            "NAVER_CLIENT_SECRET",
+            "\"${naverClientSecret.escapeForBuildConfig()}\""
         )
         buildConfigField(
             "String",
@@ -133,6 +139,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
     implementation("com.kakao.sdk:v2-user:2.24.0")
+    implementation("com.navercorp.nid:oauth:5.11.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.coil.compose)
     implementation("androidx.emoji2:emoji2-emojipicker:1.4.0")
