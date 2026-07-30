@@ -28,7 +28,7 @@ class AuthRepository @Inject constructor(
             SocialLoginRequest(
                 provider = GOOGLE_PROVIDER,
                 code = serverAuthCode,
-                codeVerifier = null,
+                codeVerifier = "",
                 clientType = MOBILE_CLIENT_TYPE
             )
         )
@@ -100,5 +100,6 @@ class AuthRepository @Inject constructor(
         private const val MOBILE_CLIENT_TYPE = "MOB"
     }
 }
+
 
 
