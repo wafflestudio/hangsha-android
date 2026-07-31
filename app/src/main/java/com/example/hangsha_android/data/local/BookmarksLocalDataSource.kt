@@ -26,17 +26,6 @@ class BookmarksLocalDataSource @Inject constructor(
 ) {
     private val gson = Gson()
 
-    val bookmarkSets: Flow<StoredBookmarkSets> =
-        context.bookmarksDataStore.data
-            .catch { exception ->
-                if (exception is IOException) {
-                    emit(emptyPreferences())
-                } else {
-                    throw exception
-                }
-            }
-            .map { preferences -> preferences.toStoredBookmarkSets() }
-
     val guestBookmarkSnapshots: Flow<List<StoredGuestBookmarkSnapshot>> =
         context.bookmarksDataStore.data
             .catch { exception ->
@@ -50,20 +39,28 @@ class BookmarksLocalDataSource @Inject constructor(
                 parseGuestBookmarkSnapshots(preferences[GUEST_BOOKMARK_SNAPSHOTS_JSON])
             }
 
-    fun bookmarkedEventIds(isLoggedIn: Boolean): Flow<Set<Long>> {
-        return bookmarkSets.map { sets -> sets.forAuthState(isLoggedIn) }
+    fun bookmarkedEventIds(userId: Long?): Flow<Set<Long>> {
+        return context.bookmarksDataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
+            }
+            .map { preferences -> parseEventIds(preferences[bookmarkKey(userId)]) }
     }
 
-    suspend fun getBookmarkedEventIds(isLoggedIn: Boolean): Set<Long> {
-        return bookmarkedEventIds(isLoggedIn).first()
+    suspend fun getBookmarkedEventIds(userId: Long?): Set<Long> {
+        return bookmarkedEventIds(userId).first()
     }
 
     suspend fun replaceBookmarkedEventIds(
         eventIds: Set<Long>,
-        isLoggedIn: Boolean
+        userId: Long?
     ): Set<Long> {
         val normalizedEventIds = eventIds.filter { it > 0L }.toSortedSet()
-        val key = bookmarkKey(isLoggedIn)
+        val key = bookmarkKey(userId)
         context.bookmarksDataStore.edit { preferences ->
             preferences[key] = gson.toJson(normalizedEventIds)
         }
@@ -73,24 +70,24 @@ class BookmarksLocalDataSource @Inject constructor(
     suspend fun setBookmarked(
         eventId: Long,
         isBookmarked: Boolean,
-        isLoggedIn: Boolean,
+        userId: Long?,
         guestSnapshot: StoredGuestBookmarkSnapshot? = null
     ): Set<Long> {
         if (eventId <= 0L) {
-            return getBookmarkedEventIds(isLoggedIn)
+            return getBookmarkedEventIds(userId)
         }
 
-        val currentEventIds = getBookmarkedEventIds(isLoggedIn)
+        val currentEventIds = getBookmarkedEventIds(userId)
         val updatedEventIds = replaceBookmarkedEventIds(
             eventIds = if (isBookmarked) {
                 currentEventIds + eventId
             } else {
                 currentEventIds - eventId
             },
-            isLoggedIn = isLoggedIn
+            userId = userId
         )
 
-        if (!isLoggedIn) {
+        if (userId == null) {
             if (isBookmarked && guestSnapshot != null) {
                 replaceGuestBookmarkSnapshot(guestSnapshot)
             } else if (!isBookmarked) {
@@ -127,13 +124,6 @@ class BookmarksLocalDataSource @Inject constructor(
         }
     }
 
-    private fun Preferences.toStoredBookmarkSets(): StoredBookmarkSets {
-        return StoredBookmarkSets(
-            guestEventIds = parseEventIds(this[GUEST_BOOKMARKED_EVENT_IDS_JSON]),
-            authenticatedEventIds = parseEventIds(this[AUTH_BOOKMARKED_EVENT_IDS_JSON])
-        )
-    }
-
     private fun parseEventIds(json: String?): Set<Long> {
         if (json.isNullOrBlank()) {
             return emptySet()
@@ -154,33 +144,35 @@ class BookmarksLocalDataSource @Inject constructor(
         }.getOrDefault(emptyList())
     }
 
-    private fun bookmarkKey(isLoggedIn: Boolean): Preferences.Key<String> {
-        return if (isLoggedIn) {
-            AUTH_BOOKMARKED_EVENT_IDS_JSON
-        } else {
-            GUEST_BOOKMARKED_EVENT_IDS_JSON
+    suspend fun clearUserData(userId: Long) {
+        context.bookmarksDataStore.edit { preferences ->
+            preferences.remove(bookmarkKey(userId))
         }
+    }
+
+    suspend fun clearLegacyAuthenticatedData() {
+        context.bookmarksDataStore.edit { preferences ->
+            preferences.remove(LEGACY_AUTH_BOOKMARKED_EVENT_IDS_JSON)
+        }
+    }
+
+    private fun bookmarkKey(userId: Long?): Preferences.Key<String> {
+        return userId?.let { id ->
+            require(id > 0L) { "User ID must be positive." }
+            stringPreferencesKey("user_${id}_bookmarked_event_ids_json")
+        } ?: GUEST_BOOKMARKED_EVENT_IDS_JSON
     }
 
     companion object {
         private val GUEST_BOOKMARKED_EVENT_IDS_JSON =
             stringPreferencesKey("guest_bookmarked_event_ids_json")
-        private val AUTH_BOOKMARKED_EVENT_IDS_JSON =
+        private val LEGACY_AUTH_BOOKMARKED_EVENT_IDS_JSON =
             stringPreferencesKey("authenticated_bookmarked_event_ids_json")
         private val GUEST_BOOKMARK_SNAPSHOTS_JSON =
             stringPreferencesKey("guest_bookmark_snapshots_json")
         private val eventIdListType = object : TypeToken<List<Long>>() {}.type
         private val guestSnapshotListType =
             object : TypeToken<List<StoredGuestBookmarkSnapshot>>() {}.type
-    }
-}
-
-data class StoredBookmarkSets(
-    val guestEventIds: Set<Long>,
-    val authenticatedEventIds: Set<Long>
-) {
-    fun forAuthState(isLoggedIn: Boolean): Set<Long> {
-        return if (isLoggedIn) authenticatedEventIds else guestEventIds
     }
 }
 

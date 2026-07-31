@@ -86,13 +86,17 @@ class SignUpViewModel @Inject constructor(
                 )
 
                 saveTokensFromResponse(response)
+                activateCurrentUser()
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }.fold(
                 onSuccess = {
                     onSignUpSuccess()
                 },
-                onFailure = { error -> onSignUpFailure(error) }
+                onFailure = { error ->
+                    authTokenStorage.clearTokens()
+                    onSignUpFailure(error)
+                }
             )
         }
     }
@@ -154,6 +158,16 @@ class SignUpViewModel @Inject constructor(
             accessToken = accessToken,
             refreshToken = refreshToken
         )
+    }
+
+    private suspend fun activateCurrentUser() {
+        val response = userRepository.getMyProfile()
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+        val userId = response.body()?.id
+            ?: throw IllegalStateException("Profile response did not include a user ID.")
+        authTokenStorage.setCurrentUserId(userId)
     }
 
     private suspend fun loadOrganizationNames() {

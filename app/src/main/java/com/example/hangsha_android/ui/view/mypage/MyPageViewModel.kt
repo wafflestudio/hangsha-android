@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.local.BookmarksLocalDataSource
+import com.example.hangsha_android.data.local.ExcludedKeywordsLocalDataSource
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.AuthRepository
@@ -40,6 +42,8 @@ class MyPageViewModel @Inject constructor(
     private val bugReportRepository: BugReportRepository,
     private val memoRepository: MemoRepository,
     private val authTokenStorage: AuthTokenStorage,
+    private val bookmarksLocalDataSource: BookmarksLocalDataSource,
+    private val excludedKeywordsLocalDataSource: ExcludedKeywordsLocalDataSource,
     @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -111,6 +115,7 @@ class MyPageViewModel @Inject constructor(
 
         isBookmarksPreviewInFlight = true
         viewModelScope.launch {
+            val sourceUserId = authTokenStorage.getCurrentUserId()
             try {
                 _uiState.update {
                     it.copy(
@@ -141,7 +146,8 @@ class MyPageViewModel @Inject constructor(
                             )
                         }
                         bookmarkRepository.syncKnownRemoteBookmarks(
-                            bookmarkedEvents.associate { event -> event.id to event.isBookmarked }
+                            remoteBookmarks = bookmarkedEvents.associate { event -> event.id to event.isBookmarked },
+                            sourceUserId = sourceUserId
                         )
                     },
                     onFailure = { error ->
@@ -424,13 +430,15 @@ class MyPageViewModel @Inject constructor(
 
     fun logout() {
         val refreshToken = authTokenStorage.getRefreshToken()
+        val userId = authTokenStorage.getCurrentUserId()
         authTokenStorage.clearTokens()
         _uiState.update {
             it.copy(isLoggedOut = true)
         }
 
-        if (!refreshToken.isNullOrBlank()) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            userId?.let { clearUserCache(it) }
+            if (!refreshToken.isNullOrBlank()) {
                 runCatching {
                     authRepository.logout(refreshToken)
                 }
@@ -443,6 +451,7 @@ class MyPageViewModel @Inject constructor(
             return
         }
 
+        val userId = authTokenStorage.getCurrentUserId()
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -459,6 +468,7 @@ class MyPageViewModel @Inject constructor(
             }.fold(
                 onSuccess = {
                     authTokenStorage.clearTokens()
+                    userId?.let { clearUserCache(it) }
                     _uiState.update {
                         it.copy(
                             isDeletingAccount = false,
@@ -483,6 +493,14 @@ class MyPageViewModel @Inject constructor(
         _uiState.update {
             it.copy(isLoggedOut = false)
         }
+    }
+
+    private suspend fun clearUserCache(userId: Long) {
+        bookmarksLocalDataSource.clearUserData(userId)
+        excludedKeywordsLocalDataSource.clearUserData(userId)
+        // The former shared authenticated keys cannot be associated with a user safely.
+        bookmarksLocalDataSource.clearLegacyAuthenticatedData()
+        excludedKeywordsLocalDataSource.clearLegacyAuthenticatedData()
     }
 
     private suspend fun uploadProfileImage(uri: Uri): String {

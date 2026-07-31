@@ -23,7 +23,7 @@ class GuestBookmarksViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             combine(
-                bookmarksLocalDataSource.bookmarkedEventIds(isLoggedIn = false),
+                bookmarksLocalDataSource.bookmarkedEventIds(userId = null),
                 bookmarksLocalDataSource.guestBookmarkSnapshots
             ) { bookmarkedEventIds, bookmarkSnapshots ->
                 val current = _uiState.value
@@ -46,7 +46,7 @@ class GuestBookmarksViewModel @Inject constructor(
             bookmarksLocalDataSource.setBookmarked(
                 eventId = eventId,
                 isBookmarked = false,
-                isLoggedIn = false
+                userId = null
             )
         }
     }

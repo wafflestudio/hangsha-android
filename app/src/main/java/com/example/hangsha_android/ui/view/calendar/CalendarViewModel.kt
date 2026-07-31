@@ -291,10 +291,11 @@ class CalendarViewModel @Inject constructor(
         }
 
         loadJob = viewModelScope.launch {
+            val sourceUserId = bookmarkRepository.currentUserId()
             runCatching {
                 val sourceResponse = eventRepository.getAllEvents(visibleRange)
                 val sourceBody = sourceResponse.requireBody("Events response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(sourceBody.toBookmarkMap())
+                bookmarkRepository.syncKnownRemoteBookmarks(sourceBody.toBookmarkMap(), sourceUserId)
                 val sourceEventsByDate = sourceBody.toCalendarEventsByDate()
                 val filterOptions = buildFilterOptions(sourceEventsByDate)
                 val visibleEventsByDate = if (hasAppliedServerFilters) {
@@ -304,7 +305,7 @@ class CalendarViewModel @Inject constructor(
                     )
                     val filteredBody = filteredResponse
                         .requireBody("Filtered events response was empty.")
-                    bookmarkRepository.syncKnownRemoteBookmarks(filteredBody.toBookmarkMap())
+                    bookmarkRepository.syncKnownRemoteBookmarks(filteredBody.toBookmarkMap(), sourceUserId)
                     filteredBody.toCalendarEventsByDate()
                 } else {
                     val prioritizedResponse = eventRepository.getEvents(
@@ -313,7 +314,7 @@ class CalendarViewModel @Inject constructor(
                     )
                     val prioritizedBody = prioritizedResponse
                         .requireBody("Prioritized events response was empty.")
-                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedBody.toBookmarkMap())
+                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedBody.toBookmarkMap(), sourceUserId)
                     val prioritizedEventsByDate = prioritizedBody.toCalendarEventsByDate()
                     sourceEventsByDate.reorderedBy(prioritizedEventsByDate)
                 }

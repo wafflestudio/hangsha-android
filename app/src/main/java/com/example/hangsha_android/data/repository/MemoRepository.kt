@@ -98,7 +98,7 @@ class MemoRepository @Inject constructor(
     }
 
     private fun isLoggedIn(): Boolean {
-        return authTokenStorage.hasAccessToken()
+        return authTokenStorage.hasAuthenticatedUser()
     }
 
     private fun <T> notFoundResponse(): Response<T> {
