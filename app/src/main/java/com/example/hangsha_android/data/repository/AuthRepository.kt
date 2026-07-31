@@ -1,4 +1,4 @@
-package com.example.hangsha_android.data.repository
+﻿package com.example.hangsha_android.data.repository
 
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.model.LoginRequest
@@ -28,7 +28,7 @@ class AuthRepository @Inject constructor(
             SocialLoginRequest(
                 provider = GOOGLE_PROVIDER,
                 code = serverAuthCode,
-                codeVerifier = null,
+                codeVerifier = "",
                 clientType = MOBILE_CLIENT_TYPE
             )
         )
@@ -100,3 +100,6 @@ class AuthRepository @Inject constructor(
         private const val MOBILE_CLIENT_TYPE = "MOB"
     }
 }
+
+
+

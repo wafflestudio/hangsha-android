@@ -71,6 +71,8 @@ import com.kakao.sdk.auth.model.OAuthToken
 import com.kakao.sdk.common.model.ClientError
 import com.kakao.sdk.common.model.ClientErrorCause
 import com.kakao.sdk.user.UserApiClient
+import com.navercorp.nid.NidOAuth
+import com.navercorp.nid.oauth.util.NidOAuthCallback
 
 sealed class HangshaDestinations(val route: String) {
     data object Splash : HangshaDestinations("splash")
@@ -211,6 +213,21 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 loginViewModel.loginWithKakao(token?.accessToken)
             }
         }
+        val naverLoginCallback = remember(loginViewModel) {
+            object : NidOAuthCallback {
+                override fun onSuccess() {
+                    loginViewModel.loginWithNaver(NidOAuth.getAccessToken())
+                }
+
+                override fun onFailure(errorCode: String, errorDesc: String) {
+                    Log.e(
+                        "AuthLog",
+                        "Naver login failed: errorCode=$errorCode, errorDesc=$errorDesc"
+                    )
+                    loginViewModel.onNaverLoginError(errorDesc.ifBlank { "Naver login failed." })
+                }
+            }
+        }
 
         LaunchedEffect(loginUiState.isLoginSuccessful) {
             if (!loginUiState.isLoginSuccessful) {
@@ -270,8 +287,14 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                 }
             },
             onNaverLoginClick = {
-                // TODO(NAVER_LOGIN): Decide how to handle Naver client secret before enabling the native SDK login flow.
-                loginViewModel.onNaverLoginConfigMissing()
+                if (
+                    BuildConfig.NAVER_CLIENT_ID.isBlank() ||
+                    BuildConfig.NAVER_CLIENT_SECRET.isBlank()
+                ) {
+                    loginViewModel.onNaverLoginConfigMissing()
+                } else {
+                    NidOAuth.requestLogin(context, naverLoginCallback)
+                }
             },
             onGuestContinueClick = {
                 loginViewModel.continueAsGuest()
