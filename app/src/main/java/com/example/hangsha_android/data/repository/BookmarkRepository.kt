@@ -10,18 +10,20 @@ import com.example.hangsha_android.data.network.model.BookmarkedEventsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import retrofit2.HttpException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class BookmarkRepository @Inject constructor(
     private val eventApi: EventApi,
@@ -37,22 +39,19 @@ class BookmarkRepository @Inject constructor(
 
     init {
         repositoryScope.launch {
-            combine(
-                authTokenStorage.isLoggedIn,
-                localDataSource.bookmarkSets
-            ) { isLoggedIn, bookmarkSets ->
-                bookmarkSets.forAuthState(isLoggedIn)
-            }.collectLatest { eventIds ->
-                _bookmarkedEventIds.value = eventIds
-            }
+            authTokenStorage.currentUserId
+                .flatMapLatest { userId -> localDataSource.bookmarkedEventIds(userId) }
+                .collectLatest { eventIds ->
+                    _bookmarkedEventIds.value = eventIds
+                }
         }
     }
 
     fun currentBookmarkedEventIds(): Set<Long> = _bookmarkedEventIds.value
 
-    fun isLoggedIn(): Boolean {
-        return authTokenStorage.hasAccessToken()
-    }
+    fun currentUserId(): Long? = authTokenStorage.getCurrentUserId()
+
+    fun isLoggedIn(): Boolean = authTokenStorage.hasAuthenticatedUser()
 
     suspend fun setBookmark(
         eventId: Long,
@@ -60,16 +59,16 @@ class BookmarkRepository @Inject constructor(
         guestSnapshot: StoredGuestBookmarkSnapshot? = null
     ): Set<Long> {
         return mutationMutex.withLock {
-            val isLoggedIn = isLoggedIn()
-            val previousEventIds = localDataSource.getBookmarkedEventIds(isLoggedIn)
+            val userId = authTokenStorage.getCurrentUserId()
+            val previousEventIds = localDataSource.getBookmarkedEventIds(userId)
             val updatedEventIds = localDataSource.setBookmarked(
                 eventId = eventId,
                 isBookmarked = isBookmarked,
-                isLoggedIn = isLoggedIn,
+                userId = userId,
                 guestSnapshot = guestSnapshot
             )
 
-            if (!isLoggedIn) {
+            if (userId == null) {
                 return@withLock updatedEventIds
             }
 
@@ -79,10 +78,12 @@ class BookmarkRepository @Inject constructor(
                 eventApi.deleteBookmark(eventId)
             }
             if (!response.isSuccessful) {
-                localDataSource.replaceBookmarkedEventIds(
-                    eventIds = previousEventIds,
-                    isLoggedIn = true
-                )
+                if (authTokenStorage.getCurrentUserId() == userId) {
+                    localDataSource.replaceBookmarkedEventIds(
+                        eventIds = previousEventIds,
+                        userId = userId
+                    )
+                }
                 throw HttpException(response)
             }
 
@@ -98,17 +99,26 @@ class BookmarkRepository @Inject constructor(
     }
 
     suspend fun syncKnownRemoteBookmarks(
-        remoteBookmarks: Map<Long, Boolean>
+        remoteBookmarks: Map<Long, Boolean>,
+        sourceUserId: Long? = authTokenStorage.getCurrentUserId()
     ): Set<Long> {
-        if (!isLoggedIn()) {
-            return localDataSource.getBookmarkedEventIds(isLoggedIn = false)
+        val userId = sourceUserId
+            ?: return localDataSource.getBookmarkedEventIds(userId = null)
+        if (authTokenStorage.getCurrentUserId() != userId) {
+            return localDataSource.getBookmarkedEventIds(authTokenStorage.getCurrentUserId())
         }
         if (remoteBookmarks.isEmpty()) {
-            return localDataSource.getBookmarkedEventIds(isLoggedIn = true)
+            return localDataSource.getBookmarkedEventIds(userId)
         }
 
         return mutationMutex.withLock {
-            val currentEventIds = localDataSource.getBookmarkedEventIds(isLoggedIn = true)
+            if (authTokenStorage.getCurrentUserId() != userId) {
+                return@withLock localDataSource.getBookmarkedEventIds(
+                    authTokenStorage.getCurrentUserId()
+                )
+            }
+
+            val currentEventIds = localDataSource.getBookmarkedEventIds(userId)
             val knownEventIds = remoteBookmarks.keys
             val remoteBookmarkedEventIds = remoteBookmarks
                 .filterValues { it }
@@ -116,7 +126,7 @@ class BookmarkRepository @Inject constructor(
 
             localDataSource.replaceBookmarkedEventIds(
                 eventIds = (currentEventIds - knownEventIds) + remoteBookmarkedEventIds,
-                isLoggedIn = true
+                userId = userId
             )
         }
     }

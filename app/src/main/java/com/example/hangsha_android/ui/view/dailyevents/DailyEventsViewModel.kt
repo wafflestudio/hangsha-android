@@ -327,13 +327,14 @@ class DailyEventsViewModel @Inject constructor(
         }
 
         loadJob = viewModelScope.launch {
+            val sourceUserId = bookmarkRepository.currentUserId()
             runCatching {
                 val sourceResponse = eventRepository.getAllDayEvents(date)
                 val sourceItems = sourceResponse
                     .requireBody("Daily events response was empty.")
                     .items
                     .orEmpty()
-                    .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap()) }
+                    .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap(), sourceUserId) }
                     .toDailyEventItems(date)
                 val filterOptions = buildFilterOptions(sourceItems)
                 val visibleItems = if (hasAppliedServerFilters) {
@@ -341,7 +342,7 @@ class DailyEventsViewModel @Inject constructor(
                         .requireBody("Filtered daily events response was empty.")
                         .items
                         .orEmpty()
-                    bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap())
+                    bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap(), sourceUserId)
                     filteredResponses.toDailyEventItems(date)
                 } else {
                     val prioritizedResponses = eventRepository.getDayEvents(
@@ -350,7 +351,7 @@ class DailyEventsViewModel @Inject constructor(
                     ).requireBody("Prioritized daily events response was empty.")
                         .items
                         .orEmpty()
-                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap())
+                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap(), sourceUserId)
                     val prioritizedItems = prioritizedResponses.toDailyEventItems(date)
                     sourceItems.reorderedBy(prioritizedItems)
                 }

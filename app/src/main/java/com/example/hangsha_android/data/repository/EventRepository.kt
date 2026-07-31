@@ -94,6 +94,6 @@ class EventRepository @Inject constructor(
     }
 
     private fun isLoggedIn(): Boolean {
-        return authTokenStorage.hasAccessToken()
+        return authTokenStorage.hasAuthenticatedUser()
     }
 }

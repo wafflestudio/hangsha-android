@@ -25,8 +25,8 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
 ) {
     private val gson = Gson()
 
-    val excludedKeywordSets: Flow<StoredExcludedKeywordSets> =
-        context.excludedKeywordsDataStore.data
+    fun excludedKeywordItems(userId: Long?): Flow<List<StoredExcludedKeywordItem>> {
+        return context.excludedKeywordsDataStore.data
             .catch { exception ->
                 if (exception is IOException) {
                     emit(emptyPreferences())
@@ -34,22 +34,19 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
                     throw exception
                 }
             }
-            .map { preferences -> preferences.toStoredExcludedKeywordSets() }
-
-    fun excludedKeywordItems(isLoggedIn: Boolean): Flow<List<StoredExcludedKeywordItem>> {
-        return excludedKeywordSets.map { sets -> sets.forAuthState(isLoggedIn) }
+            .map { preferences -> parseItems(preferences[excludedKeywordsKey(userId)]) }
     }
 
-    suspend fun getExcludedKeywordItems(isLoggedIn: Boolean): List<StoredExcludedKeywordItem> {
-        return excludedKeywordItems(isLoggedIn).first()
+    suspend fun getExcludedKeywordItems(userId: Long?): List<StoredExcludedKeywordItem> {
+        return excludedKeywordItems(userId).first()
     }
 
     suspend fun replaceItems(
         items: List<StoredExcludedKeywordItem>,
-        isLoggedIn: Boolean
+        userId: Long?
     ): List<StoredExcludedKeywordItem> {
         val normalizedItems = items.normalizeItems()
-        val key = excludedKeywordsKey(isLoggedIn)
+        val key = excludedKeywordsKey(userId)
         context.excludedKeywordsDataStore.edit { preferences ->
             preferences[key] = gson.toJson(normalizedItems)
         }
@@ -58,14 +55,14 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
 
     suspend fun addKeyword(
         keyword: String,
-        isLoggedIn: Boolean
+        userId: Long?
     ): List<StoredExcludedKeywordItem> {
         val normalizedKeyword = keyword.trim()
         if (normalizedKeyword.isBlank()) {
-            return getExcludedKeywordItems(isLoggedIn)
+            return getExcludedKeywordItems(userId)
         }
 
-        val currentItems = getExcludedKeywordItems(isLoggedIn)
+        val currentItems = getExcludedKeywordItems(userId)
         if (currentItems.any { it.keyword == normalizedKeyword }) {
             return currentItems
         }
@@ -76,30 +73,23 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
                 keyword = normalizedKeyword,
                 createdAt = null
             ),
-            isLoggedIn = isLoggedIn
+            userId = userId
         )
     }
 
     suspend fun removeKeyword(
         keyword: String,
-        isLoggedIn: Boolean
+        userId: Long?
     ): List<StoredExcludedKeywordItem> {
         val normalizedKeyword = keyword.trim()
         if (normalizedKeyword.isBlank()) {
-            return getExcludedKeywordItems(isLoggedIn)
+            return getExcludedKeywordItems(userId)
         }
 
-        val currentItems = getExcludedKeywordItems(isLoggedIn)
+        val currentItems = getExcludedKeywordItems(userId)
         return replaceItems(
             items = currentItems.filterNot { it.keyword == normalizedKeyword },
-            isLoggedIn = isLoggedIn
-        )
-    }
-
-    private fun Preferences.toStoredExcludedKeywordSets(): StoredExcludedKeywordSets {
-        return StoredExcludedKeywordSets(
-            guestItems = parseItems(this[GUEST_EXCLUDED_KEYWORDS_JSON]),
-            authenticatedItems = parseItems(this[AUTH_EXCLUDED_KEYWORDS_JSON])
+            userId = userId
         )
     }
 
@@ -113,18 +103,29 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
         }.getOrDefault(emptyList()).normalizeItems()
     }
 
-    private fun excludedKeywordsKey(isLoggedIn: Boolean): Preferences.Key<String> {
-        return if (isLoggedIn) {
-            AUTH_EXCLUDED_KEYWORDS_JSON
-        } else {
-            GUEST_EXCLUDED_KEYWORDS_JSON
+    suspend fun clearUserData(userId: Long) {
+        context.excludedKeywordsDataStore.edit { preferences ->
+            preferences.remove(excludedKeywordsKey(userId))
         }
+    }
+
+    suspend fun clearLegacyAuthenticatedData() {
+        context.excludedKeywordsDataStore.edit { preferences ->
+            preferences.remove(LEGACY_AUTH_EXCLUDED_KEYWORDS_JSON)
+        }
+    }
+
+    private fun excludedKeywordsKey(userId: Long?): Preferences.Key<String> {
+        return userId?.let { id ->
+            require(id > 0L) { "User ID must be positive." }
+            stringPreferencesKey("user_${id}_excluded_keywords_json")
+        } ?: GUEST_EXCLUDED_KEYWORDS_JSON
     }
 
     companion object {
         private val GUEST_EXCLUDED_KEYWORDS_JSON =
             stringPreferencesKey("guest_excluded_keywords_json")
-        private val AUTH_EXCLUDED_KEYWORDS_JSON =
+        private val LEGACY_AUTH_EXCLUDED_KEYWORDS_JSON =
             stringPreferencesKey("authenticated_excluded_keywords_json")
         private val storedItemListType =
             object : TypeToken<List<StoredExcludedKeywordItem>>() {}.type
@@ -136,15 +137,6 @@ data class StoredExcludedKeywordItem(
     val keyword: String,
     val createdAt: String?
 )
-
-data class StoredExcludedKeywordSets(
-    val guestItems: List<StoredExcludedKeywordItem>,
-    val authenticatedItems: List<StoredExcludedKeywordItem>
-) {
-    fun forAuthState(isLoggedIn: Boolean): List<StoredExcludedKeywordItem> {
-        return if (isLoggedIn) authenticatedItems else guestItems
-    }
-}
 
 private fun List<StoredExcludedKeywordItem>.normalizeItems(): List<StoredExcludedKeywordItem> {
     return mapNotNull { item ->

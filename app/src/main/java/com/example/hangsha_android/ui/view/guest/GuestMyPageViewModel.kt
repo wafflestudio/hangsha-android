@@ -26,7 +26,7 @@ class GuestMyPageViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             combine(
-                bookmarksLocalDataSource.bookmarkedEventIds(isLoggedIn = false),
+                bookmarksLocalDataSource.bookmarkedEventIds(userId = null),
                 bookmarksLocalDataSource.guestBookmarkSnapshots,
                 guestMemosLocalDataSource.memos
             ) { bookmarkedEventIds, bookmarkSnapshots, memos ->

@@ -61,7 +61,7 @@ class AuthTokenAuthenticator @Inject constructor(
                 return null
             }
 
-            authTokenStorage.saveTokens(
+            authTokenStorage.saveRefreshedTokens(
                 accessToken = newAccessToken,
                 refreshToken = newRefreshToken
             )

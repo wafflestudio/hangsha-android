@@ -157,6 +157,7 @@ class BookmarksViewModel @Inject constructor(
     }
 
     private suspend fun loadPage(page: Int) {
+        val sourceUserId = bookmarkRepository.currentUserId()
         runCatching {
             val response = bookmarkRepository.getMyBookmarks(
                 page = page,
@@ -191,7 +192,8 @@ class BookmarksViewModel @Inject constructor(
                     )
                 }
                 bookmarkRepository.syncKnownRemoteBookmarks(
-                    newItems.associate { item -> item.id to item.isBookmarked }
+                    remoteBookmarks = newItems.associate { item -> item.id to item.isBookmarked },
+                    sourceUserId = sourceUserId
                 )
             },
             onFailure = { error ->

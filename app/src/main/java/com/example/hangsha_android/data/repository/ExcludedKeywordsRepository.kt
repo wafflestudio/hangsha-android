@@ -7,13 +7,14 @@ import com.example.hangsha_android.data.network.api.ExcludedKeywordsApi
 import com.example.hangsha_android.data.network.model.CreateExcludedKeywordRequest
 import com.example.hangsha_android.data.network.model.ExcludedKeywordItemResponse
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -21,6 +22,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import retrofit2.HttpException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class ExcludedKeywordsRepository @Inject constructor(
     private val excludedKeywordsApi: ExcludedKeywordsApi,
@@ -40,15 +42,12 @@ class ExcludedKeywordsRepository @Inject constructor(
 
     init {
         repositoryScope.launch {
-            combine(
-                authTokenStorage.isLoggedIn,
-                localDataSource.excludedKeywordSets
-            ) { isLoggedIn, keywordSets ->
-                keywordSets.forAuthState(isLoggedIn)
-            }.collectLatest { items ->
-                _excludedKeywordItems.value = items.toNetworkResponseItems()
-                _excludedKeywords.value = items.map { it.keyword }
-            }
+            authTokenStorage.currentUserId
+                .flatMapLatest { userId -> localDataSource.excludedKeywordItems(userId) }
+                .collectLatest { items ->
+                    _excludedKeywordItems.value = items.toNetworkResponseItems()
+                    _excludedKeywords.value = items.map { it.keyword }
+                }
         }
     }
 
@@ -56,26 +55,25 @@ class ExcludedKeywordsRepository @Inject constructor(
 
     suspend fun refreshExcludedKeywords(): List<String> {
         return mutationMutex.withLock {
-            if (!isLoggedIn()) {
-                return@withLock localDataSource
-                    .getExcludedKeywordItems(isLoggedIn = false)
+            val userId = authTokenStorage.getCurrentUserId()
+                ?: return@withLock localDataSource
+                    .getExcludedKeywordItems(userId = null)
                     .map { it.keyword }
-            }
-            refreshExcludedKeywordsFromRemote()
+            refreshExcludedKeywordsFromRemote(userId)
         }
     }
 
     suspend fun addExcludedKeyword(keyword: String): List<String> {
         return mutationMutex.withLock {
-            val isLoggedIn = isLoggedIn()
-            val previousItems = localDataSource.getExcludedKeywordItems(isLoggedIn)
+            val userId = authTokenStorage.getCurrentUserId()
+            val previousItems = localDataSource.getExcludedKeywordItems(userId)
             val updatedItems = localDataSource.addKeyword(
                 keyword = keyword,
-                isLoggedIn = isLoggedIn
+                userId = userId
             )
             val normalizedKeyword = keyword.trim()
 
-            if (normalizedKeyword.isBlank() || !isLoggedIn) {
+            if (normalizedKeyword.isBlank() || userId == null) {
                 return@withLock updatedItems.map { it.keyword }
             }
 
@@ -83,20 +81,14 @@ class ExcludedKeywordsRepository @Inject constructor(
                 CreateExcludedKeywordRequest(keyword = normalizedKeyword)
             )
             if (!postResponse.isSuccessful) {
-                localDataSource.replaceItems(
-                    items = previousItems,
-                    isLoggedIn = true
-                )
+                restoreItemsIfCurrentUser(userId, previousItems)
                 throw HttpException(postResponse)
             }
 
             runCatching {
-                refreshExcludedKeywordsFromRemote()
+                refreshExcludedKeywordsFromRemote(userId)
             }.getOrElse { error ->
-                localDataSource.replaceItems(
-                    items = previousItems,
-                    isLoggedIn = true
-                )
+                restoreItemsIfCurrentUser(userId, previousItems)
                 throw error
             }
         }
@@ -105,52 +97,51 @@ class ExcludedKeywordsRepository @Inject constructor(
     suspend fun removeExcludedKeyword(keyword: String): List<String> {
         return mutationMutex.withLock {
             val normalizedKeyword = keyword.trim()
-            val isLoggedIn = isLoggedIn()
+            val userId = authTokenStorage.getCurrentUserId()
             if (normalizedKeyword.isBlank()) {
                 return@withLock localDataSource
-                    .getExcludedKeywordItems(isLoggedIn)
+                    .getExcludedKeywordItems(userId)
                     .map { it.keyword }
             }
 
-            val previousItems = localDataSource.getExcludedKeywordItems(isLoggedIn)
+            val previousItems = localDataSource.getExcludedKeywordItems(userId)
             val targetItem = previousItems.firstOrNull { it.keyword == normalizedKeyword }
                 ?: return@withLock previousItems.map { it.keyword }
             val updatedItems = localDataSource.removeKeyword(
                 keyword = normalizedKeyword,
-                isLoggedIn = isLoggedIn
+                userId = userId
             )
 
             val excludedKeywordId = targetItem.id
-            if (!isLoggedIn || excludedKeywordId == null) {
+            if (userId == null || excludedKeywordId == null) {
                 return@withLock updatedItems.map { it.keyword }
             }
 
             val deleteResponse = excludedKeywordsApi.deleteExcludedKeyword(excludedKeywordId)
             if (!deleteResponse.isSuccessful) {
-                localDataSource.replaceItems(
-                    items = previousItems,
-                    isLoggedIn = true
-                )
+                restoreItemsIfCurrentUser(userId, previousItems)
                 throw HttpException(deleteResponse)
             }
 
             runCatching {
-                refreshExcludedKeywordsFromRemote()
+                refreshExcludedKeywordsFromRemote(userId)
             }.getOrElse { error ->
-                localDataSource.replaceItems(
-                    items = previousItems,
-                    isLoggedIn = true
-                )
+                restoreItemsIfCurrentUser(userId, previousItems)
                 throw error
             }
         }
     }
 
-    private fun isLoggedIn(): Boolean {
-        return authTokenStorage.hasAccessToken()
+    private suspend fun restoreItemsIfCurrentUser(
+        userId: Long,
+        items: List<StoredExcludedKeywordItem>
+    ) {
+        if (authTokenStorage.getCurrentUserId() == userId) {
+            localDataSource.replaceItems(items = items, userId = userId)
+        }
     }
 
-    private suspend fun refreshExcludedKeywordsFromRemote(): List<String> {
+    private suspend fun refreshExcludedKeywordsFromRemote(userId: Long): List<String> {
         val response = excludedKeywordsApi.getExcludedKeywords()
         if (!response.isSuccessful) {
             throw HttpException(response)
@@ -158,12 +149,15 @@ class ExcludedKeywordsRepository @Inject constructor(
 
         val items = response.body()?.items.orEmpty().normalizeItems()
         val keywords = items.map { it.keyword }
-        localDataSource.replaceItems(
-            items = items.toStoredItems(),
-            isLoggedIn = true
-        )
+        if (authTokenStorage.getCurrentUserId() == userId) {
+            localDataSource.replaceItems(
+                items = items.toStoredItems(),
+                userId = userId
+            )
+        }
         return keywords
     }
+
 }
 
 private fun List<ExcludedKeywordItemResponse>.normalizeItems(): List<ExcludedKeywordItemResponse> {

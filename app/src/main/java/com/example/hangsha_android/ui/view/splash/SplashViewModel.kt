@@ -44,10 +44,8 @@ class SplashViewModel @Inject constructor(
                 refreshSession(refreshToken)
             }.fold(
                 onSuccess = { SplashNavigationTarget.Calendar },
-                onFailure = { error ->
-                    if (error is HttpException && (error.code() == 401 || error.code() == 404)) {
-                        authTokenStorage.clearTokens()
-                    }
+                onFailure = {
+                    authTokenStorage.clearTokens()
                     SplashNavigationTarget.Login
                 }
             )
@@ -59,8 +57,19 @@ class SplashViewModel @Inject constructor(
     private suspend fun refreshSession(refreshToken: String) {
         val response = authRepository.refresh(refreshToken)
         saveTokensFromResponse(response)
+        activateCurrentUser()
         loadOrganizationNames()
         loadExcludedKeywords()
+    }
+
+    private suspend fun activateCurrentUser() {
+        val response = userRepository.getMyProfile()
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+        val userId = response.body()?.id
+            ?: throw IllegalStateException("Profile response did not include a user ID.")
+        authTokenStorage.setCurrentUserId(userId)
     }
 
     private fun saveTokensFromResponse(response: Response<LoginResponse>) {

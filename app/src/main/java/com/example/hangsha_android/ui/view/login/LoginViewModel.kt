@@ -65,6 +65,7 @@ class LoginViewModel @Inject constructor(
                 val result = runCatching {
                     val response = authRepository.login(email = email, password = password)
                     saveTokensFromResponse(response)
+                    activateCurrentUser()
                     loadOrganizationNames()
                     loadExcludedKeywords()
                 }
@@ -147,6 +148,7 @@ class LoginViewModel @Inject constructor(
                     accessToken = getSocialAccessTokenFromResponse(socialResponse)
                 )
                 saveTokensFromResponse(sessionResponse)
+                activateCurrentUser()
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }
@@ -221,6 +223,7 @@ class LoginViewModel @Inject constructor(
                     accessToken = getSocialAccessTokenFromResponse(socialResponse)
                 )
                 saveTokensFromResponse(sessionResponse)
+                activateCurrentUser()
                 loadOrganizationNames()
                 loadExcludedKeywords()
             }
@@ -307,6 +310,16 @@ class LoginViewModel @Inject constructor(
         )
     }
 
+    private suspend fun activateCurrentUser() {
+        val response = userRepository.getMyProfile()
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+        val userId = response.body()?.id
+            ?: throw IllegalStateException("Profile response did not include a user ID.")
+        authTokenStorage.setCurrentUserId(userId)
+    }
+
     private fun getSocialAccessTokenFromResponse(response: Response<SocialLoginResponse>): String {
         if (!response.isSuccessful) {
             throw HttpException(response)
@@ -359,6 +372,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun onAuthFailure(error: Throwable, actionLabel: String) {
+        authTokenStorage.clearTokens()
         val message = when (error) {
             is UnknownHostException -> "Please check your internet connection."
             is SocketTimeoutException -> "The request timed out. Please try again."

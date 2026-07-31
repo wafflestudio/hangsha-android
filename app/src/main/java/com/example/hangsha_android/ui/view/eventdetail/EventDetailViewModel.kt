@@ -249,11 +249,13 @@ class EventDetailViewModel @Inject constructor(
         }
 
         loadJob = viewModelScope.launch {
+            val sourceUserId = bookmarkRepository.currentUserId()
             runCatching {
                 val response = eventRepository.getEventDetail(eventId)
                     .requireBody("Event detail response was empty.")
                 bookmarkRepository.syncKnownRemoteBookmarks(
-                    mapOf(response.id to response.isBookmarked)
+                    remoteBookmarks = mapOf(response.id to response.isBookmarked),
+                    sourceUserId = sourceUserId
                 )
                 response.toEventDetailItem(
                     bookmarkedEventIds = bookmarkRepository.currentBookmarkedEventIds()
