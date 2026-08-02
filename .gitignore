@@ -9,6 +9,7 @@
 /.idea/libraries
 /.idea/modules.xml
 /.idea/markdown.xml
+/app/release/
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml

@@ -42,9 +42,9 @@ class InterestPriorityViewModel @Inject constructor(
             }
 
             runCatching {
-                val profileResponse = userRepository.getMyProfile()
-                if (!profileResponse.isSuccessful) {
-                    throw HttpException(profileResponse)
+                val interestCategoriesResponse = userRepository.getMyInterestCategories()
+                if (!interestCategoriesResponse.isSuccessful) {
+                    throw HttpException(interestCategoriesResponse)
                 }
 
                 val categoryResponse = categoryRepository.getCategoryGroupsWithCategories()
@@ -52,8 +52,8 @@ class InterestPriorityViewModel @Inject constructor(
                     throw HttpException(categoryResponse)
                 }
 
-                val selectedIds = profileResponse.body()
-                    ?.interestCategories
+                val selectedIds = interestCategoriesResponse.body()
+                    ?.items
                     .orEmpty()
                     .sortedBy { interest -> interest.priority }
                     .map { interest -> interest.category.id }

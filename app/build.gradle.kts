@@ -28,7 +28,10 @@ fun String.escapeForBuildConfig(): String {
     return replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
-val kakaoNativeAppKey = readBuildConfigString("KAKAO_NATIVE_APP_KEY")
+val legacyKakaoNativeAppKey = readBuildConfigString("KAKAO_NATIVE_APP_KEY")
+val debugKakaoNativeAppKey = readBuildConfigString("DEBUG_KAKAO_NATIVE_APP_KEY")
+    .ifBlank { legacyKakaoNativeAppKey }
+val releaseKakaoNativeAppKey = readBuildConfigString("RELEASE_KAKAO_NATIVE_APP_KEY")
 val naverClientId = readBuildConfigString("NAVER_CLIENT_ID")
 val naverClientSecret = readBuildConfigString("NAVER_CLIENT_SECRET")
 val naverClientName = readBuildConfigString("NAVER_CLIENT_NAME").ifBlank { "Hangsha" }
@@ -51,7 +54,7 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
         buildConfigField(
             "String",
@@ -59,11 +62,6 @@ android {
             "\"${readBuildConfigString("GOOGLE_SERVER_CLIENT_ID").escapeForBuildConfig()}\""
         )
 
-        buildConfigField(
-            "String",
-            "KAKAO_NATIVE_APP_KEY",
-            "\"${kakaoNativeAppKey.escapeForBuildConfig()}\""
-        )
         buildConfigField(
             "String",
             "NAVER_CLIENT_ID",
@@ -79,7 +77,6 @@ android {
             "NAVER_CLIENT_NAME",
             "\"${naverClientName.escapeForBuildConfig()}\""
         )
-        manifestPlaceholders["kakaoNativeAppKey"] = kakaoNativeAppKey
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -89,6 +86,8 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             buildConfigField("String", "SERVER_BASE_URL", "\"${debugServerBaseUrl.escapeForBuildConfig()}\"")
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${debugKakaoNativeAppKey.escapeForBuildConfig()}\"")
+            manifestPlaceholders["kakaoNativeAppKey"] = debugKakaoNativeAppKey
         }
 
         release {
@@ -98,6 +97,8 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "SERVER_BASE_URL", "\"https://hangsha-api.wafflestudio.com/\"")
+            buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${releaseKakaoNativeAppKey.escapeForBuildConfig()}\"")
+            manifestPlaceholders["kakaoNativeAppKey"] = releaseKakaoNativeAppKey
         }
     }
     compileOptions {
