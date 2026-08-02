@@ -7,6 +7,7 @@ import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
 import com.example.hangsha_android.data.network.model.UpdateInterestCategoriesRequest
 import com.example.hangsha_android.data.network.model.UpdateInterestCategoryItemRequest
 import com.example.hangsha_android.data.network.model.UpdateUserProfileRequest
+import com.example.hangsha_android.data.network.model.UserInterestCategoriesResponse
 import com.example.hangsha_android.data.network.model.UserProfileResponse
 import java.io.File
 import javax.inject.Singleton
@@ -32,6 +33,10 @@ class UserRepository @Inject constructor(
 
     suspend fun getMyProfile(): Response<UserProfileResponse> {
         return userApi.getMyProfile()
+    }
+
+    suspend fun getMyInterestCategories(): Response<UserInterestCategoriesResponse> {
+        return userApi.getMyInterestCategories()
     }
 
     suspend fun deleteMyAccount(): Response<Unit> {

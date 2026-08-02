@@ -2,6 +2,7 @@ package com.example.hangsha_android.data.network.api
 
 import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
 import com.example.hangsha_android.data.network.model.UpdateInterestCategoriesRequest
+import com.example.hangsha_android.data.network.model.UserInterestCategoriesResponse
 import com.example.hangsha_android.data.network.model.UserProfileResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -18,6 +19,9 @@ import retrofit2.http.PUT
 interface UserApi {
     @GET("api/v1/users/me")
     suspend fun getMyProfile(): Response<UserProfileResponse>
+
+    @GET("api/v1/users/me/interest-categories")
+    suspend fun getMyInterestCategories(): Response<UserInterestCategoriesResponse>
 
     @DELETE("api/v1/users/me")
     suspend fun deleteMyAccount(): Response<Unit>

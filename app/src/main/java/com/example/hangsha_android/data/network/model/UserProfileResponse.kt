@@ -22,6 +22,11 @@ data class UserInterestCategory(
     val priority: Int
 )
 
+data class UserInterestCategoriesResponse(
+    @SerializedName("items")
+    val items: List<UserInterestCategory>?
+)
+
 data class InterestCategory(
     @SerializedName("id")
     val id: Long,
