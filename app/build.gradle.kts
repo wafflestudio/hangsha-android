@@ -32,6 +32,8 @@ val kakaoNativeAppKey = readBuildConfigString("KAKAO_NATIVE_APP_KEY")
 val naverClientId = readBuildConfigString("NAVER_CLIENT_ID")
 val naverClientSecret = readBuildConfigString("NAVER_CLIENT_SECRET")
 val naverClientName = readBuildConfigString("NAVER_CLIENT_NAME").ifBlank { "Hangsha" }
+val debugServerBaseUrl = readBuildConfigString("DEBUG_SERVER_BASE_URL")
+    .ifBlank { "https://hangsha-api-dev.wafflestudio.com/" }
 
 android {
     namespace = "com.example.hangsha_android"
@@ -46,12 +48,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.hangsha_android"
+        applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "SERVER_BASE_URL", "\"https://hangsha-api-dev.wafflestudio.com/\"")
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",
@@ -84,12 +85,19 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            buildConfigField("String", "SERVER_BASE_URL", "\"${debugServerBaseUrl.escapeForBuildConfig()}\"")
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "SERVER_BASE_URL", "\"https://hangsha-api.wafflestudio.com/\"")
         }
     }
     compileOptions {
