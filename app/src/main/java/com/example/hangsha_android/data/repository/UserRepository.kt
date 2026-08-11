@@ -129,7 +129,7 @@ class UserRepository @Inject constructor(
 private fun validateUsername(username: String) {
     val trimmedUsername = username.trim()
     require(trimmedUsername.isNotBlank()) {
-        "Username cannot be blank."
+        "\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694."
     }
 
     val maxLength = if (trimmedUsername.any { char -> char.isKorean() }) {
@@ -138,7 +138,7 @@ private fun validateUsername(username: String) {
         ENGLISH_USERNAME_MAX_LENGTH
     }
     require(trimmedUsername.length <= maxLength) {
-        "Username must be $maxLength characters or less."
+        "\uB2C9\uB124\uC784\uC740 ${maxLength}\uC790 \uC774\uD558\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694."
     }
 }
 
@@ -154,7 +154,7 @@ private fun validateProfileImageUrl(profileImageUrl: String?) {
     }
 
     require(profileImageUrl.startsWith("http://") || profileImageUrl.startsWith("https://")) {
-        "Profile image URL must start with http:// or https://."
+        "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC8FC\uC18C\uB294 http:// \uB610\uB294 https://\uB85C \uC2DC\uC791\uD574\uC57C \uD569\uB2C8\uB2E4."
     }
 }
 

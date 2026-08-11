@@ -193,7 +193,7 @@ private fun DailyEventsHeader(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                contentDescription = "Previous day",
+                contentDescription = "\uC774\uC804 \uB0A0\uC9DC",
                 tint = Ink60
             )
         }
@@ -206,7 +206,7 @@ private fun DailyEventsHeader(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = "Next day",
+                contentDescription = "\uB2E4\uC74C \uB0A0\uC9DC",
                 tint = Ink60
             )
         }
@@ -267,7 +267,7 @@ private fun FilterButton(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Tune,
-                    contentDescription = "Filter",
+                    contentDescription = "\uD544\uD130",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -348,7 +348,7 @@ private fun DailyEventCard(
             } else {
                 Icons.Rounded.BookmarkBorder
             },
-            contentDescription = "Bookmark",
+            contentDescription = "\uBD81\uB9C8\uD06C",
             tint = DailyBookmarkTint,
             modifier = Modifier
                 .padding(top = 2.dp)

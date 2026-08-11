@@ -161,7 +161,7 @@ class OnboardingViewModel @Inject constructor(
 
         val url = response.body()?.url
         require(!url.isNullOrBlank()) {
-            "Profile image upload response was empty."
+            "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC751\uB2F5\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
         }
         return url
     }

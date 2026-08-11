@@ -299,7 +299,7 @@ internal fun TimetableScreenContentHost() {
 
     LaunchedEffect(apiUiState.createdCustomEnroll) {
         apiUiState.createdCustomEnroll ?: return@LaunchedEffect
-        resetAddCourseForm(message = "Course added.")
+        resetAddCourseForm(message = "\uC218\uC5C5\uC744 \uCD94\uAC00\uD588\uC2B5\uB2C8\uB2E4.")
         timetableViewModel.onCreatedCustomEnrollConsumed()
     }
 

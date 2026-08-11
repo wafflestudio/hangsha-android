@@ -190,7 +190,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     error
                 )
                 loginViewModel.onGoogleLoginError(
-                    "Google sign-in failed with status ${error.statusCode}"
+                    "Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.statusCode})"
                 )
                 return@rememberLauncherForActivityResult
             } catch (error: Exception) {
@@ -199,7 +199,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     "Google sign-in failed: message=${error.message}",
                     error
                 )
-                loginViewModel.onGoogleLoginError(error.message ?: "Google sign-in failed.")
+                loginViewModel.onGoogleLoginError("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
                 return@rememberLauncherForActivityResult
             }
 
@@ -208,7 +208,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         val kakaoLoginCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
             if (error != null) {
                 Log.e("AuthLog", "Kakao login failed: message=${error.message}", error)
-                loginViewModel.onKakaoLoginError(error.message ?: "Kakao login failed.")
+                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
             } else {
                 loginViewModel.loginWithKakao(token?.accessToken)
             }
@@ -224,7 +224,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                         "AuthLog",
                         "Naver login failed: errorCode=$errorCode, errorDesc=$errorDesc"
                     )
-                    loginViewModel.onNaverLoginError(errorDesc.ifBlank { "Naver login failed." })
+                    loginViewModel.onNaverLoginError("\uB124\uC774\uBC84 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
                 }
             }
         }
@@ -268,7 +268,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                                 error
                             )
                             if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                                loginViewModel.onKakaoLoginError("Kakao login was cancelled.")
+                                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
                                 return@loginWithKakaoTalk
                             }
                             UserApiClient.instance.loginWithKakaoAccount(

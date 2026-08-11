@@ -31,7 +31,7 @@ class ServerHealthViewModel @Inject constructor(
             val result = runCatching {
                 val response = serverHealthApi.checkServer()
                 if (!response.isSuccessful) {
-                    error("Server check failed with code ${response.code()}")
+                    error("\uC11C\uBC84 \uD655\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${response.code()})")
                 }
             }
 
@@ -39,8 +39,8 @@ class ServerHealthViewModel @Inject constructor(
                 it.copy(
                     isCheckingServer = false,
                     serverCheckMessage = result.fold(
-                        onSuccess = { "Server is reachable." },
-                        onFailure = { error -> error.message ?: "Server check failed." }
+                        onSuccess = { "\uC11C\uBC84\uC5D0 \uC5F0\uACB0\uB418\uC5C8\uC2B5\uB2C8\uB2E4." },
+                        onFailure = { error -> "\uC11C\uBC84 \uC5F0\uACB0\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4." }
                     )
                 )
             }

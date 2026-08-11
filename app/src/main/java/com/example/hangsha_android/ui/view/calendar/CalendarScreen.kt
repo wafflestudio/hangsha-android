@@ -268,7 +268,7 @@ private fun HeaderNavigationButtons(
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-            contentDescription = "Previous month",
+            contentDescription = "\uC774\uC804 \uB2EC",
             tint = Ink60
         )
     }
@@ -281,7 +281,7 @@ private fun HeaderNavigationButtons(
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = "Next month",
+            contentDescription = "\uB2E4\uC74C \uB2EC",
             tint = Ink60
         )
     }
@@ -301,7 +301,7 @@ private fun FilterButton(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Tune,
-                contentDescription = "Filter",
+                contentDescription = "\uD544\uD130",
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }

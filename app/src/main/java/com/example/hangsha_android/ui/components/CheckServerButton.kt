@@ -22,7 +22,7 @@ fun CheckServerButton(
         if (isLoading) {
             CircularProgressIndicator(strokeWidth = 2.dp)
         } else {
-            Text(text = "Check Server")
+            Text(text = "\uC11C\uBC84 \uC5F0\uACB0 \uD655\uC778")
         }
     }
 }

@@ -57,8 +57,8 @@ class LoginViewModel @Inject constructor(
         val password = currentState.password
 
         when {
-            email.isBlank() -> onAuthFailure("Please enter your email.")
-            password.isBlank() -> onAuthFailure("Please enter your password.")
+            email.isBlank() -> onAuthFailure("\uC774\uBA54\uC77C\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            password.isBlank() -> onAuthFailure("\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
             else -> viewModelScope.launch {
                 onCredentialLoginStarted()
 
@@ -72,7 +72,7 @@ class LoginViewModel @Inject constructor(
 
                 result.fold(
                     onSuccess = {
-                        onAuthSuccess("Logged in successfully.")
+                        onAuthSuccess("\uB85C\uADF8\uC778\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
                     },
                     onFailure = { error ->
                         onAuthFailure(error, "login")
@@ -83,19 +83,19 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onGoogleLoginConfigMissing() {
-        onAuthFailure("Google login is not configured yet.")
+        onAuthFailure("Google \uB85C\uADF8\uC778\uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.")
     }
 
     fun onKakaoLoginConfigMissing() {
-        onAuthFailure("Kakao login is not configured yet.")
+        onAuthFailure("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.")
     }
 
     fun onNaverLoginConfigMissing() {
-        onAuthFailure("Naver login is not configured yet.")
+        onAuthFailure("\uB124\uC774\uBC84 \uB85C\uADF8\uC778\uC774 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.")
     }
 
     fun onGoogleLoginCancelled() {
-        onAuthFailure("Google login was cancelled.")
+        onAuthFailure("Google \uB85C\uADF8\uC778\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
     }
 
     fun onGoogleLoginError(message: String) {
@@ -123,7 +123,7 @@ class LoginViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isGoogleHistoryClearing = false,
-                loginMessage = "Google sign-in history was cleared."
+                loginMessage = "Google \uB85C\uADF8\uC778 \uAE30\uB85D\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4."
             )
         }
     }
@@ -135,7 +135,7 @@ class LoginViewModel @Inject constructor(
         }
 
         if (serverAuthCode.isNullOrBlank()) {
-            onGoogleLoginError("Could not retrieve Google login information.")
+            onGoogleLoginError("Google \uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.")
             return
         }
 
@@ -155,10 +155,10 @@ class LoginViewModel @Inject constructor(
 
             result.fold(
                 onSuccess = {
-                    onAuthSuccess("Google login completed successfully.")
+                    onAuthSuccess("Google \uB85C\uADF8\uC778\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
                 },
                 onFailure = { error ->
-                    onAuthFailure(error, "Google login")
+                    onAuthFailure(error, "Google \uB85C\uADF8\uC778")
                 }
             )
         }
@@ -167,7 +167,7 @@ class LoginViewModel @Inject constructor(
     fun loginWithKakao(accessToken: String?) {
         loginWithSocialAccessToken(
             accessToken = accessToken,
-            actionLabel = "Kakao login",
+            actionLabel = "\uCE74\uCE74\uC624 \uB85C\uADF8\uC778",
             onStarted = ::onKakaoLoginStarted,
             login = authRepository::loginWithKakao
         )
@@ -176,7 +176,7 @@ class LoginViewModel @Inject constructor(
     fun loginWithNaver(accessToken: String?) {
         loginWithSocialAccessToken(
             accessToken = accessToken,
-            actionLabel = "Naver login",
+            actionLabel = "\uB124\uC774\uBC84 \uB85C\uADF8\uC778",
             onStarted = ::onNaverLoginStarted,
             login = authRepository::loginWithNaver
         )
@@ -210,7 +210,7 @@ class LoginViewModel @Inject constructor(
         login: suspend (String) -> Response<SocialLoginResponse>
     ) {
         if (accessToken.isNullOrBlank()) {
-            onAuthFailure("Could not retrieve ${actionLabel.lowercase()} information.")
+            onAuthFailure("${actionLabel} \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.")
             return
         }
 
@@ -230,7 +230,7 @@ class LoginViewModel @Inject constructor(
 
             result.fold(
                 onSuccess = {
-                    onAuthSuccess("$actionLabel completed successfully.")
+                    onAuthSuccess("${actionLabel}\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
                 },
                 onFailure = { error ->
                     onAuthFailure(error, actionLabel)
@@ -301,7 +301,7 @@ class LoginViewModel @Inject constructor(
         val accessToken = authTokens?.accessToken
         val refreshToken = authTokens?.refreshToken
         if (accessToken.isNullOrBlank() || refreshToken.isNullOrBlank()) {
-            throw IllegalStateException("Authentication response did not include auth tokens.")
+            throw IllegalStateException("\uC778\uC99D \uC751\uB2F5\uC5D0 \uB85C\uADF8\uC778 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")
         }
 
         authTokenStorage.saveTokens(
@@ -316,7 +316,7 @@ class LoginViewModel @Inject constructor(
             throw HttpException(response)
         }
         val userId = response.body()?.id
-            ?: throw IllegalStateException("Profile response did not include a user ID.")
+            ?: throw IllegalStateException("\uD504\uB85C\uD544 \uC751\uB2F5\uC5D0 \uC0AC\uC6A9\uC790 ID\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")
         authTokenStorage.setCurrentUserId(userId)
     }
 
@@ -327,7 +327,7 @@ class LoginViewModel @Inject constructor(
 
         val accessToken = response.body()?.accessToken
         if (accessToken.isNullOrBlank()) {
-            throw IllegalStateException("Social login response did not include an access token.")
+            throw IllegalStateException("\uC18C\uC15C \uB85C\uADF8\uC778 \uC751\uB2F5\uC5D0 \uC778\uC99D \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")
         }
         return accessToken
     }
@@ -374,23 +374,23 @@ class LoginViewModel @Inject constructor(
     private fun onAuthFailure(error: Throwable, actionLabel: String) {
         authTokenStorage.clearTokens()
         val message = when (error) {
-            is UnknownHostException -> "Please check your internet connection."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Please check the information you entered."
+                400 -> "\uC785\uB825\uD55C \uC815\uBCF4\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
                 401 -> if (actionLabel == "login") {
-                    "Your email or password is incorrect."
+                    "\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
                 } else {
-                    "$actionLabel failed."
+                    "${actionLabel}\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
                 }
-                403 -> "You do not have permission to continue."
-                404 -> "Account information could not be found."
-                in 500..599 -> "A server error occurred. Please try again later."
-                else -> "Login failed. (${error.code()})"
+                403 -> "\uACC4\uC18D \uC9C4\uD589\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uACC4\uC815 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "A network error occurred. Please try again."
-            is IllegalStateException -> error.message ?: "Login failed."
-            else -> error.message ?: "Login failed."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> "\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
+            else -> "\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
         }
 
         onAuthFailure(message)
