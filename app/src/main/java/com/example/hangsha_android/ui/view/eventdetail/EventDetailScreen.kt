@@ -67,6 +67,11 @@ fun EventDetailScreen(
     onAddMemoTag: () -> Unit,
     onRemoveMemoTag: (String) -> Unit,
     onSaveMemoClick: () -> Unit,
+    onOpenBugReport: () -> Unit,
+    onDismissBugReport: () -> Unit,
+    onBugReportTitleChanged: (String) -> Unit,
+    onBugReportContentChanged: (String) -> Unit,
+    onSubmitBugReport: () -> Unit,
     onRetryClick: () -> Unit
 ) {
     Box(
@@ -99,10 +104,21 @@ fun EventDetailScreen(
                     onMemoTagInputChanged = onMemoTagInputChanged,
                     onAddMemoTag = onAddMemoTag,
                     onRemoveMemoTag = onRemoveMemoTag,
-                    onSaveMemoClick = onSaveMemoClick
+                    onSaveMemoClick = onSaveMemoClick,
+                    onBugReportClick = onOpenBugReport
                 )
             }
         }
+    }
+
+    if (uiState.isBugReportDialogOpen) {
+        EventBugReportDialog(
+            uiState = uiState,
+            onDismissRequest = onDismissBugReport,
+            onTitleChanged = onBugReportTitleChanged,
+            onContentChanged = onBugReportContentChanged,
+            onSubmitClick = onSubmitBugReport
+        )
     }
 }
 
@@ -117,7 +133,8 @@ private fun EventDetailContent(
     onMemoTagInputChanged: (String) -> Unit,
     onAddMemoTag: () -> Unit,
     onRemoveMemoTag: (String) -> Unit,
-    onSaveMemoClick: () -> Unit
+    onSaveMemoClick: () -> Unit,
+    onBugReportClick: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -295,6 +312,11 @@ private fun EventDetailContent(
                 onRemoveTag = onRemoveMemoTag,
                 onSaveClick = onSaveMemoClick
             )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            EventBugReportButton(onClick = onBugReportClick)
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

@@ -555,6 +555,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 eventDetailViewModel.onMemoSaveMessageConsumed()
             }
+            LaunchedEffect(eventDetailUiState.bugReportMessage) {
+                val message = eventDetailUiState.bugReportMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                eventDetailViewModel.onBugReportMessageConsumed()
+            }
 
             EventDetailScreen(
                 uiState = eventDetailUiState,
@@ -576,6 +581,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onAddMemoTag = { eventDetailViewModel.addMemoTag() },
                 onRemoveMemoTag = { tagName -> eventDetailViewModel.removeMemoTag(tagName) },
                 onSaveMemoClick = { eventDetailViewModel.saveMemo() },
+                onOpenBugReport = { eventDetailViewModel.openBugReportDialog() },
+                onDismissBugReport = { eventDetailViewModel.dismissBugReportDialog() },
+                onBugReportTitleChanged = { value -> eventDetailViewModel.onBugReportTitleChanged(value) },
+                onBugReportContentChanged = { value -> eventDetailViewModel.onBugReportContentChanged(value) },
+                onSubmitBugReport = { eventDetailViewModel.submitBugReport() },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }

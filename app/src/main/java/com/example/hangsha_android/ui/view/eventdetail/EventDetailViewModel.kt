@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
+import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
@@ -36,6 +37,7 @@ import retrofit2.Response
 class EventDetailViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val bugReportRepository: BugReportRepository,
     private val memoRepository: MemoRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -89,6 +91,89 @@ class EventDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun openBugReportDialog() {
+        _uiState.update {
+            it.copy(isBugReportDialogOpen = true, bugReportMessage = null)
+        }
+    }
+
+    fun dismissBugReportDialog() {
+        if (_uiState.value.isSubmittingBugReport) return
+        _uiState.update {
+            it.copy(
+                isBugReportDialogOpen = false,
+                bugReportTitle = "",
+                bugReportContent = "",
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun onBugReportTitleChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportTitle = value.take(BUG_REPORT_TITLE_MAX_LENGTH),
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun onBugReportContentChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportContent = value.take(BUG_REPORT_CONTENT_MAX_LENGTH),
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun submitBugReport() {
+        val current = _uiState.value
+        val title = current.bugReportTitle.trim()
+        val content = current.bugReportContent.trim()
+        if (current.isSubmittingBugReport) return
+        if (title.isBlank() || content.isBlank()) {
+            _uiState.update {
+                it.copy(bugReportMessage = "\uC81C\uBAA9\uACFC \uB0B4\uC6A9\uC744 \uBAA8\uB450 \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isSubmittingBugReport = true, bugReportMessage = null)
+            }
+            runCatching {
+                val response = bugReportRepository.createBugReport(title, content)
+                if (!response.isSuccessful) throw HttpException(response)
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isBugReportDialogOpen = false,
+                            bugReportTitle = "",
+                            bugReportContent = "",
+                            isSubmittingBugReport = false,
+                            bugReportMessage = "\uC624\uB958 \uC81C\uBCF4\uAC00 \uC811\uC218\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingBugReport = false,
+                            bugReportMessage = mapBugReportErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onBugReportMessageConsumed() {
+        _uiState.update { it.copy(bugReportMessage = null) }
     }
 
     fun openMemoEditor() {
@@ -348,6 +433,21 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    private fun mapBugReportErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                400 -> "\uC624\uB958 \uC81C\uBCF4 \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+        }
+    }
+
     private fun mapMemoErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
@@ -375,6 +475,9 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 }
+
+private const val BUG_REPORT_TITLE_MAX_LENGTH = 100
+private const val BUG_REPORT_CONTENT_MAX_LENGTH = 1_000
 
 private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)

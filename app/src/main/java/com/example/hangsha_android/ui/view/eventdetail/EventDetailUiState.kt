@@ -13,7 +13,12 @@ data class EventDetailUiState(
     val memoTagNames: List<String> = emptyList(),
     val savedMemo: EventDetailMemo? = null,
     val isMemoSaving: Boolean = false,
-    val memoSaveMessage: String? = null
+    val memoSaveMessage: String? = null,
+    val isBugReportDialogOpen: Boolean = false,
+    val bugReportTitle: String = "",
+    val bugReportContent: String = "",
+    val isSubmittingBugReport: Boolean = false,
+    val bugReportMessage: String? = null
 )
 
 data class EventDetailMemo(
