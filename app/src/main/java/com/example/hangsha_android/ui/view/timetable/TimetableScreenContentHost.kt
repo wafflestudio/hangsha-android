@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Add
@@ -78,11 +80,13 @@ import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 
-private const val GridStartMinute = 9 * 60
-private const val GridEndMinute = 18 * 60
+private const val GridStartMinute = 7 * 60
+private const val GridEndMinute = 24 * 60
 private const val DayCount = 5
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
+private val GridHourHeight = 56.dp
+private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinute) / 60f)
 private val GridLineColor = Color(0xFFE8E8E8)
 private val HalfHourLineColor = Color(0xFFF1F1F1)
 private val CourseMaskColor = Color(0xFFCFCFCF)
@@ -546,6 +550,7 @@ private fun TimetableScreenContent(
     onSubmitAddCourse: () -> Unit,
     onDeleteCourse: (String) -> Unit
 ) {
+    val gridScrollState = rememberScrollState()
     val hasPanelOpen = isTimetablePanelOpen || isCreateTimetablePanelOpen || isEditTimetablePanelOpen || isAddCoursePanelOpen
     BackHandler(enabled = hasPanelOpen, onBack = onClosePanels)
 
@@ -582,14 +587,22 @@ private fun TimetableScreenContent(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                WeeklyTimetableGrid(
-                    courses = selectedTimetable.courses,
-                    events = events,
-                    showEvents = isEventOverlayEnabled,
-                    deletingCourseId = deletingCourseId,
-                    onDeleteCourse = onDeleteCourse,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(gridScrollState)
+                ) {
+                    WeeklyTimetableGrid(
+                        courses = selectedTimetable.courses,
+                        events = events,
+                        showEvents = isEventOverlayEnabled,
+                        deletingCourseId = deletingCourseId,
+                        onDeleteCourse = onDeleteCourse,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(GridContentHeight)
+                    )
+                }
                 TimetableFloatingActions(
                     hasSelectedTimetable = hasSelectedTimetable,
                     onChangeTimetableClick = onOpenTimetablePanel,
