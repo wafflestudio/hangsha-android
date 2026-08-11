@@ -406,7 +406,8 @@ private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
 ): EventDetailItem {
     val eventEndDate = parseEventDate(eventEnd)
-    val dDayLabel = eventEndDate?.let { targetDate ->
+    val applyEndDate = parseEventDate(applyEnd)
+    val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
             diff == 0L -> "D-DAY"

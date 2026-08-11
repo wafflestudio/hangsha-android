@@ -352,7 +352,7 @@ class DailyEventsViewModel @Inject constructor(
                     .items
                     .orEmpty()
                     .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap(), sourceUserId) }
-                    .toDailyEventItems(date)
+                    .toDailyEventItems()
                 val filterOptions = buildFilterOptions(sourceItems)
                 val visibleItems = if (hasAppliedServerFilters) {
                     val filteredResponses = eventRepository.getDayEvents(date, filters)
@@ -360,7 +360,7 @@ class DailyEventsViewModel @Inject constructor(
                         .items
                         .orEmpty()
                     bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap(), sourceUserId)
-                    filteredResponses.toDailyEventItems(date)
+                    filteredResponses.toDailyEventItems()
                 } else {
                     val prioritizedResponses = eventRepository.getDayEvents(
                         date = date,
@@ -369,7 +369,7 @@ class DailyEventsViewModel @Inject constructor(
                         .items
                         .orEmpty()
                     bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap(), sourceUserId)
-                    val prioritizedItems = prioritizedResponses.toDailyEventItems(date)
+                    val prioritizedItems = prioritizedResponses.toDailyEventItems()
                     sourceItems.reorderedBy(prioritizedItems)
                 }
 
@@ -528,11 +528,9 @@ private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale
 private val ItemFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val ItemMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
-private fun List<EventSummaryResponse>.toDailyEventItems(
-    selectedDate: LocalDate
-): List<DailyEventItem> {
+private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
     return map { event ->
-        event.toDailyEventItem(selectedDate)
+        event.toDailyEventItem()
     }
 }
 
@@ -540,10 +538,11 @@ private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> {
     return associate { event -> event.id to event.isBookmarked }
 }
 
-private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): DailyEventItem {
+private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     val eventEndDate = parseEventDate(eventEnd)
-    val dDayLabel = eventEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - selectedDate.toEpochDay()
+    val applyEndDate = parseEventDate(applyEnd)
+    val dDayLabel = applyEndDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
             diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
