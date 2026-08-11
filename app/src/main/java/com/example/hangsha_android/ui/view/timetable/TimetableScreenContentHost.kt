@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -26,10 +27,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -1218,8 +1220,8 @@ private fun TimeSlotEditorRow(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TimeStepper(label = "시작", minute = slot.startAt, onChange = onChangeStart, modifier = Modifier.weight(1f))
-                TimeStepper(label = "종료", minute = slot.endAt, onChange = onChangeEnd, modifier = Modifier.weight(1f))
+                DirectTimePicker(label = "시작", minute = slot.startAt, onChange = onChangeStart, modifier = Modifier.weight(1f))
+                DirectTimePicker(label = "종료", minute = slot.endAt, onChange = onChangeEnd, modifier = Modifier.weight(1f))
             }
             errors.forEach { FieldErrorText(it) }
         }
@@ -1234,16 +1236,57 @@ private fun DayChip(day: TimetableDayOfWeek, selected: Boolean, onClick: () -> U
 }
 
 @Composable
-private fun TimeStepper(label: String, minute: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(label, color = Ink60, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onChange(minute - 5) }, modifier = Modifier.size(28.dp)) {
-                Icon(imageVector = Icons.Rounded.Remove, contentDescription = "$label 5분 감소")
-            }
-            Text(formatMinute(minute), modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { onChange(minute + 5) }, modifier = Modifier.size(28.dp)) {
-                Icon(imageVector = Icons.Rounded.Add, contentDescription = "$label 5분 증가")
+private fun DirectTimePicker(
+    label: String,
+    minute: Int,
+    onChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val safeMinute = minute.coerceIn(0, 24 * 60 - 5)
+
+    OutlinedButton(
+        onClick = {
+            TimePickerDialog(
+                context,
+                { _, selectedHour, selectedMinute ->
+                    onChange(snapToFiveMinutes(selectedHour * 60 + selectedMinute))
+                },
+                safeMinute / 60,
+                safeMinute % 60,
+                true
+            ).apply {
+                setTitle("$label \uC2DC\uAC04 \uC120\uD0DD")
+            }.show()
+        },
+        modifier = modifier.height(58.dp),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = label,
+                color = Ink60,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatMinute(safeMinute),
+                    color = Ink100,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Rounded.AccessTime,
+                    contentDescription = "$label \uC2DC\uAC04 \uC120\uD0DD",
+                    tint = Ink60,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -1398,6 +1441,11 @@ private fun hourLabel(minute: Int): String {
         hour > 12 -> (hour - 12).toString()
         else -> hour.toString()
     }
+}
+
+private fun snapToFiveMinutes(minute: Int): Int {
+    val boundedMinute = minute.coerceIn(0, 24 * 60 - 1)
+    return (((boundedMinute + 2) / 5) * 5).coerceAtMost(24 * 60 - 5)
 }
 
 private fun formatMinute(minute: Int): String {
