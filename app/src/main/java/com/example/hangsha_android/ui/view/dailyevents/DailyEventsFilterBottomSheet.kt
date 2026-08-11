@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
@@ -466,17 +467,5 @@ private fun statusLabel(statusId: Long): String {
         2L -> "모집 중"
         3L -> "모집 마감"
         else -> "상태 $statusId"
-    }
-}
-
-private fun eventTypeLabel(eventTypeId: Long): String {
-    return when (eventTypeId) {
-        4L -> "교육(특강/세미나)"
-        5L -> "공모전/경진대회"
-        6L -> "인턴십/현장실습"
-        7L -> "사회공헌(봉사)"
-        8L -> "취업/진로상담"
-        39L -> "OpenLNL"
-        else -> "기타"
     }
 }

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
@@ -526,17 +527,5 @@ private fun orgLabel(orgId: Long): String {
     return when (orgId) {
         // 추후 API나 기획에서 매핑 리스트를 전달받으면 여기에 추가 (예: 26L -> "총학생회")
         else -> "orgID: $orgId"
-    }
-}
-
-private fun eventTypeLabel(eventTypeId: Long): String {
-    return when (eventTypeId) {
-        4L -> "교육(특강/세미나)"
-        5L -> "공모전/경진대회"
-        6L -> "현장학습/인턴"
-        7L -> "사회공헌(봉사)"
-        8L -> "학습/진로상담"
-        39L -> "OpenLNL"
-        else -> "기타"
     }
 }

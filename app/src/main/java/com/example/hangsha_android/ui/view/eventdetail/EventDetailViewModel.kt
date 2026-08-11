@@ -12,6 +12,7 @@ import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -471,18 +472,6 @@ private fun parseEventDate(value: String?): LocalDate? {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }
-    }
-}
-
-private fun eventTypeLabel(eventTypeId: Long): String {
-    return when (eventTypeId) {
-        4L -> "교육(특강/세미나)"
-        5L -> "공모전/경진대회"
-        6L -> "창업/현장실습"
-        7L -> "사회공헌(봉사)"
-        8L -> "취업/진로상담"
-        39L -> "OpenLNL"
-        else -> "기타"
     }
 }
 
