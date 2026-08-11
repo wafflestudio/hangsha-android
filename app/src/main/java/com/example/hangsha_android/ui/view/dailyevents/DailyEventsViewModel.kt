@@ -523,7 +523,6 @@ private data class DailyEventsLoadResult(
     val filterOptions: DailyEventsFilterOptions
 )
 
-private val ItemDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 private val ItemFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val ItemMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
@@ -643,9 +642,9 @@ private fun formatEventEnd(value: String?): String? {
     }
 
     return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(ItemDateTimeFormatter)
+        OffsetDateTime.parse(value).toLocalDate().format(ItemDateFormatter)
     }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(ItemDateTimeFormatter) }.getOrElse {
+        runCatching { LocalDateTime.parse(value).toLocalDate().format(ItemDateFormatter) }.getOrElse {
             runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
         }
     }
