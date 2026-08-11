@@ -50,6 +50,8 @@ import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingScreen
 import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingWelcomeScreen
+import com.example.hangsha_android.ui.view.search.SearchScreen
+import com.example.hangsha_android.ui.view.search.SearchViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.example.hangsha_android.ui.view.splash.SplashNavigationTarget
@@ -86,6 +88,7 @@ sealed class HangshaDestinations(val route: String) {
     }
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
     data object MyMemos : HangshaDestinations("my_memos")
+    data object Search : HangshaDestinations("search")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
@@ -444,6 +447,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = calendarUiState,
                 onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
                 onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
                 onDateClick = { date ->
                     navController.currentBackStackEntry?.savedStateHandle?.apply {
                         setDailyEventsFilters(
@@ -467,6 +471,23 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onApplyFilters = { calendarViewModel.applyDraftFilters() },
                 onClearFilters = { calendarViewModel.clearDraftFilters() },
                 onRetryClick = { calendarViewModel.retry() }
+            )
+        }
+        composable(HangshaDestinations.Search.route) {
+            val searchViewModel: SearchViewModel = hiltViewModel()
+            val searchUiState by searchViewModel.uiState.collectAsState()
+
+            SearchScreen(
+                uiState = searchUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onInputChanged = searchViewModel::onInputChanged,
+                onSearch = searchViewModel::search,
+                onClear = searchViewModel::clearSearch,
+                onEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onRetry = searchViewModel::retry,
+                onLoadMore = searchViewModel::loadNextPage
             )
         }
         composable(

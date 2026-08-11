@@ -23,11 +23,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -93,6 +95,7 @@ fun CalendarScreen(
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
+    onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -113,6 +116,7 @@ fun CalendarScreen(
         onPreviousMonthClick = onPreviousMonthClick,
         onNextMonthClick = onNextMonthClick,
         onDateClick = onDateClick,
+        onSearchClick = onSearchClick,
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
         onSelectFilterTab = onSelectFilterTab,
@@ -136,6 +140,7 @@ private fun CalendarScreenContent(
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
+    onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
@@ -190,6 +195,7 @@ private fun CalendarScreenContent(
             ),
             onPreviousMonthClick = onPreviousMonthClick,
             onNextMonthClick = onNextMonthClick,
+            onSearchClick = onSearchClick,
             onOpenFilterClick = onOpenFilterClick
         )
         Spacer(modifier = Modifier.height(15.dp))
@@ -224,6 +230,7 @@ private fun CalendarHeader(
     state: CalendarHeaderState,
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
+    onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit
 ) {
     Row(
@@ -252,6 +259,16 @@ private fun CalendarHeader(
             onOpenFilterClick = onOpenFilterClick
         )
         Spacer(modifier = Modifier.weight(1f))
+        IconButton(
+            onClick = onSearchClick,
+            enabled = !state.isLoading
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Search,
+                contentDescription = "\uD589\uC0AC \uAC80\uC0C9",
+                tint = Ink60
+            )
+        }
     }
 }
 

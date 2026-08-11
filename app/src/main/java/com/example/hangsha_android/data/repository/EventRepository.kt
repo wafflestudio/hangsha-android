@@ -4,6 +4,7 @@ import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
+import com.example.hangsha_android.data.network.model.EventSearchResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
@@ -64,6 +65,17 @@ class EventRepository @Inject constructor(
         )
     }
 
+    suspend fun searchEvents(
+        query: String,
+        page: Int,
+        size: Int
+    ): Response<EventSearchResponse> {
+        return eventApi.searchEvents(
+            query = query.trim(),
+            page = page,
+            size = size
+        )
+    }
     suspend fun getEventDetail(
         eventId: Long
     ): Response<EventDetailResponse> {
