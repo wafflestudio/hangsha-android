@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -273,6 +274,21 @@ internal fun TimetableScreenContentHost() {
         timetableViewModel.clearLoadEnrollsError()
     }
 
+    LaunchedEffect(apiUiState.deletedEnrollId) {
+        apiUiState.deletedEnrollId ?: return@LaunchedEffect
+        Toast.makeText(
+            context,
+            "\uC218\uC5C5\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.",
+            Toast.LENGTH_SHORT
+        ).show()
+        timetableViewModel.onDeletedEnrollConsumed()
+    }
+
+    LaunchedEffect(apiUiState.deleteEnrollError) {
+        val message = apiUiState.deleteEnrollError ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        timetableViewModel.clearDeleteEnrollError()
+    }
     val validation = TimetableAddCourseValidator.validate(
         timetableId = selectedTimetableId.takeIf { hasSelectedTimetable },
         title = courseTitle,
@@ -335,6 +351,7 @@ internal fun TimetableScreenContentHost() {
         submitError = apiUiState.createCustomEnrollError ?: submitError,
         submitMessage = submitMessage,
         isSubmitting = apiUiState.isCreatingCustomEnroll,
+        deletingCourseId = apiUiState.deletingEnrollId?.toString(),
         onYearSelected = { year -> selectedYear = year },
         onSemesterSelected = { semester -> selectedSemester = semester.apiValue },
         onEventOverlayChanged = { isEventOverlayEnabled = it },
@@ -432,6 +449,17 @@ internal fun TimetableScreenContentHost() {
                 if (slot.localId == localId) slot.copy(endAt = minute.coerceIn(5, 24 * 60)) else slot
             }
         },
+        onDeleteCourse = { courseId ->
+            val timetableId = selectedTimetableId?.toLongOrNull()
+            val enrollId = courseId.toLongOrNull()
+            if (timetableId != null && enrollId != null) {
+                timetableViewModel.clearDeleteEnrollError()
+                timetableViewModel.deleteEnroll(
+                    timetableId = timetableId,
+                    enrollId = enrollId
+                )
+            }
+        },
         onSubmitAddCourse = {
             val timetableId = selectedTimetableId?.toLongOrNull()
             if (!validation.canSubmit || apiUiState.isCreatingCustomEnroll || timetableId == null) {
@@ -490,6 +518,7 @@ private fun TimetableScreenContent(
     submitError: String?,
     submitMessage: String?,
     isSubmitting: Boolean,
+    deletingCourseId: String?,
     onYearSelected: (Int) -> Unit,
     onSemesterSelected: (TimetableSemesterOption) -> Unit,
     onEventOverlayChanged: (Boolean) -> Unit,
@@ -512,7 +541,8 @@ private fun TimetableScreenContent(
     onChangeDay: (Long, TimetableDayOfWeek) -> Unit,
     onChangeStart: (Long, Int) -> Unit,
     onChangeEnd: (Long, Int) -> Unit,
-    onSubmitAddCourse: () -> Unit
+    onSubmitAddCourse: () -> Unit,
+    onDeleteCourse: (String) -> Unit
 ) {
     val hasPanelOpen = isTimetablePanelOpen || isCreateTimetablePanelOpen || isEditTimetablePanelOpen || isAddCoursePanelOpen
     BackHandler(enabled = hasPanelOpen, onBack = onClosePanels)
@@ -554,6 +584,8 @@ private fun TimetableScreenContent(
                     courses = selectedTimetable.courses,
                     events = events,
                     showEvents = isEventOverlayEnabled,
+                    deletingCourseId = deletingCourseId,
+                    onDeleteCourse = onDeleteCourse,
                     modifier = Modifier.fillMaxSize()
                 )
                 TimetableFloatingActions(
@@ -820,6 +852,8 @@ private fun WeeklyTimetableGrid(
     courses: List<CourseUiModel>,
     events: List<TimetableEventItem>,
     showEvents: Boolean,
+    deletingCourseId: String?,
+    onDeleteCourse: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val courseBlocks = remember(courses) { courses.toCourseBlocks() }
@@ -877,7 +911,16 @@ private fun WeeklyTimetableGrid(
         } else {
             courseBlocks.forEach { block ->
                 val position = coursePositions[block.id] ?: return@forEach
-                CourseBlock(position, dayWidth, gridHeight, block.color, block.title, block.subtitle, onClick = {})
+                CourseBlock(
+                    position = position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    color = block.color,
+                    title = block.title,
+                    subtitle = block.subtitle,
+                    isDeleting = deletingCourseId == block.courseId,
+                    onDelete = { onDeleteCourse(block.courseId) }
+                )
             }
         }
     }
@@ -916,17 +959,27 @@ private fun HourLabels(gridHeight: Dp) {
 
 // 수업 블록: 토글 OFF 상태에서 과목 색상과 텍스트를 중앙 정렬로 표시한다.
 @Composable
-private fun CourseBlock(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, color: Color, title: String, subtitle: String?, onClick: () -> Unit) {
+private fun CourseBlock(
+    position: PositionedTimetableBlock,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    color: Color,
+    title: String,
+    subtitle: String?,
+    isDeleting: Boolean,
+    onDelete: () -> Unit
+) {
     Box(
         modifier = blockModifier(position, dayWidth, gridHeight)
             .clip(RoundedCornerShape(0.dp))
             .background(color)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 3.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
     ) {
         Text(
             text = listOfNotNull(title, subtitle).joinToString("\n"),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 3.dp, vertical = 4.dp)
+                .wrapContentSize(Alignment.Center),
             style = MaterialTheme.typography.bodyMedium,
             color = PureWhite,
             fontSize = 9.sp,
@@ -936,9 +989,34 @@ private fun CourseBlock(position: PositionedTimetableBlock, dayWidth: Dp, gridHe
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
+        IconButton(
+            onClick = onDelete,
+            enabled = !isDeleting,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(22.dp)
+                .background(
+                    color = PureWhite.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(bottomStart = 8.dp)
+                )
+        ) {
+            if (isDeleting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    color = DeleteButtonColor,
+                    strokeWidth = 1.5.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "$title \uC218\uC5C5 \uC0AD\uC81C",
+                    tint = DeleteButtonColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }
-
 @Composable
 private fun TimetableBlockBackground(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, color: Color, alpha: Float) {
     Box(modifier = blockModifier(position, dayWidth, gridHeight).background(color.copy(alpha = alpha)))
@@ -1247,6 +1325,7 @@ private fun blockModifier(position: PositionedTimetableBlock, dayWidth: Dp, grid
 
 private data class CourseBlockUiModel(
     val id: String,
+    val courseId: String,
     val title: String,
     val subtitle: String?,
     val color: Color,
@@ -1258,7 +1337,16 @@ private data class CourseBlockUiModel(
 private fun List<CourseUiModel>.toCourseBlocks(): List<CourseBlockUiModel> {
     return flatMap { course ->
         course.timeSlots.mapIndexed { index, slot ->
-            CourseBlockUiModel("${course.id}-$index", course.title, course.subtitle, course.color, slot.weekday, slot.startMinute, slot.endMinute)
+            CourseBlockUiModel(
+                id = "${course.id}-$index",
+                courseId = course.id,
+                title = course.title,
+                subtitle = course.subtitle,
+                color = course.color,
+                weekday = slot.weekday,
+                startMinute = slot.startMinute,
+                endMinute = slot.endMinute
+            )
         }
     }
 }
