@@ -66,7 +66,7 @@ private fun CalendarEvent.matches(
 ): Boolean {
     if (filters.bookmarkedOnly && !isBookmarked) return false
     if (filters.interestedOnly && !isInterested) return false
-    if (filters.orgIds.isNotEmpty() && orgId !in filters.orgIds) return false
+    if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
     if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
     if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
     if (applyExcludedKeywords && filters.excludedKeywords.isNotEmpty()) {

@@ -75,7 +75,14 @@ class DailyEventsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             userRepository.organizationNames.collect { organizationNames ->
-                _uiState.update { it.copy(organizationNames = organizationNames) }
+                _uiState.update { state ->
+                    state.copy(
+                        organizationNames = organizationNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            orgIds = organizationNames.keys.toList()
+                        )
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -414,9 +421,12 @@ class DailyEventsViewModel @Inject constructor(
     // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
     private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
         return DailyEventsFilterOptions(
-            orgIds = items.map { it.orgId }
-                .distinct()
-                .sorted(),
+            orgIds = userRepository.organizationNames.value.keys
+                .takeIf { it.isNotEmpty() }
+                ?.toList()
+                ?: items.mapNotNull { it.orgId }
+                    .distinct()
+                    .sorted(),
             statusIds = items.map { it.statusId }
                 .distinct()
                 .sorted(),

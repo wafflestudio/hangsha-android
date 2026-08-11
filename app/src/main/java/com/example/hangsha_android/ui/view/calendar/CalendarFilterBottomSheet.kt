@@ -524,10 +524,3 @@ private fun statusLabel(statusId: Long): String {
         else -> "상태 $statusId"
     }
 }
-
-private fun orgLabel(orgId: Long): String {
-    return when (orgId) {
-        // 추후 API나 기획에서 매핑 리스트를 전달받으면 여기에 추가 (예: 26L -> "총학생회")
-        else -> "orgID: $orgId"
-    }
-}

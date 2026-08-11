@@ -63,7 +63,14 @@ class CalendarViewModel @Inject constructor(
         }
         viewModelScope.launch {
             userRepository.organizationNames.collect { organizationNames ->
-                _uiState.update { it.copy(organizationNames = organizationNames) }
+                _uiState.update { state ->
+                    state.copy(
+                        organizationNames = organizationNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            orgIds = organizationNames.keys.toList()
+                        )
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -382,9 +389,12 @@ class CalendarViewModel @Inject constructor(
     ): CalendarFilterOptions {
         val events = eventsByDate.values.flatten()
         return CalendarFilterOptions(
-            orgIds = events.map { it.orgId }
-                .distinct()
-                .sorted(),
+            orgIds = userRepository.organizationNames.value.keys
+                .takeIf { it.isNotEmpty() }
+                ?.toList()
+                ?: events.mapNotNull { it.orgId }
+                    .distinct()
+                    .sorted(),
             statusIds = events.map { it.statusId }
                 .distinct()
                 .sorted(),
