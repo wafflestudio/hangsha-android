@@ -376,8 +376,6 @@ class EventDetailViewModel @Inject constructor(
     }
 }
 
-private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
-private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
@@ -405,7 +403,6 @@ private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
 private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
 ): EventDetailItem {
-    val eventEndDate = parseEventDate(eventEnd)
     val applyEndDate = parseEventDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
@@ -422,9 +419,7 @@ private fun EventDetailResponse.toEventDetailItem(
         imageUrl = imageUrl,
         organization = organization,
         location = location,
-        eventEndDisplay = formatEventEnd(eventEnd)
-            ?: eventEndDate?.format(DetailDateFormatter)
-            ?: "-",
+        eventPeriodDisplay = formatPeriod(eventStart, eventEnd),
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
         eventTypeLabel = eventTypeLabel(eventTypeId),
@@ -450,20 +445,6 @@ private fun formatPeriod(start: String?, end: String?): String {
     }
 }
 
-private fun formatEventEnd(value: String?): String? {
-    if (value.isNullOrBlank()) {
-        return null
-    }
-
-    return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(DetailDateFormatter)
-    }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(DetailDateFormatter) }.getOrElse {
-            runCatching { LocalDate.parse(value).format(DetailDateFormatter) }.getOrNull()
-        }
-    }
-}
-
 private fun parseEventDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) {
         return null
@@ -472,20 +453,6 @@ private fun parseEventDate(value: String?): LocalDate? {
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
-        }
-    }
-}
-
-private fun formatDateTime(value: String?): String? {
-    if (value.isNullOrBlank()) {
-        return null
-    }
-
-    return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(DetailDateTimeFormatter)
-    }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(DetailDateTimeFormatter) }.getOrElse {
-            runCatching { LocalDate.parse(value).format(DetailDateFormatter) }.getOrNull()
         }
     }
 }

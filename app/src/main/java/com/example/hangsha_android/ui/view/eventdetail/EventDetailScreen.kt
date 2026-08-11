@@ -216,7 +216,7 @@ private fun EventDetailContent(
                 )
                 // 이벤트 기간
                 Text(
-                    text = item.eventEndDisplay,
+                    text = item.eventPeriodDisplay,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
                     color = Ink90

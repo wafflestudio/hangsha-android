@@ -29,7 +29,7 @@ data class EventDetailItem(
     val imageUrl: String?,
     val organization: String?,
     val location: String?,
-    val eventEndDisplay: String,
+    val eventPeriodDisplay: String,
     val applyPeriodDisplay: String,
     val dDayLabel: String,
     val eventTypeLabel: String,
