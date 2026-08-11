@@ -47,10 +47,7 @@ class InterestPriorityViewModel @Inject constructor(
                     throw HttpException(interestCategoriesResponse)
                 }
 
-                val categoryResponse = categoryRepository.getCategoryGroupsWithCategories()
-                if (!categoryResponse.isSuccessful) {
-                    throw HttpException(categoryResponse)
-                }
+                categoryRepository.ensureCategoryCatalogLoaded()
 
                 val selectedIds = interestCategoriesResponse.body()
                     ?.items
@@ -59,9 +56,7 @@ class InterestPriorityViewModel @Inject constructor(
                     .map { interest -> interest.category.id }
                     .take(MAX_INTEREST_PRIORITY_COUNT)
 
-                val groups = categoryResponse.body()
-                    ?.items
-                    .orEmpty()
+                val groups = categoryRepository.categoryGroups.value
                     .filterNot { item ->
                         item.group.id == RECRUITMENT_STATUS_GROUP_ID ||
                             item.group.name == RECRUITMENT_STATUS_GROUP_NAME

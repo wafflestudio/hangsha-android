@@ -108,6 +108,7 @@ fun CalendarFilterBottomSheet(
                         EventTypeSection(
                             selected = draft.eventTypeIds,
                             options = uiState.availableFilterOptions.eventTypeIds,
+                            names = uiState.eventTypeNames,
                             onToggle = onToggleEventType
                         )
                     }
@@ -245,6 +246,7 @@ private fun FilterSwitchRow(
 private fun EventTypeSection(
     selected: Set<Long>,
     options: List<Long>,
+    names: Map<Long, String>,
     onToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,7 +260,7 @@ private fun EventTypeSection(
         }
 
         val groupedOptions = options
-            .groupBy(::eventTypeLabel)
+            .groupBy { eventTypeId -> names[eventTypeId] ?: eventTypeLabel(eventTypeId) }
             .entries
             .sortedBy { (label, _) -> if (label == "기타") 1 else 0 }
 

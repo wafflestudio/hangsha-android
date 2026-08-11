@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
+import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
@@ -37,6 +38,7 @@ import retrofit2.Response
 class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val categoryRepository: CategoryRepository,
     private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
     savedStateHandle: SavedStateHandle
@@ -56,6 +58,21 @@ class DailyEventsViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            categoryRepository.eventTypeNames.collect { eventTypeNames ->
+                _uiState.update { state ->
+                    state.copy(
+                        eventTypeNames = eventTypeNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            eventTypeIds = eventTypeNames.keys.toList()
+                        )
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            runCatching { categoryRepository.ensureCategoryCatalogLoaded() }
+        }
         viewModelScope.launch {
             userRepository.organizationNames.collect { organizationNames ->
                 _uiState.update { it.copy(organizationNames = organizationNames) }
@@ -403,9 +420,12 @@ class DailyEventsViewModel @Inject constructor(
             statusIds = items.map { it.statusId }
                 .distinct()
                 .sorted(),
-            eventTypeIds = items.map { it.eventTypeId }
-                .distinct()
-                .sorted()
+            eventTypeIds = categoryRepository.eventTypeNames.value.keys
+                .takeIf { it.isNotEmpty() }
+                ?.toList()
+                ?: items.map { it.eventTypeId }
+                    .distinct()
+                    .sorted()
         )
     }
 
