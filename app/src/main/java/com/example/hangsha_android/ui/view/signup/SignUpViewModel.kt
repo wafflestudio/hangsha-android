@@ -65,7 +65,7 @@ class SignUpViewModel @Inject constructor(
         val currentState = _uiState.value
 
         if (!currentState.isSubmitEnabled) {
-            onSignUpFailure("Please check your email and password inputs.")
+            onSignUpFailure("\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694.")
             return
         }
 
@@ -125,18 +125,18 @@ class SignUpViewModel @Inject constructor(
 
     fun onSignUpFailure(error: Throwable) {
         val message = when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid sign-up request."
-                401 -> "Authentication failed while signing up."
-                403 -> "You do not have permission to sign up."
-                409 -> "This email is already in use."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Sign-up failed with code ${error.code()}."
+                400 -> "\uD68C\uC6D0\uAC00\uC785 \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uD68C\uC6D0\uAC00\uC785 \uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
+                403 -> "\uD68C\uC6D0\uAC00\uC785 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                409 -> "\uC774\uBBF8 \uC0AC\uC6A9 \uC911\uC778 \uC774\uBA54\uC77C\uC785\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uD68C\uC6D0\uAC00\uC785\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            else -> error.message ?: "An unexpected error occurred during sign-up."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uD68C\uC6D0\uAC00\uC785 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4."
         }
 
         onSignUpFailure(message)
@@ -151,7 +151,7 @@ class SignUpViewModel @Inject constructor(
         val accessToken = authTokens?.accessToken
         val refreshToken = authTokens?.refreshToken
         if (accessToken.isNullOrBlank() || refreshToken.isNullOrBlank()) {
-            throw IllegalStateException("Sign-up response did not include auth tokens.")
+            throw IllegalStateException("\uD68C\uC6D0\uAC00\uC785 \uC751\uB2F5\uC5D0 \uC778\uC99D \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")
         }
 
         authTokenStorage.saveTokens(
@@ -166,7 +166,7 @@ class SignUpViewModel @Inject constructor(
             throw HttpException(response)
         }
         val userId = response.body()?.id
-            ?: throw IllegalStateException("Profile response did not include a user ID.")
+            ?: throw IllegalStateException("\uD504\uB85C\uD544 \uC751\uB2F5\uC5D0 \uC0AC\uC6A9\uC790 ID\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")
         authTokenStorage.setCurrentUserId(userId)
     }
 
@@ -187,7 +187,7 @@ class SignUpViewModel @Inject constructor(
             it.copy(
                 isSignUpLoading = false,
                 isSignUpSuccessful = true,
-                signUpMessage = "Sign up succeeded."
+                signUpMessage = "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
             )
         }
     }

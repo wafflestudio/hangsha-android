@@ -2,6 +2,7 @@ package com.example.hangsha_android.data.network.api
 
 import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
+import com.example.hangsha_android.data.network.model.EventSearchResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import retrofit2.Response
 import retrofit2.http.DELETE
@@ -34,6 +35,15 @@ interface EventApi {
         @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<DayEventsResponse>
 
+    @GET("api/v1/events/search")
+    suspend fun searchEvents(
+        @Query("query") query: String,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
+        @Query("orgId") orgId: List<Long>? = null,
+        @Query("statusId") statusId: List<Long>? = null,
+        @Query("eventTypeId") eventTypeId: List<Long>? = null
+    ): Response<EventSearchResponse>
     @GET("api/v1/events/{eventId}")
     suspend fun getEventDetail(
         @Path("eventId") eventId: Long

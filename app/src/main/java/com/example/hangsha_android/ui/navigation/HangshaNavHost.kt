@@ -4,20 +4,14 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,11 +47,11 @@ import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityView
 import com.example.hangsha_android.ui.view.login.OpeningScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageScreen
 import com.example.hangsha_android.ui.view.mypage.MyPageViewModel
-import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
-import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingScreen
 import com.example.hangsha_android.ui.view.onboarding.OnboardingViewModel
 import com.example.hangsha_android.ui.view.onboarding.OnboardingWelcomeScreen
+import com.example.hangsha_android.ui.view.search.SearchScreen
+import com.example.hangsha_android.ui.view.search.SearchViewModel
 import com.example.hangsha_android.ui.view.signup.SignUpScreen
 import com.example.hangsha_android.ui.view.signup.SignUpViewModel
 import com.example.hangsha_android.ui.view.splash.SplashNavigationTarget
@@ -94,6 +88,7 @@ sealed class HangshaDestinations(val route: String) {
     }
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
     data object MyMemos : HangshaDestinations("my_memos")
+    data object Search : HangshaDestinations("search")
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
@@ -190,7 +185,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     error
                 )
                 loginViewModel.onGoogleLoginError(
-                    "Google sign-in failed with status ${error.statusCode}"
+                    "Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.statusCode})"
                 )
                 return@rememberLauncherForActivityResult
             } catch (error: Exception) {
@@ -199,7 +194,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     "Google sign-in failed: message=${error.message}",
                     error
                 )
-                loginViewModel.onGoogleLoginError(error.message ?: "Google sign-in failed.")
+                loginViewModel.onGoogleLoginError("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
                 return@rememberLauncherForActivityResult
             }
 
@@ -208,7 +203,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         val kakaoLoginCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
             if (error != null) {
                 Log.e("AuthLog", "Kakao login failed: message=${error.message}", error)
-                loginViewModel.onKakaoLoginError(error.message ?: "Kakao login failed.")
+                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
             } else {
                 loginViewModel.loginWithKakao(token?.accessToken)
             }
@@ -224,7 +219,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                         "AuthLog",
                         "Naver login failed: errorCode=$errorCode, errorDesc=$errorDesc"
                     )
-                    loginViewModel.onNaverLoginError(errorDesc.ifBlank { "Naver login failed." })
+                    loginViewModel.onNaverLoginError("\uB124\uC774\uBC84 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
                 }
             }
         }
@@ -268,7 +263,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                                 error
                             )
                             if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                                loginViewModel.onKakaoLoginError("Kakao login was cancelled.")
+                                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
                                 return@loginWithKakaoTalk
                             }
                             UserApiClient.instance.loginWithKakaoAccount(
@@ -452,6 +447,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = calendarUiState,
                 onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
                 onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
                 onDateClick = { date ->
                     navController.currentBackStackEntry?.savedStateHandle?.apply {
                         setDailyEventsFilters(
@@ -475,6 +471,23 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onApplyFilters = { calendarViewModel.applyDraftFilters() },
                 onClearFilters = { calendarViewModel.clearDraftFilters() },
                 onRetryClick = { calendarViewModel.retry() }
+            )
+        }
+        composable(HangshaDestinations.Search.route) {
+            val searchViewModel: SearchViewModel = hiltViewModel()
+            val searchUiState by searchViewModel.uiState.collectAsState()
+
+            SearchScreen(
+                uiState = searchUiState,
+                onNavigateBack = { navController.popBackStack() },
+                onInputChanged = searchViewModel::onInputChanged,
+                onSearch = searchViewModel::search,
+                onClear = searchViewModel::clearSearch,
+                onEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
+                onRetry = searchViewModel::retry,
+                onLoadMore = searchViewModel::loadNextPage
             )
         }
         composable(
@@ -555,6 +568,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 eventDetailViewModel.onMemoSaveMessageConsumed()
             }
+            LaunchedEffect(eventDetailUiState.bugReportMessage) {
+                val message = eventDetailUiState.bugReportMessage ?: return@LaunchedEffect
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                eventDetailViewModel.onBugReportMessageConsumed()
+            }
 
             EventDetailScreen(
                 uiState = eventDetailUiState,
@@ -576,47 +594,37 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onAddMemoTag = { eventDetailViewModel.addMemoTag() },
                 onRemoveMemoTag = { tagName -> eventDetailViewModel.removeMemoTag(tagName) },
                 onSaveMemoClick = { eventDetailViewModel.saveMemo() },
+                onOpenBugReport = { eventDetailViewModel.openBugReportDialog() },
+                onDismissBugReport = { eventDetailViewModel.dismissBugReportDialog() },
+                onBugReportTitleChanged = { value -> eventDetailViewModel.onBugReportTitleChanged(value) },
+                onBugReportContentChanged = { value -> eventDetailViewModel.onBugReportContentChanged(value) },
+                onSubmitBugReport = { eventDetailViewModel.submitBugReport() },
                 onRetryClick = { eventDetailViewModel.retry() }
             )
         }
         composable(BottomTab.Timetable.route) {
             TimetableScreen()
         }
-        composable(BottomTab.Bookmarks.route) {
+        composable(BottomTab.Memos.route) {
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
             if (isLoggedIn) {
-                SimplePageText("bookmark events")
+                MyMemosRoute(
+                    navController = navController,
+                    onNavigateBack = null
+                )
             } else {
-                val guestBookmarksViewModel: GuestBookmarksViewModel = hiltViewModel()
-                val guestBookmarksUiState by guestBookmarksViewModel.uiState.collectAsState()
-
-                BookmarksScreen(
-                    uiState = guestBookmarksUiState,
+                LoginRequiredScreen(
+                    title = "\uD589\uC0AC \uD6C4\uAE30\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+                    message = "\uD589\uC0AC\uC5D0 \uC791\uC131\uD55C \uBA54\uBAA8\uAC00 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = {
                         navController.navigate(BottomTab.Calendar.route) {
-                            popUpTo(HangshaDestinations.Main.route) {
-                                saveState = true
-                            }
+                            popUpTo(HangshaDestinations.Main.route) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
-                    },
-                    onEventClick = { eventId ->
-                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                    },
-                    onBookmarkClick = { eventId ->
-                        guestBookmarksViewModel.removeBookmark(eventId)
-                    },
-                    onRetryClick = { guestBookmarksViewModel.retry() },
-                    onLoadNextPage = { guestBookmarksViewModel.loadNextPage() },
-                    onScrollPositionChanged = { index, offset, itemId ->
-                        guestBookmarksViewModel.saveScrollPosition(
-                            firstVisibleItemIndex = index,
-                            firstVisibleItemOffset = offset,
-                            firstVisibleItemId = itemId
-                        )
                     }
                 )
             }
@@ -705,44 +713,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             }
         }
         composable(HangshaDestinations.MyMemos.route) {
-            val myMemosViewModel: MyMemosViewModel = hiltViewModel()
-            val myMemosUiState by myMemosViewModel.uiState.collectAsState()
-            val context = LocalContext.current
-            val myMemosLifecycleOwner = LocalLifecycleOwner.current
-
-            LaunchedEffect(myMemosUiState.toastMessage) {
-                val message = myMemosUiState.toastMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                myMemosViewModel.onToastMessageConsumed()
-            }
-
-            DisposableEffect(myMemosLifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        myMemosViewModel.loadMemos()
-                    }
-                }
-                myMemosLifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    myMemosLifecycleOwner.lifecycle.removeObserver(observer)
-                }
-            }
-
-            MyMemosScreen(
-                uiState = myMemosUiState,
-                onNavigateBack = { navController.popBackStack() },
-                onMemoClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onDeleteMemoClick = { memoId -> myMemosViewModel.deleteMemo(memoId) },
-                onStartEditMemo = { memo -> myMemosViewModel.startEditMemo(memo) },
-                onEditContentChanged = { value -> myMemosViewModel.onEditContentChanged(value) },
-                onStartAddingTag = { myMemosViewModel.startAddingTag() },
-                onEditTagInputChanged = { value -> myMemosViewModel.onEditTagInputChanged(value) },
-                onAddEditTag = { myMemosViewModel.addEditTag() },
-                onRemoveEditTag = { tagName -> myMemosViewModel.removeEditTag(tagName) },
-                onSaveEditedMemo = { myMemosViewModel.saveEditedMemo() },
-                onRetryClick = { myMemosViewModel.loadMemos() }
+            MyMemosRoute(
+                navController = navController,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(
@@ -948,18 +921,6 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
     }
 }
 
-// Temporary placeholder page.
-@Composable
-fun SimplePageText(text: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = text, style = MaterialTheme.typography.bodyLarge)
-    }
-}
 
 private fun NavHostController.navigateToLoginFromMain() {
     navigate(HangshaDestinations.Login.route) {

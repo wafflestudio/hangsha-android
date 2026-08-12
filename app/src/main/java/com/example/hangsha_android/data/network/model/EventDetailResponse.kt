@@ -7,7 +7,7 @@ data class EventDetailResponse(
     val operationMode: String?,
     val statusId: Long,
     val eventTypeId: Long,
-    val orgId: Long,
+    val orgId: Long?,
     val applyStart: String?,
     val applyEnd: String?,
     val eventStart: String?,

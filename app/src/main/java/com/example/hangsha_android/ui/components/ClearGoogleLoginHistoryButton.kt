@@ -17,6 +17,6 @@ fun ClearGoogleLoginHistoryButton(
         enabled = enabled,
         modifier = modifier.fillMaxWidth()
     ) {
-        Text(text = "Clear Google Login History")
+        Text(text = "Google \uB85C\uADF8\uC778 \uAE30\uB85D \uC0AD\uC81C")
     }
 }

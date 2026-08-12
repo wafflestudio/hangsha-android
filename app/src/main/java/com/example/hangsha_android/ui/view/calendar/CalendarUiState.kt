@@ -11,6 +11,7 @@ data class CalendarUiState(
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val organizationNames: Map<Long, String> = emptyMap(),
+    val eventTypeNames: Map<Long, String> = emptyMap(),
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
@@ -65,7 +66,7 @@ private fun CalendarEvent.matches(
 ): Boolean {
     if (filters.bookmarkedOnly && !isBookmarked) return false
     if (filters.interestedOnly && !isInterested) return false
-    if (filters.orgIds.isNotEmpty() && orgId !in filters.orgIds) return false
+    if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
     if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
     if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
     if (applyExcludedKeywords && filters.excludedKeywords.isNotEmpty()) {

@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
+import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
@@ -37,6 +38,7 @@ import retrofit2.Response
 class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val categoryRepository: CategoryRepository,
     private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
     savedStateHandle: SavedStateHandle
@@ -57,8 +59,30 @@ class DailyEventsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            categoryRepository.eventTypeNames.collect { eventTypeNames ->
+                _uiState.update { state ->
+                    state.copy(
+                        eventTypeNames = eventTypeNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            eventTypeIds = eventTypeNames.keys.toList()
+                        )
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            runCatching { categoryRepository.ensureCategoryCatalogLoaded() }
+        }
+        viewModelScope.launch {
             userRepository.organizationNames.collect { organizationNames ->
-                _uiState.update { it.copy(organizationNames = organizationNames) }
+                _uiState.update { state ->
+                    state.copy(
+                        organizationNames = organizationNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            orgIds = organizationNames.keys.toList()
+                        )
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -179,26 +203,13 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun clearDraftFilters() {
-        val keywordsToDelete = _uiState.value.draftFilters.excludedKeywords
         _uiState.update {
             it.copy(
-                draftFilters = DailyEventsFilterState(),
+                draftFilters = it.draftFilters.resetSelections(),
                 excludeKeywordInput = ""
             )
         }
-        if (keywordsToDelete.isNotEmpty()) {
-            viewModelScope.launch {
-                runCatching {
-                    keywordsToDelete.forEach { keyword ->
-                        excludedKeywordsRepository.removeExcludedKeyword(keyword)
-                    }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
-                }
-            }
-        }
     }
-
     fun selectFilterTab(tab: DailyEventsFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
     }
@@ -309,7 +320,8 @@ class DailyEventsViewModel @Inject constructor(
     private fun loadDate(
         date: LocalDate,
         filters: DailyEventsFilterState = _uiState.value.appliedFilters,
-        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
+        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
+        preserveFilterSheetState: Boolean = false
     ) {
         loadJob?.cancel()
         _uiState.update {
@@ -319,10 +331,10 @@ class DailyEventsViewModel @Inject constructor(
                 hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
-                isFilterSheetVisible = false,
-                draftFilters = filters,
-                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
-                excludeKeywordInput = ""
+                isFilterSheetVisible = if (preserveFilterSheetState) it.isFilterSheetVisible else false,
+                draftFilters = if (preserveFilterSheetState) it.draftFilters else filters,
+                selectedFilterTab = if (preserveFilterSheetState) it.selectedFilterTab else DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = if (preserveFilterSheetState) it.excludeKeywordInput else ""
             )
         }
 
@@ -335,7 +347,7 @@ class DailyEventsViewModel @Inject constructor(
                     .items
                     .orEmpty()
                     .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap(), sourceUserId) }
-                    .toDailyEventItems(date)
+                    .toDailyEventItems()
                 val filterOptions = buildFilterOptions(sourceItems)
                 val visibleItems = if (hasAppliedServerFilters) {
                     val filteredResponses = eventRepository.getDayEvents(date, filters)
@@ -343,7 +355,7 @@ class DailyEventsViewModel @Inject constructor(
                         .items
                         .orEmpty()
                     bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap(), sourceUserId)
-                    filteredResponses.toDailyEventItems(date)
+                    filteredResponses.toDailyEventItems()
                 } else {
                     val prioritizedResponses = eventRepository.getDayEvents(
                         date = date,
@@ -352,7 +364,7 @@ class DailyEventsViewModel @Inject constructor(
                         .items
                         .orEmpty()
                     bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap(), sourceUserId)
-                    val prioritizedItems = prioritizedResponses.toDailyEventItems(date)
+                    val prioritizedItems = prioritizedResponses.toDailyEventItems()
                     sourceItems.reorderedBy(prioritizedItems)
                 }
 
@@ -397,89 +409,105 @@ class DailyEventsViewModel @Inject constructor(
     // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
     private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
         return DailyEventsFilterOptions(
-            orgIds = items.map { it.orgId }
-                .distinct()
-                .sorted(),
+            orgIds = userRepository.organizationNames.value.keys
+                .takeIf { it.isNotEmpty() }
+                ?.toList()
+                ?: items.mapNotNull { it.orgId }
+                    .distinct()
+                    .sorted(),
             statusIds = items.map { it.statusId }
                 .distinct()
                 .sorted(),
-            eventTypeIds = items.map { it.eventTypeId }
-                .distinct()
-                .sorted()
+            eventTypeIds = categoryRepository.eventTypeNames.value.keys
+                .takeIf { it.isNotEmpty() }
+                ?.toList()
+                ?: items.map { it.eventTypeId }
+                    .distinct()
+                    .sorted()
         )
     }
 
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid event request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to view these events."
-                404 -> "Event information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to load events with code ${error.code()}."
+                400 -> "\uD589\uC0AC \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBCFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            is IllegalStateException -> error.message ?: "Failed to load events."
-            else -> error.message ?: "Failed to load events."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            else -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid excluded keyword request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to update excluded keywords."
-                404 -> "Excluded keyword information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to update excluded keywords with code ${error.code()}."
+                400 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            is IllegalStateException -> error.message ?: "Failed to update excluded keywords."
-            else -> error.message ?: "Failed to update excluded keywords."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            else -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapBookmarkErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid bookmark request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to update this bookmark."
-                404 -> "Event information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to update bookmark with code ${error.code()}."
+                400 -> "\uBD81\uB9C8\uD06C \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC774 \uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            else -> error.message ?: "Failed to update bookmark."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
-        val previousDraftKeywords = previousState.draftFilters.excludedKeywords
-
-        if (previousDraftKeywords == keywords) {
+        if (
+            previousState.appliedFilters.excludedKeywords == keywords &&
+            previousState.draftFilters.excludedKeywords == keywords
+        ) {
             return
         }
 
+        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
         val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
-
         _uiState.update {
             it.copy(
+                appliedFilters = updatedAppliedFilters,
                 draftFilters = updatedDraftFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
                 errorMessage = null
             )
         }
+        if (hasInitialized) {
+            loadDate(
+                date = previousState.selectedDate,
+                filters = updatedAppliedFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
+                preserveFilterSheetState = true
+            )
+        }
     }
-
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
             val filterSourceItems = it.filterSourceItems.withBookmarkState(eventIds)
@@ -503,16 +531,13 @@ private data class DailyEventsLoadResult(
     val filterOptions: DailyEventsFilterOptions
 )
 
-private val ItemDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
 private val ItemDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
 private val ItemFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val ItemMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
-private fun List<EventSummaryResponse>.toDailyEventItems(
-    selectedDate: LocalDate
-): List<DailyEventItem> {
+private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem> {
     return map { event ->
-        event.toDailyEventItem(selectedDate)
+        event.toDailyEventItem()
     }
 }
 
@@ -520,10 +545,11 @@ private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> {
     return associate { event -> event.id to event.isBookmarked }
 }
 
-private fun EventSummaryResponse.toDailyEventItem(selectedDate: LocalDate): DailyEventItem {
+private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     val eventEndDate = parseEventDate(eventEnd)
-    val dDayLabel = eventEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - selectedDate.toEpochDay()
+    val applyEndDate = parseEventDate(applyEnd)
+    val dDayLabel = applyEndDate?.let { targetDate ->
+        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
             diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
@@ -624,9 +650,9 @@ private fun formatEventEnd(value: String?): String? {
     }
 
     return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(ItemDateTimeFormatter)
+        OffsetDateTime.parse(value).toLocalDate().format(ItemDateFormatter)
     }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(ItemDateTimeFormatter) }.getOrElse {
+        runCatching { LocalDateTime.parse(value).toLocalDate().format(ItemDateFormatter) }.getOrElse {
             runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
         }
     }

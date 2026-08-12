@@ -39,7 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
-import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
+import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
@@ -89,6 +90,7 @@ fun DailyEventsFilterBottomSheet(
                         EventTypeSection(
                             selected = draft.eventTypeIds,
                             options = uiState.availableFilterOptions.eventTypeIds,
+                            names = uiState.eventTypeNames,
                             onToggle = onToggleEventType
                         )
                     }
@@ -196,6 +198,7 @@ private fun FilterTabRow(
 private fun EventTypeSection(
     selected: Set<Long>,
     options: List<Long>,
+    names: Map<Long, String>,
     onToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -209,14 +212,14 @@ private fun EventTypeSection(
         }
 
         val groupedOptions = options
-            .groupBy(::eventTypeLabel)
+            .groupBy { eventTypeId -> names[eventTypeId] ?: eventTypeLabel(eventTypeId) }
             .entries
             .sortedBy { (label, _) -> if (label == "기타") 1 else 0 }
 
         groupedOptions.forEach { (label, eventTypeIds) ->
             val representativeId = eventTypeIds.first()
             val isSelected = eventTypeIds.all { it in selected }
-            val baseColor = eventTypeColor(representativeId)
+            val baseColor = eventTypeFilterColor(representativeId)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,9 +229,7 @@ private fun EventTypeSection(
                         }
                     }
                     .background(
-                        color = baseColor.copy(
-                            alpha = baseColor.alpha * if (isSelected) 1f else 0.75f
-                        ),
+                        color = baseColor,
                         shape = RoundedCornerShape(0.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 9.dp),
@@ -466,17 +467,5 @@ private fun statusLabel(statusId: Long): String {
         2L -> "모집 중"
         3L -> "모집 마감"
         else -> "상태 $statusId"
-    }
-}
-
-private fun eventTypeLabel(eventTypeId: Long): String {
-    return when (eventTypeId) {
-        4L -> "교육(특강/세미나)"
-        5L -> "공모전/경진대회"
-        6L -> "인턴십/현장실습"
-        7L -> "사회공헌(봉사)"
-        8L -> "취업/진로상담"
-        39L -> "OpenLNL"
-        else -> "기타"
     }
 }

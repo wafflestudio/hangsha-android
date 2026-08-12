@@ -378,7 +378,7 @@ class MyPageViewModel @Inject constructor(
         }
         if (title.isBlank() || content.isBlank()) {
             _uiState.update {
-                it.copy(bugReportToastMessage = "Please enter both a title and description.")
+                it.copy(bugReportToastMessage = "\uC81C\uBAA9\uACFC \uB0B4\uC6A9\uC744 \uBAA8\uB450 \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
             }
             return
         }
@@ -406,7 +406,7 @@ class MyPageViewModel @Inject constructor(
                             bugReportTitle = "",
                             bugReportContent = "",
                             isSubmittingBugReport = false,
-                            bugReportToastMessage = "Your bug report was submitted."
+                            bugReportToastMessage = "\uC624\uB958 \uC81C\uBCF4\uAC00 \uC811\uC218\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
                         )
                     }
                 },
@@ -516,7 +516,7 @@ class MyPageViewModel @Inject constructor(
 
         val url = response.body()?.url
         require(!url.isNullOrBlank()) {
-            "Profile image upload response was empty."
+            "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC751\uB2F5\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
         }
         return url
     }
@@ -530,7 +530,7 @@ class MyPageViewModel @Inject constructor(
         val file = File.createTempFile("profile-image-", extension, appContext.cacheDir)
         appContext.contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) {
-                "Could not open selected image."
+                "\uC120\uD0DD\uD55C \uC774\uBBF8\uC9C0\uB97C \uC5F4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
             }
             file.outputStream().use { output ->
                 input.copyTo(output)
@@ -542,7 +542,7 @@ class MyPageViewModel @Inject constructor(
     private fun validateDraftUsername(username: String): String? {
         val trimmedUsername = username.trim()
         if (trimmedUsername.isBlank()) {
-            return "Please enter a username."
+            return "\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694."
         }
 
         val maxLength = if (trimmedUsername.any { char -> char.isKorean() }) {
@@ -551,7 +551,7 @@ class MyPageViewModel @Inject constructor(
             ENGLISH_USERNAME_MAX_LENGTH
         }
         return if (trimmedUsername.length > maxLength) {
-            "Username must be $maxLength characters or less."
+            "\uB2C9\uB124\uC784\uC740 ${maxLength}\uC790 \uC774\uD558\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694."
         } else {
             null
         }
@@ -559,7 +559,7 @@ class MyPageViewModel @Inject constructor(
 
     private fun mapProfileSaveErrorMessage(error: Throwable): String {
         return when (error) {
-            is IllegalArgumentException -> error.message ?: "Please check your profile input."
+            is IllegalArgumentException -> "\uD504\uB85C\uD544 \uC785\uB825 \uC815\uBCF4\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
             else -> mapErrorMessage(error)
         }
     }
@@ -567,74 +567,74 @@ class MyPageViewModel @Inject constructor(
     private fun mapAccountDeletionErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "Login is required."
-                403 -> "You do not have permission to delete this account."
-                in 500..599 -> "A server error occurred. Please try again later."
-                else -> "Failed to delete the account. (${error.code()})"
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is UnknownHostException -> "Please check your internet connection."
-            is SocketTimeoutException -> "The request timed out. Please try again."
-            is IOException -> "A network error occurred. Please try again."
-            else -> error.message ?: "Failed to delete the account."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapBugReportErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                400 -> "Please check your bug report content."
-                401 -> "Login is required."
-                in 500..599 -> "A server error occurred. Please try again later."
-                else -> "Failed to submit the bug report. (${error.code()})"
+                400 -> "\uC624\uB958 \uC81C\uBCF4 \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is UnknownHostException -> "Please check your internet connection."
-            is SocketTimeoutException -> "The request timed out. Please try again."
-            is IOException -> "A network error occurred. Please try again."
-            else -> error.message ?: "Failed to submit the bug report."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapBookmarksPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "Login is required."
-                in 500..599 -> "A server error occurred. Please try again later."
-                else -> "Failed to load bookmarks. (${error.code()})"
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBD81\uB9C8\uD06C\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is UnknownHostException -> "Please check your internet connection."
-            is SocketTimeoutException -> "The request timed out. Please try again."
-            is IOException -> "A network error occurred. Please try again."
-            else -> error.message ?: "Failed to load bookmarks."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uBD81\uB9C8\uD06C\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapMemosPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "Login is required."
-                in 500..599 -> "A server error occurred. Please try again later."
-                else -> "Failed to load memos. (${error.code()})"
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBA54\uBAA8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is UnknownHostException -> "Please check your internet connection."
-            is SocketTimeoutException -> "The request timed out. Please try again."
-            is IOException -> "A network error occurred. Please try again."
-            else -> error.message ?: "Failed to load memos."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uBA54\uBAA8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                401 -> "Login is required."
-                403 -> "You do not have permission to view this profile."
-                404 -> "Profile information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to load profile with code ${error.code()}."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uD504\uB85C\uD544\uC744 \uBCFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD504\uB85C\uD544 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uD504\uB85C\uD544\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            else -> error.message ?: "Failed to load profile."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uD504\uB85C\uD544\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -23,20 +24,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -75,11 +80,13 @@ import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 
-private const val GridStartMinute = 9 * 60
-private const val GridEndMinute = 18 * 60
+private const val GridStartMinute = 7 * 60
+private const val GridEndMinute = 24 * 60
 private const val DayCount = 5
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
+private val GridHourHeight = 56.dp
+private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinute) / 60f)
 private val GridLineColor = Color(0xFFE8E8E8)
 private val HalfHourLineColor = Color(0xFFF1F1F1)
 private val CourseMaskColor = Color(0xFFCFCFCF)
@@ -273,6 +280,21 @@ internal fun TimetableScreenContentHost() {
         timetableViewModel.clearLoadEnrollsError()
     }
 
+    LaunchedEffect(apiUiState.deletedEnrollId) {
+        apiUiState.deletedEnrollId ?: return@LaunchedEffect
+        Toast.makeText(
+            context,
+            "\uC218\uC5C5\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.",
+            Toast.LENGTH_SHORT
+        ).show()
+        timetableViewModel.onDeletedEnrollConsumed()
+    }
+
+    LaunchedEffect(apiUiState.deleteEnrollError) {
+        val message = apiUiState.deleteEnrollError ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        timetableViewModel.clearDeleteEnrollError()
+    }
     val validation = TimetableAddCourseValidator.validate(
         timetableId = selectedTimetableId.takeIf { hasSelectedTimetable },
         title = courseTitle,
@@ -299,7 +321,7 @@ internal fun TimetableScreenContentHost() {
 
     LaunchedEffect(apiUiState.createdCustomEnroll) {
         apiUiState.createdCustomEnroll ?: return@LaunchedEffect
-        resetAddCourseForm(message = "Course added.")
+        resetAddCourseForm(message = "\uC218\uC5C5\uC744 \uCD94\uAC00\uD588\uC2B5\uB2C8\uB2E4.")
         timetableViewModel.onCreatedCustomEnrollConsumed()
     }
 
@@ -335,6 +357,7 @@ internal fun TimetableScreenContentHost() {
         submitError = apiUiState.createCustomEnrollError ?: submitError,
         submitMessage = submitMessage,
         isSubmitting = apiUiState.isCreatingCustomEnroll,
+        deletingCourseId = apiUiState.deletingEnrollId?.toString(),
         onYearSelected = { year -> selectedYear = year },
         onSemesterSelected = { semester -> selectedSemester = semester.apiValue },
         onEventOverlayChanged = { isEventOverlayEnabled = it },
@@ -432,6 +455,17 @@ internal fun TimetableScreenContentHost() {
                 if (slot.localId == localId) slot.copy(endAt = minute.coerceIn(5, 24 * 60)) else slot
             }
         },
+        onDeleteCourse = { courseId ->
+            val timetableId = selectedTimetableId?.toLongOrNull()
+            val enrollId = courseId.toLongOrNull()
+            if (timetableId != null && enrollId != null) {
+                timetableViewModel.clearDeleteEnrollError()
+                timetableViewModel.deleteEnroll(
+                    timetableId = timetableId,
+                    enrollId = enrollId
+                )
+            }
+        },
         onSubmitAddCourse = {
             val timetableId = selectedTimetableId?.toLongOrNull()
             if (!validation.canSubmit || apiUiState.isCreatingCustomEnroll || timetableId == null) {
@@ -490,6 +524,7 @@ private fun TimetableScreenContent(
     submitError: String?,
     submitMessage: String?,
     isSubmitting: Boolean,
+    deletingCourseId: String?,
     onYearSelected: (Int) -> Unit,
     onSemesterSelected: (TimetableSemesterOption) -> Unit,
     onEventOverlayChanged: (Boolean) -> Unit,
@@ -512,8 +547,10 @@ private fun TimetableScreenContent(
     onChangeDay: (Long, TimetableDayOfWeek) -> Unit,
     onChangeStart: (Long, Int) -> Unit,
     onChangeEnd: (Long, Int) -> Unit,
-    onSubmitAddCourse: () -> Unit
+    onSubmitAddCourse: () -> Unit,
+    onDeleteCourse: (String) -> Unit
 ) {
+    val gridScrollState = rememberScrollState()
     val hasPanelOpen = isTimetablePanelOpen || isCreateTimetablePanelOpen || isEditTimetablePanelOpen || isAddCoursePanelOpen
     BackHandler(enabled = hasPanelOpen, onBack = onClosePanels)
 
@@ -550,12 +587,22 @@ private fun TimetableScreenContent(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                WeeklyTimetableGrid(
-                    courses = selectedTimetable.courses,
-                    events = events,
-                    showEvents = isEventOverlayEnabled,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(gridScrollState)
+                ) {
+                    WeeklyTimetableGrid(
+                        courses = selectedTimetable.courses,
+                        events = events,
+                        showEvents = isEventOverlayEnabled,
+                        deletingCourseId = deletingCourseId,
+                        onDeleteCourse = onDeleteCourse,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(GridContentHeight)
+                    )
+                }
                 TimetableFloatingActions(
                     hasSelectedTimetable = hasSelectedTimetable,
                     onChangeTimetableClick = onOpenTimetablePanel,
@@ -820,6 +867,8 @@ private fun WeeklyTimetableGrid(
     courses: List<CourseUiModel>,
     events: List<TimetableEventItem>,
     showEvents: Boolean,
+    deletingCourseId: String?,
+    onDeleteCourse: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val courseBlocks = remember(courses) { courses.toCourseBlocks() }
@@ -877,7 +926,16 @@ private fun WeeklyTimetableGrid(
         } else {
             courseBlocks.forEach { block ->
                 val position = coursePositions[block.id] ?: return@forEach
-                CourseBlock(position, dayWidth, gridHeight, block.color, block.title, block.subtitle, onClick = {})
+                CourseBlock(
+                    position = position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    color = block.color,
+                    title = block.title,
+                    subtitle = block.subtitle,
+                    isDeleting = deletingCourseId == block.courseId,
+                    onDelete = { onDeleteCourse(block.courseId) }
+                )
             }
         }
     }
@@ -916,17 +974,27 @@ private fun HourLabels(gridHeight: Dp) {
 
 // 수업 블록: 토글 OFF 상태에서 과목 색상과 텍스트를 중앙 정렬로 표시한다.
 @Composable
-private fun CourseBlock(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, color: Color, title: String, subtitle: String?, onClick: () -> Unit) {
+private fun CourseBlock(
+    position: PositionedTimetableBlock,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    color: Color,
+    title: String,
+    subtitle: String?,
+    isDeleting: Boolean,
+    onDelete: () -> Unit
+) {
     Box(
         modifier = blockModifier(position, dayWidth, gridHeight)
             .clip(RoundedCornerShape(0.dp))
             .background(color)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 3.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
     ) {
         Text(
             text = listOfNotNull(title, subtitle).joinToString("\n"),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 3.dp, vertical = 4.dp)
+                .wrapContentSize(Alignment.Center),
             style = MaterialTheme.typography.bodyMedium,
             color = PureWhite,
             fontSize = 9.sp,
@@ -936,9 +1004,34 @@ private fun CourseBlock(position: PositionedTimetableBlock, dayWidth: Dp, gridHe
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
+        IconButton(
+            onClick = onDelete,
+            enabled = !isDeleting,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(22.dp)
+                .background(
+                    color = PureWhite.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(bottomStart = 8.dp)
+                )
+        ) {
+            if (isDeleting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    color = DeleteButtonColor,
+                    strokeWidth = 1.5.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "$title \uC218\uC5C5 \uC0AD\uC81C",
+                    tint = DeleteButtonColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }
-
 @Composable
 private fun TimetableBlockBackground(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, color: Color, alpha: Float) {
     Box(modifier = blockModifier(position, dayWidth, gridHeight).background(color.copy(alpha = alpha)))
@@ -1140,8 +1233,8 @@ private fun TimeSlotEditorRow(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TimeStepper(label = "시작", minute = slot.startAt, onChange = onChangeStart, modifier = Modifier.weight(1f))
-                TimeStepper(label = "종료", minute = slot.endAt, onChange = onChangeEnd, modifier = Modifier.weight(1f))
+                DirectTimePicker(label = "시작", minute = slot.startAt, onChange = onChangeStart, modifier = Modifier.weight(1f))
+                DirectTimePicker(label = "종료", minute = slot.endAt, onChange = onChangeEnd, modifier = Modifier.weight(1f))
             }
             errors.forEach { FieldErrorText(it) }
         }
@@ -1156,16 +1249,57 @@ private fun DayChip(day: TimetableDayOfWeek, selected: Boolean, onClick: () -> U
 }
 
 @Composable
-private fun TimeStepper(label: String, minute: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Text(label, color = Ink60, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onChange(minute - 5) }, modifier = Modifier.size(28.dp)) {
-                Icon(imageVector = Icons.Rounded.Remove, contentDescription = "$label 5분 감소")
-            }
-            Text(formatMinute(minute), modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { onChange(minute + 5) }, modifier = Modifier.size(28.dp)) {
-                Icon(imageVector = Icons.Rounded.Add, contentDescription = "$label 5분 증가")
+private fun DirectTimePicker(
+    label: String,
+    minute: Int,
+    onChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val safeMinute = minute.coerceIn(0, 24 * 60 - 5)
+
+    OutlinedButton(
+        onClick = {
+            TimePickerDialog(
+                context,
+                { _, selectedHour, selectedMinute ->
+                    onChange(snapToFiveMinutes(selectedHour * 60 + selectedMinute))
+                },
+                safeMinute / 60,
+                safeMinute % 60,
+                true
+            ).apply {
+                setTitle("$label \uC2DC\uAC04 \uC120\uD0DD")
+            }.show()
+        },
+        modifier = modifier.height(58.dp),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = label,
+                color = Ink60,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatMinute(safeMinute),
+                    color = Ink100,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Rounded.AccessTime,
+                    contentDescription = "$label \uC2DC\uAC04 \uC120\uD0DD",
+                    tint = Ink60,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -1247,6 +1381,7 @@ private fun blockModifier(position: PositionedTimetableBlock, dayWidth: Dp, grid
 
 private data class CourseBlockUiModel(
     val id: String,
+    val courseId: String,
     val title: String,
     val subtitle: String?,
     val color: Color,
@@ -1258,7 +1393,16 @@ private data class CourseBlockUiModel(
 private fun List<CourseUiModel>.toCourseBlocks(): List<CourseBlockUiModel> {
     return flatMap { course ->
         course.timeSlots.mapIndexed { index, slot ->
-            CourseBlockUiModel("${course.id}-$index", course.title, course.subtitle, course.color, slot.weekday, slot.startMinute, slot.endMinute)
+            CourseBlockUiModel(
+                id = "${course.id}-$index",
+                courseId = course.id,
+                title = course.title,
+                subtitle = course.subtitle,
+                color = course.color,
+                weekday = slot.weekday,
+                startMinute = slot.startMinute,
+                endMinute = slot.endMinute
+            )
         }
     }
 }
@@ -1310,6 +1454,11 @@ private fun hourLabel(minute: Int): String {
         hour > 12 -> (hour - 12).toString()
         else -> hour.toString()
     }
+}
+
+private fun snapToFiveMinutes(minute: Int): Int {
+    val boundedMinute = minute.coerceIn(0, 24 * 60 - 1)
+    return (((boundedMinute + 2) / 5) * 5).coerceAtMost(24 * 60 - 5)
 }
 
 private fun formatMinute(minute: Int): String {

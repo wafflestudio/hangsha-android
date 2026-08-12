@@ -1,0 +1,18 @@
+package com.example.hangsha_android.data.network.model
+
+data class EventSearchResponse(
+    val page: Int,
+    val size: Int,
+    val total: Int,
+    val items: List<EventSearchItemResponse>?
+)
+
+data class EventSearchItemResponse(
+    val event: EventSummaryResponse,
+    val highlight: EventSearchHighlightResponse?
+)
+
+data class EventSearchHighlightResponse(
+    val title: String?,
+    val contentSnippet: String?
+)

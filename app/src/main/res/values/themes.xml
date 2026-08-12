@@ -6,4 +6,10 @@
     </style>
 
     <style name="Theme.Hangshaandroid" parent="Base.Theme.Hangshaandroid" />
+
+    <style name="Theme.Hangshaandroid.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.Hangshaandroid</item>
+    </style>
 </resources>

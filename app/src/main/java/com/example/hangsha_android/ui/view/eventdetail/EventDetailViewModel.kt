@@ -8,10 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
+import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -35,6 +37,7 @@ import retrofit2.Response
 class EventDetailViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
+    private val bugReportRepository: BugReportRepository,
     private val memoRepository: MemoRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -88,6 +91,89 @@ class EventDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun openBugReportDialog() {
+        _uiState.update {
+            it.copy(isBugReportDialogOpen = true, bugReportMessage = null)
+        }
+    }
+
+    fun dismissBugReportDialog() {
+        if (_uiState.value.isSubmittingBugReport) return
+        _uiState.update {
+            it.copy(
+                isBugReportDialogOpen = false,
+                bugReportTitle = "",
+                bugReportContent = "",
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun onBugReportTitleChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportTitle = value.take(BUG_REPORT_TITLE_MAX_LENGTH),
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun onBugReportContentChanged(value: String) {
+        _uiState.update {
+            it.copy(
+                bugReportContent = value.take(BUG_REPORT_CONTENT_MAX_LENGTH),
+                bugReportMessage = null
+            )
+        }
+    }
+
+    fun submitBugReport() {
+        val current = _uiState.value
+        val title = current.bugReportTitle.trim()
+        val content = current.bugReportContent.trim()
+        if (current.isSubmittingBugReport) return
+        if (title.isBlank() || content.isBlank()) {
+            _uiState.update {
+                it.copy(bugReportMessage = "\uC81C\uBAA9\uACFC \uB0B4\uC6A9\uC744 \uBAA8\uB450 \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isSubmittingBugReport = true, bugReportMessage = null)
+            }
+            runCatching {
+                val response = bugReportRepository.createBugReport(title, content)
+                if (!response.isSuccessful) throw HttpException(response)
+            }.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isBugReportDialogOpen = false,
+                            bugReportTitle = "",
+                            bugReportContent = "",
+                            isSubmittingBugReport = false,
+                            bugReportMessage = "\uC624\uB958 \uC81C\uBCF4\uAC00 \uC811\uC218\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingBugReport = false,
+                            bugReportMessage = mapBugReportErrorMessage(error)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onBugReportMessageConsumed() {
+        _uiState.update { it.copy(bugReportMessage = null) }
     }
 
     fun openMemoEditor() {
@@ -233,7 +319,7 @@ class EventDetailViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    errorMessage = "Invalid event id.",
+                    errorMessage = "\uC62C\uBC14\uB974\uC9C0 \uC54A\uC740 \uD589\uC0AC ID\uC785\uB2C8\uB2E4.",
                     item = null
                 )
             }
@@ -314,54 +400,69 @@ class EventDetailViewModel @Inject constructor(
 
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid event request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to view this event."
-                404 -> "Event information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to load event with code ${error.code()}."
+                400 -> "\uD589\uC0AC \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC774 \uD589\uC0AC\uB97C \uBCFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            is IllegalStateException -> error.message ?: "Failed to load event."
-            else -> error.message ?: "Failed to load event."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> "\uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            else -> "\uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapBookmarkErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid bookmark request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to update this bookmark."
-                404 -> "Event information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to update bookmark with code ${error.code()}."
+                400 -> "\uBD81\uB9C8\uD06C \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC774 \uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            else -> error.message ?: "Failed to update bookmark."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+        }
+    }
+
+    private fun mapBugReportErrorMessage(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                400 -> "\uC624\uB958 \uC81C\uBCF4 \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
     private fun mapMemoErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "No internet connection. Please check your network."
-            is SocketTimeoutException -> "The request timed out. Please try again."
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
             is HttpException -> when (error.code()) {
-                400 -> "Invalid memo request."
-                401 -> "Login is required."
-                403 -> "You do not have permission to create this memo."
-                404 -> "Event information could not be found."
-                in 500..599 -> "Server error occurred. Please try again later."
-                else -> "Failed to save memo with code ${error.code()}."
+                400 -> "\uBA54\uBAA8 \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uBA54\uBAA8\uB97C \uC791\uC131\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBA54\uBAA8\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
             }
-            is IOException -> "Network error occurred. Please try again."
-            is IllegalStateException -> error.message ?: "Failed to save memo."
-            else -> error.message ?: "Failed to save memo."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is IllegalStateException -> "\uBA54\uBAA8\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            else -> "\uBA54\uBAA8\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
         }
     }
 
@@ -375,8 +476,9 @@ class EventDetailViewModel @Inject constructor(
     }
 }
 
-private val DetailDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm", Locale.KOREA)
-private val DetailDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd", Locale.KOREA)
+private const val BUG_REPORT_TITLE_MAX_LENGTH = 100
+private const val BUG_REPORT_CONTENT_MAX_LENGTH = 1_000
+
 private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
@@ -404,8 +506,8 @@ private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
 private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
 ): EventDetailItem {
-    val eventEndDate = parseEventDate(eventEnd)
-    val dDayLabel = eventEndDate?.let { targetDate ->
+    val applyEndDate = parseEventDate(applyEnd)
+    val dDayLabel = applyEndDate?.let { targetDate ->
         val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
         when {
             diff == 0L -> "D-DAY"
@@ -420,9 +522,7 @@ private fun EventDetailResponse.toEventDetailItem(
         imageUrl = imageUrl,
         organization = organization,
         location = location,
-        eventEndDisplay = formatEventEnd(eventEnd)
-            ?: eventEndDate?.format(DetailDateFormatter)
-            ?: "-",
+        eventPeriodDisplay = formatPeriod(eventStart, eventEnd),
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
         eventTypeLabel = eventTypeLabel(eventTypeId),
@@ -448,20 +548,6 @@ private fun formatPeriod(start: String?, end: String?): String {
     }
 }
 
-private fun formatEventEnd(value: String?): String? {
-    if (value.isNullOrBlank()) {
-        return null
-    }
-
-    return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(DetailDateFormatter)
-    }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(DetailDateFormatter) }.getOrElse {
-            runCatching { LocalDate.parse(value).format(DetailDateFormatter) }.getOrNull()
-        }
-    }
-}
-
 private fun parseEventDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) {
         return null
@@ -470,32 +556,6 @@ private fun parseEventDate(value: String?): LocalDate? {
     return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
-        }
-    }
-}
-
-private fun eventTypeLabel(eventTypeId: Long): String {
-    return when (eventTypeId) {
-        4L -> "교육(특강/세미나)"
-        5L -> "공모전/경진대회"
-        6L -> "창업/현장실습"
-        7L -> "사회공헌(봉사)"
-        8L -> "취업/진로상담"
-        39L -> "OpenLNL"
-        else -> "기타"
-    }
-}
-
-private fun formatDateTime(value: String?): String? {
-    if (value.isNullOrBlank()) {
-        return null
-    }
-
-    return runCatching {
-        OffsetDateTime.parse(value).toLocalDateTime().format(DetailDateTimeFormatter)
-    }.getOrElse {
-        runCatching { LocalDateTime.parse(value).format(DetailDateTimeFormatter) }.getOrElse {
-            runCatching { LocalDate.parse(value).format(DetailDateFormatter) }.getOrNull()
         }
     }
 }

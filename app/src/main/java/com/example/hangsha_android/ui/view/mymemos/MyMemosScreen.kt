@@ -59,7 +59,7 @@ private val MemoIconColor = Color(0xFF777777)
 @Composable
 fun MyMemosScreen(
     uiState: MyMemosUiState,
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)?,
     onMemoClick: (Long) -> Unit,
     onDeleteMemoClick: (Long) -> Unit,
     onStartEditMemo: (MyMemoItem) -> Unit,
@@ -206,7 +206,7 @@ private fun ConfirmDeleteMemoDialog(
 
 @Composable
 private fun MyMemosTopBar(
-    onNavigateBack: () -> Unit
+    onNavigateBack: (() -> Unit)?
 ) {
     Box(
         modifier = Modifier
@@ -214,16 +214,18 @@ private fun MyMemosTopBar(
             .height(58.dp),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "뒤로 가기",
-            tint = Color(0xFFB0B0B0),
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 24.dp)
-                .size(26.dp)
-                .clickable(onClick = onNavigateBack)
-        )
+        onNavigateBack?.let { navigateBack ->
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "\uB4A4\uB85C \uAC00\uAE30",
+                tint = Color(0xFFB0B0B0),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 24.dp)
+                    .size(26.dp)
+                    .clickable(onClick = navigateBack)
+            )
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)

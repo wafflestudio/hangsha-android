@@ -21,11 +21,11 @@ enum class BottomTab(
         R.drawable.ic_bottombar_timetable,
         R.drawable.ic_bottombar_timetable_active
     ),
-    Bookmarks(
-        "bookmarks",
-        "북마크",
-        R.drawable.ic_bottombar_bookmark,
-        R.drawable.ic_bottombar_bookmark_active
+    Memos(
+        "memos",
+        "\uD589\uC0AC \uD6C4\uAE30",
+        R.drawable.ic_bottombar_reviews,
+        R.drawable.ic_bottombar_reviews_active
     ),
     MyPage(
         "mypage",
