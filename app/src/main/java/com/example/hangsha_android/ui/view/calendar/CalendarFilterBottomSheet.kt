@@ -40,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.theme.PureWhite
-import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 
@@ -267,7 +267,7 @@ private fun EventTypeSection(
         groupedOptions.forEach { (label, eventTypeIds) ->
             val representativeId = eventTypeIds.first()
             val isSelected = eventTypeIds.all { it in selected }
-            val baseColor = eventTypeColor(representativeId)
+            val baseColor = eventTypeFilterColor(representativeId)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,9 +277,7 @@ private fun EventTypeSection(
                         }
                     }
                     .background(
-                        color = baseColor.copy(
-                            alpha = baseColor.alpha * if (isSelected) 1f else 0.75f
-                        ),
+                        color = baseColor,
                         shape = RoundedCornerShape(0.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 9.dp),
