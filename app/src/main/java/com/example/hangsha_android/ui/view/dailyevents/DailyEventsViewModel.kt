@@ -203,26 +203,13 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun clearDraftFilters() {
-        val keywordsToDelete = _uiState.value.draftFilters.excludedKeywords
         _uiState.update {
             it.copy(
-                draftFilters = DailyEventsFilterState(),
+                draftFilters = it.draftFilters.resetSelections(),
                 excludeKeywordInput = ""
             )
         }
-        if (keywordsToDelete.isNotEmpty()) {
-            viewModelScope.launch {
-                runCatching {
-                    keywordsToDelete.forEach { keyword ->
-                        excludedKeywordsRepository.removeExcludedKeyword(keyword)
-                    }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
-                }
-            }
-        }
     }
-
     fun selectFilterTab(tab: DailyEventsFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
     }
@@ -333,7 +320,8 @@ class DailyEventsViewModel @Inject constructor(
     private fun loadDate(
         date: LocalDate,
         filters: DailyEventsFilterState = _uiState.value.appliedFilters,
-        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
+        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
+        preserveFilterSheetState: Boolean = false
     ) {
         loadJob?.cancel()
         _uiState.update {
@@ -343,10 +331,10 @@ class DailyEventsViewModel @Inject constructor(
                 hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
-                isFilterSheetVisible = false,
-                draftFilters = filters,
-                selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
-                excludeKeywordInput = ""
+                isFilterSheetVisible = if (preserveFilterSheetState) it.isFilterSheetVisible else false,
+                draftFilters = if (preserveFilterSheetState) it.draftFilters else filters,
+                selectedFilterTab = if (preserveFilterSheetState) it.selectedFilterTab else DailyEventsFilterTab.EVENT_TYPE,
+                excludeKeywordInput = if (preserveFilterSheetState) it.excludeKeywordInput else ""
             )
         }
 
@@ -494,22 +482,32 @@ class DailyEventsViewModel @Inject constructor(
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
-        val previousDraftKeywords = previousState.draftFilters.excludedKeywords
-
-        if (previousDraftKeywords == keywords) {
+        if (
+            previousState.appliedFilters.excludedKeywords == keywords &&
+            previousState.draftFilters.excludedKeywords == keywords
+        ) {
             return
         }
 
+        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
         val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
-
         _uiState.update {
             it.copy(
+                appliedFilters = updatedAppliedFilters,
                 draftFilters = updatedDraftFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
                 errorMessage = null
             )
         }
+        if (hasInitialized) {
+            loadDate(
+                date = previousState.selectedDate,
+                filters = updatedAppliedFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
+                preserveFilterSheetState = true
+            )
+        }
     }
-
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
             val filterSourceItems = it.filterSourceItems.withBookmarkState(eventIds)

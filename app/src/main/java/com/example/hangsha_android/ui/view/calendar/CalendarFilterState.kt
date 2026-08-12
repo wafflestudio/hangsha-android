@@ -19,6 +19,10 @@ data class CalendarFilterState(
             excludedKeywords.isNotEmpty()
 }
 
+internal fun CalendarFilterState.resetSelections(): CalendarFilterState {
+    return CalendarFilterState(excludedKeywords = excludedKeywords)
+}
+
 data class CalendarFilterOptions(
     val orgIds: List<Long> = emptyList(),
     val statusIds: List<Long> = emptyList(),

@@ -19,6 +19,10 @@ data class DailyEventsFilterState(
             excludedKeywords.isNotEmpty()
 }
 
+internal fun DailyEventsFilterState.resetSelections(): DailyEventsFilterState {
+    return DailyEventsFilterState(excludedKeywords = excludedKeywords)
+}
+
 data class DailyEventsFilterOptions(
     val orgIds: List<Long> = emptyList(),
     val statusIds: List<Long> = emptyList(),

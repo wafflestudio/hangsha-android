@@ -162,26 +162,13 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun clearDraftFilters() {
-        val keywordsToDelete = _uiState.value.draftFilters.excludedKeywords
         _uiState.update {
             it.copy(
-                draftFilters = CalendarFilterState(),
+                draftFilters = it.draftFilters.resetSelections(),
                 excludeKeywordInput = ""
             )
         }
-        if (keywordsToDelete.isNotEmpty()) {
-            viewModelScope.launch {
-                runCatching {
-                    keywordsToDelete.forEach { keyword ->
-                        excludedKeywordsRepository.removeExcludedKeyword(keyword)
-                    }
-                }.onFailure { error ->
-                    _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
-                }
-            }
-        }
     }
-
     fun selectFilterTab(tab: CalendarFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
     }
@@ -292,7 +279,8 @@ class CalendarViewModel @Inject constructor(
     private fun loadMonth(
         month: YearMonth,
         filters: CalendarFilterState = _uiState.value.appliedFilters,
-        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters
+        hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
+        preserveFilterSheetState: Boolean = false
     ) {
         val visibleRange = month.toCalendarGridRange()
         val visibleDates = visibleRange.toDateList()
@@ -307,10 +295,10 @@ class CalendarViewModel @Inject constructor(
                 hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
                 errorMessage = null,
-                isFilterSheetVisible = false,
-                draftFilters = filters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = ""
+                isFilterSheetVisible = if (preserveFilterSheetState) it.isFilterSheetVisible else false,
+                draftFilters = if (preserveFilterSheetState) it.draftFilters else filters,
+                selectedFilterTab = if (preserveFilterSheetState) it.selectedFilterTab else CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = if (preserveFilterSheetState) it.excludeKeywordInput else ""
             )
         }
 
@@ -445,22 +433,30 @@ class CalendarViewModel @Inject constructor(
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
         val previousState = _uiState.value
-        val previousDraftKeywords = previousState.draftFilters.excludedKeywords
-
-        if (previousDraftKeywords == keywords) {
+        if (
+            previousState.appliedFilters.excludedKeywords == keywords &&
+            previousState.draftFilters.excludedKeywords == keywords
+        ) {
             return
         }
 
+        val updatedAppliedFilters = previousState.appliedFilters.copy(excludedKeywords = keywords)
         val updatedDraftFilters = previousState.draftFilters.copy(excludedKeywords = keywords)
-
         _uiState.update {
             it.copy(
+                appliedFilters = updatedAppliedFilters,
                 draftFilters = updatedDraftFilters,
+                hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
                 errorMessage = null
             )
         }
+        loadMonth(
+            month = previousState.currentMonth,
+            filters = updatedAppliedFilters,
+            hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
+            preserveFilterSheetState = true
+        )
     }
-
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
             val filterSourceEventsByDate = it.filterSourceEventsByDate.withBookmarkState(eventIds)
