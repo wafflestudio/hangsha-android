@@ -95,8 +95,7 @@ internal fun ProfileHeader(
                     value = uiState.draftUsername,
                     onValueChange = onDraftUsernameChanged,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(46.dp),
+                        .fillMaxWidth(),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp,
