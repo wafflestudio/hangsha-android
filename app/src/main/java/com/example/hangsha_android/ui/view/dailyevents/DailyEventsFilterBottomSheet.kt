@@ -20,16 +20,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.components.EventFilterFooter
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
@@ -45,7 +42,6 @@ import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
 private val FilterDivider = Color(0xFFE7E5E1)
-private val FilterActionGray = Color(0xFFE1E1DF)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyEventsFilterBottomSheet(
@@ -135,7 +131,7 @@ fun DailyEventsFilterBottomSheet(
                 }
             }
 
-            FilterFooter(
+            EventFilterFooter(
                 resultCount = uiState.filteredItemCount,
                 isLoggedIn = uiState.isLoggedIn,
                 isLoading = uiState.isLoading,
@@ -399,63 +395,6 @@ private fun ExcludeKeywordSection(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterFooter(
-    resultCount: Int,
-    isLoggedIn: Boolean,
-    isLoading: Boolean,
-    onClear: () -> Unit,
-    onApply: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = PureWhite,
-        tonalElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onClear,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = FilterActionGray,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("초기화")
-            }
-
-            Button(
-                onClick = onApply,
-                enabled = !isLoading,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContainerColor = PureWhite,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text(
-                    text = if (isLoggedIn) "행사 보기" else "${resultCount}개의 행사 보기"
-                )
             }
         }
     }
