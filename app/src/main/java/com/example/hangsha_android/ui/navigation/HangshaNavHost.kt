@@ -352,6 +352,9 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
             onPasswordConfirmationChanged = { value ->
                 signUpViewModel.onPasswordConfirmationChanged(value)
             },
+            onPrivacyPolicyAgreementChanged = { isAgreed ->
+                signUpViewModel.onPrivacyPolicyAgreementChanged(isAgreed)
+            },
             onSignUpClick = { signUpViewModel.signUp() }
         )
     }

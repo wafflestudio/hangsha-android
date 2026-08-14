@@ -61,11 +61,26 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
+    fun onPrivacyPolicyAgreementChanged(isAgreed: Boolean) {
+        _uiState.update {
+            it.copy(
+                isPrivacyPolicyAgreed = isAgreed,
+                isSignUpSuccessful = false,
+                signUpMessage = null
+            )
+        }
+    }
+
     fun signUp() {
         val currentState = _uiState.value
 
         if (!currentState.isSubmitEnabled) {
-            onSignUpFailure("\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694.")
+            val message = if (!currentState.isPrivacyPolicyAgreed) {
+                "\uAC1C\uC778\uC815\uBCF4 \uC218\uC9D1\u00B7\uC774\uC6A9 \uB3D9\uC758\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+            } else {
+                "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            }
+            onSignUpFailure(message)
             return
         }
 
