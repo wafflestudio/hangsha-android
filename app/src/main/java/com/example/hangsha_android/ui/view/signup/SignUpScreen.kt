@@ -5,9 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -34,7 +37,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.widthIn
@@ -107,7 +109,7 @@ fun SignUpScreen(
                 placeholder = "email@snu.ac.kr",
                 keyboardType = KeyboardType.Email
             )
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             SignUpTextField(
                 value = uiState.password,
                 onValueChange = onPasswordChanged,
@@ -124,7 +126,7 @@ fun SignUpScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SignUpErrorPill(text = error)
             }
-            Spacer(modifier = Modifier.height(if (passwordErrors.isEmpty()) 22.dp else 20.dp))
+            Spacer(modifier = Modifier.height(if (passwordErrors.isEmpty()) 14.dp else 20.dp))
             SignUpTextField(
                 value = uiState.passwordConfirmation,
                 onValueChange = onPasswordConfirmationChanged,
@@ -137,6 +139,7 @@ fun SignUpScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SignUpErrorPill(text = "비밀번호가 일치하지 않습니다.")
             }
+            Spacer(modifier = Modifier.height(30.dp))
             SignUpPrivacyPolicyAgreement(
                 isAgreed = uiState.isPrivacyPolicyAgreed,
                 onAgreementChanged = onPrivacyPolicyAgreementChanged,
@@ -192,7 +195,7 @@ private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
                 PrivacyPolicyBody("서비스는 회원가입 및 서비스 제공을 위해 아래와 같이 개인정보를 수집·이용합니다.")
                 Spacer(modifier = Modifier.height(12.dp))
-                Column(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     PrivacyPolicyTableRow("수집 항목", "수집 목적", "보유 및 이용 기간", true)
                     PrivacyPolicyTableRow("이메일 주소", "회원 식별, 로그인, 계정 관리, 서비스 이용 안내", "회원 탈퇴 시까지 (단, 관계 법령에 따라 보관이 필요한 경우 해당 기간 동안 보관)")
                     PrivacyPolicyTableRow("비밀번호(암호화 저장)", "회원 인증 및 계정 보호", "회원 탈퇴 시까지")
@@ -245,16 +248,28 @@ private fun PrivacyPolicyBullet(text: String) {
 private fun PrivacyPolicyTableRow(item: String, purpose: String, retentionPeriod: String, isHeader: Boolean = false) {
     val backgroundColor = if (isHeader) Color(0xFFF3F3F3) else SignUpWhite
     val fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal
-    Row(modifier = Modifier.background(backgroundColor)) {
-        PrivacyPolicyTableCell(item, 108.dp, fontWeight)
-        PrivacyPolicyTableCell(purpose, 160.dp, fontWeight)
-        PrivacyPolicyTableCell(retentionPeriod, 220.dp, fontWeight)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .background(backgroundColor)
+    ) {
+        PrivacyPolicyTableCell(item, 0.27f, fontWeight)
+        PrivacyPolicyTableCell(purpose, 0.36f, fontWeight)
+        PrivacyPolicyTableCell(retentionPeriod, 0.37f, fontWeight)
     }
 }
 
 @Composable
-private fun PrivacyPolicyTableCell(text: String, width: Dp, fontWeight: FontWeight) {
-    Box(modifier = Modifier.width(width).border(0.5.dp, SignUpBorder).padding(8.dp)) {
+private fun RowScope.PrivacyPolicyTableCell(text: String, weight: Float, fontWeight: FontWeight) {
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight()
+            .border(0.5.dp, SignUpBorder)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+    ) {
         Text(text = text, color = SignUpBlack, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = fontWeight)
     }
 }
