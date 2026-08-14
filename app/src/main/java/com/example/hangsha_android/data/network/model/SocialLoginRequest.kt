@@ -9,7 +9,7 @@ data class SocialLoginRequest(
     val code: String? = null,
     @SerializedName("accessToken")
     val accessToken: String? = null,
-    @SerializedName("code_verifier")
+    @SerializedName("codeVerifier")
     val codeVerifier: String? = null,
     @SerializedName("client_type")
     val clientType: String? = null

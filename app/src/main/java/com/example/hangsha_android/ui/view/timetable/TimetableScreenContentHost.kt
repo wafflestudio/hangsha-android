@@ -1010,10 +1010,6 @@ private fun CourseBlock(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .size(22.dp)
-                .background(
-                    color = PureWhite.copy(alpha = 0.9f),
-                    shape = RoundedCornerShape(bottomStart = 8.dp)
-                )
         ) {
             if (isDeleting) {
                 CircularProgressIndicator(
