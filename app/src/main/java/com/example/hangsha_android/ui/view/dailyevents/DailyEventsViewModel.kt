@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.network.model.EventCountResponse
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
@@ -23,13 +24,16 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import retrofit2.HttpException
 import retrofit2.Response
@@ -49,13 +53,13 @@ class DailyEventsViewModel @Inject constructor(
         DailyEventsUiState(
             selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: LocalDate.now(),
-            isLoggedIn = bookmarkRepository.isLoggedIn()
+                ?: LocalDate.now()
         )
     )
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var filterCountJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -189,15 +193,19 @@ class DailyEventsViewModel @Inject constructor(
                 excludeKeywordInput = ""
             )
         }
+        requestFilterCount()
     }
 
     fun dismissFilterSheet() {
+        filterCountJob?.cancel()
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = false,
                 draftFilters = it.appliedFilters,
                 selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
-                excludeKeywordInput = ""
+                excludeKeywordInput = "",
+                filteredItemCount = null,
+                isFilterCountLoading = false
             )
         }
     }
@@ -209,25 +217,10 @@ class DailyEventsViewModel @Inject constructor(
                 excludeKeywordInput = ""
             )
         }
+        requestFilterCount()
     }
     fun selectFilterTab(tab: DailyEventsFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
-    }
-
-    fun setDraftBookmarkedOnly(enabled: Boolean) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(bookmarkedOnly = enabled)
-            )
-        }
-    }
-
-    fun setDraftInterestedOnly(enabled: Boolean) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(interestedOnly = enabled)
-            )
-        }
     }
 
     fun toggleDraftOrgId(orgId: Long) {
@@ -238,6 +231,7 @@ class DailyEventsViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
 
     fun toggleDraftStatus(statusId: Long) {
@@ -248,6 +242,7 @@ class DailyEventsViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
 
     fun toggleDraftEventType(eventTypeId: Long) {
@@ -258,8 +253,8 @@ class DailyEventsViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
-
     fun updateExcludeKeywordInput(value: String) {
         _uiState.update { it.copy(excludeKeywordInput = value) }
     }
@@ -295,6 +290,7 @@ class DailyEventsViewModel @Inject constructor(
     }
 
     fun applyDraftFilters() {
+        filterCountJob?.cancel()
         val state = _uiState.value
         val appliedFilters = state.draftFilters
         _uiState.update {
@@ -305,6 +301,8 @@ class DailyEventsViewModel @Inject constructor(
                 selectedFilterTab = DailyEventsFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
+                filteredItemCount = null,
+                isFilterCountLoading = false,
                 errorMessage = null
             )
         }
@@ -314,7 +312,63 @@ class DailyEventsViewModel @Inject constructor(
             hasAppliedServerFilters = true
         )
     }
+    private fun requestFilterCount() {
+        val state = _uiState.value
+        if (!state.isFilterSheetVisible) return
 
+        val date = state.selectedDate
+        val filters = state.draftFilters
+        filterCountJob?.cancel()
+        _uiState.update {
+            it.copy(
+                filteredItemCount = null,
+                isFilterCountLoading = true
+            )
+        }
+
+        filterCountJob = viewModelScope.launch {
+            try {
+                delay(FILTER_COUNT_DEBOUNCE_MS)
+                val count = withTimeout(FILTER_COUNT_TIMEOUT_MS) {
+                    eventRepository.getDayEventCount(
+                        date = date,
+                        filters = filters
+                    ).requireCount()
+                }
+                _uiState.update { current ->
+                    if (
+                        current.isFilterSheetVisible &&
+                        current.selectedDate == date &&
+                        current.draftFilters == filters
+                    ) {
+                        current.copy(
+                            filteredItemCount = count,
+                            isFilterCountLoading = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                _uiState.update { current ->
+                    if (
+                        current.isFilterSheetVisible &&
+                        current.selectedDate == date &&
+                        current.draftFilters == filters
+                    ) {
+                        current.copy(
+                            filteredItemCount = null,
+                            isFilterCountLoading = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+            }
+        }
+    }
     // 현재 날짜의 전체 source 데이터를 먼저 가져오고
     // 그다음 화면에 보여줄 리스트만 별도로 결정
     private fun loadDate(
@@ -382,8 +436,7 @@ class DailyEventsViewModel @Inject constructor(
                         it.copy(
                             filterSourceItems = filterSourceItems,
                             items = visibleItems.applyFilters(
-                                filters = filters,
-                                applyExcludedKeywords = !_uiState.value.isLoggedIn
+                                filters = filters
                             ),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
@@ -507,14 +560,14 @@ class DailyEventsViewModel @Inject constructor(
                 preserveFilterSheetState = true
             )
         }
+        requestFilterCount()
     }
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
             val filterSourceItems = it.filterSourceItems.withBookmarkState(eventIds)
             val items = it.items.withBookmarkState(eventIds)
                 .applyFilters(
-                    filters = it.appliedFilters,
-                    applyExcludedKeywords = !it.isLoggedIn
+                    filters = it.appliedFilters
                 )
 
             it.copy(
@@ -658,6 +711,14 @@ private fun formatEventEnd(value: String?): String? {
     }
 }
 
+private fun Response<EventCountResponse>.requireCount(): Int {
+    if (!isSuccessful) {
+        throw HttpException(this)
+    }
+
+    return body()?.count?.coerceAtLeast(0)
+        ?: throw IllegalStateException("Event count response was empty.")
+}
 private fun Response<com.example.hangsha_android.data.network.model.DayEventsResponse>.requireBody(
     emptyMessage: String
 ): com.example.hangsha_android.data.network.model.DayEventsResponse {
@@ -711,8 +772,7 @@ private fun DailyEventsUiState.withUpdatedBookmark(
         eventId = eventId,
         isBookmarked = isBookmarked
     ).applyFilters(
-        filters = appliedFilters,
-        applyExcludedKeywords = !isLoggedIn
+        filters = appliedFilters
     )
 
     return copy(
@@ -720,3 +780,6 @@ private fun DailyEventsUiState.withUpdatedBookmark(
         items = updatedItems
     )
 }
+
+private const val FILTER_COUNT_DEBOUNCE_MS = 300L
+private const val FILTER_COUNT_TIMEOUT_MS = 3_000L

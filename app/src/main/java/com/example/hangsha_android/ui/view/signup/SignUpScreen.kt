@@ -5,9 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -33,6 +36,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 
 private val SignUpContentWidth = 280.dp
 private val SignUpFieldHeight = 37.dp
@@ -50,6 +65,7 @@ fun SignUpScreen(
     uiState: SignUpUiState,
     onEmailChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
+    onPrivacyPolicyAgreementChanged: (Boolean) -> Unit,
     onPasswordConfirmationChanged: (String) -> Unit,
     onSignUpClick: () -> Unit
 ) {
@@ -57,6 +73,7 @@ fun SignUpScreen(
     val hasPasswordError = passwordErrors.isNotEmpty()
     val hasPasswordConfirmationError = uiState.passwordConfirmation.isNotEmpty() &&
         uiState.password != uiState.passwordConfirmation
+    var isPrivacyPolicyDetailsVisible by rememberSaveable { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -92,7 +109,7 @@ fun SignUpScreen(
                 placeholder = "email@snu.ac.kr",
                 keyboardType = KeyboardType.Email
             )
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             SignUpTextField(
                 value = uiState.password,
                 onValueChange = onPasswordChanged,
@@ -109,7 +126,7 @@ fun SignUpScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SignUpErrorPill(text = error)
             }
-            Spacer(modifier = Modifier.height(if (passwordErrors.isEmpty()) 22.dp else 20.dp))
+            Spacer(modifier = Modifier.height(if (passwordErrors.isEmpty()) 14.dp else 20.dp))
             SignUpTextField(
                 value = uiState.passwordConfirmation,
                 onValueChange = onPasswordConfirmationChanged,
@@ -122,15 +139,140 @@ fun SignUpScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SignUpErrorPill(text = "비밀번호가 일치하지 않습니다.")
             }
+            Spacer(modifier = Modifier.height(30.dp))
+            SignUpPrivacyPolicyAgreement(
+                isAgreed = uiState.isPrivacyPolicyAgreed,
+                onAgreementChanged = onPrivacyPolicyAgreementChanged,
+                onShowDetails = { isPrivacyPolicyDetailsVisible = true }
+            )
             Spacer(modifier = Modifier.height(22.dp))
             SignUpSubmitButton(
                 onClick = onSignUpClick,
                 isLoading = uiState.isSignUpLoading
             )
         }
+        if (isPrivacyPolicyDetailsVisible) {
+            PrivacyPolicyDialog(
+                onDismissRequest = { isPrivacyPolicyDetailsVisible = false }
+            )
+        }
     }
 }
 
+
+@Composable
+private fun SignUpPrivacyPolicyAgreement(
+    isAgreed: Boolean,
+    onAgreementChanged: (Boolean) -> Unit,
+    onShowDetails: () -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(
+            checked = isAgreed,
+            onCheckedChange = onAgreementChanged,
+            modifier = Modifier.size(24.dp),
+            colors = CheckboxDefaults.colors(checkedColor = SignUpBlack, uncheckedColor = SignUpPlaceholder, checkmarkColor = SignUpWhite)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = "개인정보 약관 동의(필수)", color = SignUpBlack, fontSize = 14.sp)
+        Spacer(modifier = Modifier.weight(1f))
+        Text(text = "상세 내용 보기", color = SignUpPlaceholder, fontSize = 13.sp, modifier = Modifier.clickable(onClick = onShowDetails))
+    }
+}
+
+@Composable
+private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 360.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = SignUpWhite
+        ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp)) {
+                Text("개인정보 수집·이용 동의", color = SignUpBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(20.dp))
+                PrivacyPolicySectionTitle("개인정보 수집 및 이용에 대한 동의")
+                Spacer(modifier = Modifier.height(8.dp))
+                PrivacyPolicyBody("서비스는 회원가입 및 서비스 제공을 위해 아래와 같이 개인정보를 수집·이용합니다.")
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    PrivacyPolicyTableRow("수집 항목", "수집 목적", "보유 및 이용 기간", true)
+                    PrivacyPolicyTableRow("이메일 주소", "회원 식별, 로그인, 계정 관리, 서비스 이용 안내", "회원 탈퇴 시까지 (단, 관계 법령에 따라 보관이 필요한 경우 해당 기간 동안 보관)")
+                    PrivacyPolicyTableRow("비밀번호(암호화 저장)", "회원 인증 및 계정 보호", "회원 탈퇴 시까지")
+                    PrivacyPolicyTableRow("닉네임(선택)", "서비스 내 사용자 식별", "회원 탈퇴 시까지")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                PrivacyPolicySectionTitle("수집 목적")
+                Spacer(modifier = Modifier.height(8.dp))
+                PrivacyPolicyBullet("회원가입 및 본인 식별")
+                PrivacyPolicyBullet("로그인 및 계정 관리")
+                PrivacyPolicyBullet("서비스 제공 및 운영")
+                Spacer(modifier = Modifier.height(20.dp))
+                PrivacyPolicySectionTitle("보유 및 이용 기간")
+                Spacer(modifier = Modifier.height(8.dp))
+                PrivacyPolicyBody("원칙적으로 회원 탈퇴 시 개인정보를 지체 없이 파기합니다.")
+                Spacer(modifier = Modifier.height(12.dp))
+                PrivacyPolicyBody("다만, 다음의 경우 관련 법령에 따라 일정 기간 보관할 수 있습니다.")
+                Spacer(modifier = Modifier.height(8.dp))
+                PrivacyPolicyBullet("계약 또는 청약철회 등에 관한 기록: 5년")
+                PrivacyPolicyBullet("소비자의 불만 또는 분쟁처리에 관한 기록: 3년")
+                PrivacyPolicyBullet("전자적 접속기록: 관련 법령에 따른 보관 기간")
+                Spacer(modifier = Modifier.height(16.dp))
+                PrivacyPolicyBody("※ 귀하는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만, 필수 항목에 대한 동의를 거부하는 경우 회원가입 및 서비스 이용이 제한될 수 있습니다.")
+                Spacer(modifier = Modifier.height(20.dp))
+                Surface(onClick = onDismissRequest, modifier = Modifier.fillMaxWidth().height(40.dp), shape = SignUpRoundShape, color = SignUpBlack, contentColor = SignUpWhite) {
+                    Box(contentAlignment = Alignment.Center) { Text("확인", fontSize = 14.sp, fontWeight = FontWeight.Medium) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyPolicySectionTitle(text: String) {
+    Text(text = text, color = SignUpBlack, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+}
+
+@Composable
+private fun PrivacyPolicyBody(text: String) {
+    Text(text = text, color = SignUpBlack, fontSize = 14.sp, lineHeight = 20.sp)
+}
+
+@Composable
+private fun PrivacyPolicyBullet(text: String) {
+    PrivacyPolicyBody("• $text")
+    Spacer(modifier = Modifier.height(4.dp))
+}
+
+@Composable
+private fun PrivacyPolicyTableRow(item: String, purpose: String, retentionPeriod: String, isHeader: Boolean = false) {
+    val backgroundColor = if (isHeader) Color(0xFFF3F3F3) else SignUpWhite
+    val fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .background(backgroundColor)
+    ) {
+        PrivacyPolicyTableCell(item, 0.27f, fontWeight)
+        PrivacyPolicyTableCell(purpose, 0.36f, fontWeight)
+        PrivacyPolicyTableCell(retentionPeriod, 0.37f, fontWeight)
+    }
+}
+
+@Composable
+private fun RowScope.PrivacyPolicyTableCell(text: String, weight: Float, fontWeight: FontWeight) {
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight()
+            .border(0.5.dp, SignUpBorder)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+    ) {
+        Text(text = text, color = SignUpBlack, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = fontWeight)
+    }
+}
 @Composable
 private fun SignUpTextField(
     value: String,

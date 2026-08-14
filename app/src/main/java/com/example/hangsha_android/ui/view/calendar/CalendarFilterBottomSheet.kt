@@ -20,17 +20,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.components.EventFilterFooter
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
@@ -46,7 +42,6 @@ import com.example.hangsha_android.ui.view.org.organizationLabel
 
 private val FilterSheetBackground = Color(0xFFF8F8F6)
 private val FilterDivider = Color(0xFFE7E5E1)
-private val FilterActionGray = Color(0xFFE1E1DF)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 // 캘린더 필터 바텀시트 전체와 탭별 본문 구성을 담당한다.
@@ -54,8 +49,6 @@ fun CalendarFilterBottomSheet(
     uiState: CalendarUiState,
     onDismiss: () -> Unit,
     onSelectTab: (CalendarFilterTab) -> Unit,
-    onBookmarkedOnlyChange: (Boolean) -> Unit,
-    onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
     onToggleStatus: (Long) -> Unit,
     onToggleEventType: (Long) -> Unit,
@@ -91,19 +84,6 @@ fun CalendarFilterBottomSheet(
             ) {
                 when (uiState.selectedFilterTab) {
                     CalendarFilterTab.EVENT_TYPE -> {
-                        /**
-                        FilterSwitchRow(
-                            title = "북마크만",
-                            checked = draft.bookmarkedOnly,
-                            onCheckedChange = onBookmarkedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        FilterSwitchRow(
-                            title = "관심 일정만",
-                            checked = draft.interestedOnly,
-                            onCheckedChange = onInterestedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(18.dp)) **/
                         // 행사 종류 탭
                         EventTypeSection(
                             selected = draft.eventTypeIds,
@@ -158,9 +138,9 @@ fun CalendarFilterBottomSheet(
             }
 
             // 초기화, 필터 버튼
-            FilterFooter(
+            EventFilterFooter(
                 resultCount = uiState.filteredEventCount,
-                isLoggedIn = uiState.isLoggedIn,
+                isCountLoading = uiState.isFilterCountLoading,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply
@@ -215,29 +195,6 @@ private fun FilterTabRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-// 북마크, 관심 일정 같은 단일 토글 행 UI : 일단 지금은 삭제한 상태.
-private fun FilterSwitchRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
     }
 }
 
@@ -451,64 +408,6 @@ private fun ExcludeKeywordSection(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-// 하단 초기화 버튼과 적용 버튼
-private fun FilterFooter(
-    resultCount: Int,
-    isLoggedIn: Boolean,
-    isLoading: Boolean,
-    onClear: () -> Unit,
-    onApply: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = PureWhite,
-        tonalElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onClear,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = FilterActionGray,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("초기화")
-            }
-
-            Button(
-                onClick = onApply,
-                enabled = !isLoading,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContainerColor = PureWhite,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text(
-                    text = if (isLoggedIn) "행사 보기" else "${resultCount}개의 행사 보기"
-                )
             }
         }
     }

@@ -92,8 +92,6 @@ sealed class HangshaDestinations(val route: String) {
     data object DailyEvents : HangshaDestinations("daily_events/{date}") {
         const val baseRoute = "daily_events"
         const val dateArg = "date"
-        const val bookmarkedOnlyKey = "daily_events_bookmarked_only"
-        const val interestedOnlyKey = "daily_events_interested_only"
         const val orgIdsKey = "daily_events_org_ids"
         const val statusIdsKey = "daily_events_status_ids"
         const val eventTypeIdsKey = "daily_events_event_type_ids"
@@ -354,6 +352,9 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
             onPasswordConfirmationChanged = { value ->
                 signUpViewModel.onPasswordConfirmationChanged(value)
             },
+            onPrivacyPolicyAgreementChanged = { isAgreed ->
+                signUpViewModel.onPrivacyPolicyAgreementChanged(isAgreed)
+            },
             onSignUpClick = { signUpViewModel.signUp() }
         )
     }
@@ -460,8 +461,6 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onOpenFilterClick = { calendarViewModel.openFilterSheet() },
                 onDismissFilterSheet = { calendarViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { calendarViewModel.selectFilterTab(it) },
-                onBookmarkedOnlyChange = { calendarViewModel.setDraftBookmarkedOnly(it) },
-                onInterestedOnlyChange = { calendarViewModel.setDraftInterestedOnly(it) },
                 onToggleOrgId = { calendarViewModel.toggleDraftOrgId(it) },
                 onToggleStatus = { calendarViewModel.toggleDraftStatus(it) },
                 onToggleEventType = { calendarViewModel.toggleDraftEventType(it) },
@@ -530,8 +529,6 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onOpenFilterClick = { dailyEventsViewModel.openFilterSheet() },
                 onDismissFilterSheet = { dailyEventsViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { dailyEventsViewModel.selectFilterTab(it) },
-                onBookmarkedOnlyChange = { dailyEventsViewModel.setDraftBookmarkedOnly(it) },
-                onInterestedOnlyChange = { dailyEventsViewModel.setDraftInterestedOnly(it) },
                 onToggleOrgId = { dailyEventsViewModel.toggleDraftOrgId(it) },
                 onToggleStatus = { dailyEventsViewModel.toggleDraftStatus(it) },
                 onToggleEventType = { dailyEventsViewModel.toggleDraftEventType(it) },
@@ -936,8 +933,6 @@ private fun NavHostController.navigateToSignUpFromMain() {
     }
 }
 private object CalendarFilterNavigationKeys {
-    const val bookmarkedOnlyKey = "calendar_bookmarked_only"
-    const val interestedOnlyKey = "calendar_interested_only"
     const val orgIdsKey = "calendar_org_ids"
     const val statusIdsKey = "calendar_status_ids"
     const val eventTypeIdsKey = "calendar_event_type_ids"
@@ -957,8 +952,6 @@ private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
     filters: CalendarFilterState,
     hasAppliedServerFilters: Boolean
 ) {
-    set(HangshaDestinations.DailyEvents.bookmarkedOnlyKey, filters.bookmarkedOnly)
-    set(HangshaDestinations.DailyEvents.interestedOnlyKey, filters.interestedOnly)
     set(HangshaDestinations.DailyEvents.orgIdsKey, ArrayList(filters.orgIds))
     set(HangshaDestinations.DailyEvents.statusIdsKey, ArrayList(filters.statusIds))
     set(HangshaDestinations.DailyEvents.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
@@ -973,8 +966,6 @@ private fun androidx.lifecycle.SavedStateHandle.setCalendarFilters(
     filters: CalendarFilterState,
     hasAppliedServerFilters: Boolean
 ) {
-    set(CalendarFilterNavigationKeys.bookmarkedOnlyKey, filters.bookmarkedOnly)
-    set(CalendarFilterNavigationKeys.interestedOnlyKey, filters.interestedOnly)
     set(CalendarFilterNavigationKeys.orgIdsKey, ArrayList(filters.orgIds))
     set(CalendarFilterNavigationKeys.statusIdsKey, ArrayList(filters.statusIds))
     set(CalendarFilterNavigationKeys.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
@@ -988,8 +979,6 @@ private fun androidx.lifecycle.SavedStateHandle.toDailyEventsFilterState(): Dail
     }
 
     return DailyEventsFilterState(
-        bookmarkedOnly = get<Boolean>(HangshaDestinations.DailyEvents.bookmarkedOnlyKey) ?: false,
-        interestedOnly = get<Boolean>(HangshaDestinations.DailyEvents.interestedOnlyKey) ?: false,
         orgIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.orgIdsKey)?.toSet()
             ?: emptySet(),
         statusIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.statusIdsKey)?.toSet()
@@ -1008,8 +997,6 @@ private fun androidx.lifecycle.SavedStateHandle.toCalendarFilterState(): Calenda
     }
 
     return CalendarFilterState(
-        bookmarkedOnly = get<Boolean>(CalendarFilterNavigationKeys.bookmarkedOnlyKey) ?: false,
-        interestedOnly = get<Boolean>(CalendarFilterNavigationKeys.interestedOnlyKey) ?: false,
         orgIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)?.toSet()
             ?: emptySet(),
         statusIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)?.toSet()
@@ -1023,8 +1010,6 @@ private fun androidx.lifecycle.SavedStateHandle.toCalendarFilterState(): Calenda
 }
 
 private fun androidx.lifecycle.SavedStateHandle.clearCalendarFilters() {
-    remove<Boolean>(CalendarFilterNavigationKeys.bookmarkedOnlyKey)
-    remove<Boolean>(CalendarFilterNavigationKeys.interestedOnlyKey)
     remove<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)
     remove<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)
     remove<ArrayList<Long>>(CalendarFilterNavigationKeys.eventTypeIdsKey)
@@ -1034,8 +1019,6 @@ private fun androidx.lifecycle.SavedStateHandle.clearCalendarFilters() {
 
 private fun DailyEventsFilterState.toCalendarFilterState(): CalendarFilterState {
     return CalendarFilterState(
-        bookmarkedOnly = bookmarkedOnly,
-        interestedOnly = interestedOnly,
         orgIds = orgIds,
         statusIds = statusIds,
         eventTypeIds = eventTypeIds,

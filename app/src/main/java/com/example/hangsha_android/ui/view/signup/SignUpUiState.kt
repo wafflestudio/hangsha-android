@@ -4,6 +4,7 @@ data class SignUpUiState(
     val email: String = "",
     val password: String = "",
     val passwordConfirmation: String = "",
+    val isPrivacyPolicyAgreed: Boolean = false,
     val signUpMessage: String? = null,
     val isSignUpLoading: Boolean = false,
     val isSignUpSuccessful: Boolean = false
@@ -14,6 +15,7 @@ data class SignUpUiState(
             password.isValidSignUpPassword() &&
             passwordConfirmation.isNotBlank() &&
             password == passwordConfirmation &&
+            isPrivacyPolicyAgreed &&
             !isSignUpLoading
 }
 

@@ -14,7 +14,8 @@ data class DailyEventsUiState(
     val availableFilterOptions: DailyEventsFilterOptions = DailyEventsFilterOptions(),
     val selectedFilterTab: DailyEventsFilterTab = DailyEventsFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
-    val isLoggedIn: Boolean = false,
+    val filteredItemCount: Int? = null,
+    val isFilterCountLoading: Boolean = false,
     val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
     val isLoading: Boolean = true,
@@ -22,19 +23,6 @@ data class DailyEventsUiState(
 ) {
     val hasActiveFilters: Boolean
         get() = appliedFilters.hasActiveFilters
-
-    val filteredItemCount: Int
-        get() = previewItems.size
-
-    private val previewItems: List<DailyEventItem>
-        get() = if (isFilterSheetVisible) {
-            filterSourceItems.applyFilters(
-                filters = draftFilters,
-                applyExcludedKeywords = !isLoggedIn
-            )
-        } else {
-            items
-        }
 }
 
 data class DailyEventItem(
@@ -56,30 +44,20 @@ data class DailyEventItem(
 )
 
 internal fun List<DailyEventItem>.applyFilters(
-    filters: DailyEventsFilterState,
-    applyExcludedKeywords: Boolean = true
+    filters: DailyEventsFilterState
 ): List<DailyEventItem> {
     if (!filters.hasActiveFilters) return this
 
     return filter { item ->
-        item.matches(filters = filters, applyExcludedKeywords = applyExcludedKeywords)
+        item.matches(filters = filters)
     }
 }
 
 private fun DailyEventItem.matches(
-    filters: DailyEventsFilterState,
-    applyExcludedKeywords: Boolean = true
+    filters: DailyEventsFilterState
 ): Boolean {
-    if (filters.bookmarkedOnly && !isBookmarked) return false
-    if (filters.interestedOnly && !isInterested) return false
     if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
     if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
     if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
-    if (applyExcludedKeywords && filters.excludedKeywords.isNotEmpty()) {
-        val normalizedTitle = title.lowercase()
-        if (filters.excludedKeywords.any { keyword -> keyword.lowercase() in normalizedTitle }) {
-            return false
-        }
-    }
     return true
 }

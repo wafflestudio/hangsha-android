@@ -99,8 +99,6 @@ fun CalendarScreen(
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
-    onBookmarkedOnlyChange: (Boolean) -> Unit,
-    onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
     onToggleStatus: (Long) -> Unit,
     onToggleEventType: (Long) -> Unit,
@@ -120,8 +118,6 @@ fun CalendarScreen(
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
         onSelectFilterTab = onSelectFilterTab,
-        onBookmarkedOnlyChange = onBookmarkedOnlyChange,
-        onInterestedOnlyChange = onInterestedOnlyChange,
         onToggleOrgId = onToggleOrgId,
         onToggleStatus = onToggleStatus,
         onToggleEventType = onToggleEventType,
@@ -144,8 +140,6 @@ private fun CalendarScreenContent(
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (CalendarFilterTab) -> Unit,
-    onBookmarkedOnlyChange: (Boolean) -> Unit,
-    onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
     onToggleStatus: (Long) -> Unit,
     onToggleEventType: (Long) -> Unit,
@@ -162,8 +156,6 @@ private fun CalendarScreenContent(
             uiState = uiState,
             onDismiss = onDismissFilterSheet,
             onSelectTab = onSelectFilterTab,
-            onBookmarkedOnlyChange = onBookmarkedOnlyChange,
-            onInterestedOnlyChange = onInterestedOnlyChange,
             onToggleOrgId = onToggleOrgId,
             onToggleStatus = onToggleStatus,
             onToggleEventType = onToggleEventType,
@@ -762,8 +754,6 @@ private fun buildFilterSummary(uiState: CalendarUiState): String {
     }
 
     return buildList {
-        if (uiState.appliedFilters.bookmarkedOnly) add("북마크만")
-        if (uiState.appliedFilters.interestedOnly) add("관심 일정만")
         if (uiState.appliedFilters.orgIds.isNotEmpty()) {
             add("운영 방식 ${uiState.appliedFilters.orgIds.size}개")
         }
