@@ -48,8 +48,6 @@ fun DailyEventsFilterBottomSheet(
     uiState: DailyEventsUiState,
     onDismiss: () -> Unit,
     onSelectTab: (DailyEventsFilterTab) -> Unit,
-    onBookmarkedOnlyChange: (Boolean) -> Unit,
-    onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
     onToggleStatus: (Long) -> Unit,
     onToggleEventType: (Long) -> Unit,
@@ -133,7 +131,7 @@ fun DailyEventsFilterBottomSheet(
 
             EventFilterFooter(
                 resultCount = uiState.filteredItemCount,
-                isLoggedIn = uiState.isLoggedIn,
+                isCountLoading = uiState.isFilterCountLoading,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply

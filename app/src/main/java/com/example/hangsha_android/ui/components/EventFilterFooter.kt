@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,10 +27,9 @@ import com.example.hangsha_android.ui.theme.PureWhite
 private val FilterActionGray = Color(0xFFE1E1DF)
 
 @Composable
-// 하단 초기화 버튼과 적용 버튼
 fun EventFilterFooter(
-    resultCount: Int,
-    isLoggedIn: Boolean,
+    resultCount: Int?,
+    isCountLoading: Boolean,
     isLoading: Boolean,
     onClear: () -> Unit,
     onApply: () -> Unit
@@ -75,9 +75,21 @@ fun EventFilterFooter(
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text(
-                    text = if (isLoggedIn) "행사 보기" else "${resultCount}개의 행사 보기"
-                )
+                if (isCountLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("행사 보기")
+                } else {
+                    Text(
+                        text = resultCount
+                            ?.let { count -> "${count}개의 행사 보기" }
+                            ?: "행사 보기"
+                    )
+                }
             }
         }
     }

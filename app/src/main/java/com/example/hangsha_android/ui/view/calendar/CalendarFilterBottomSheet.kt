@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,8 +49,6 @@ fun CalendarFilterBottomSheet(
     uiState: CalendarUiState,
     onDismiss: () -> Unit,
     onSelectTab: (CalendarFilterTab) -> Unit,
-    onBookmarkedOnlyChange: (Boolean) -> Unit,
-    onInterestedOnlyChange: (Boolean) -> Unit,
     onToggleOrgId: (Long) -> Unit,
     onToggleStatus: (Long) -> Unit,
     onToggleEventType: (Long) -> Unit,
@@ -87,19 +84,6 @@ fun CalendarFilterBottomSheet(
             ) {
                 when (uiState.selectedFilterTab) {
                     CalendarFilterTab.EVENT_TYPE -> {
-                        /**
-                        FilterSwitchRow(
-                            title = "북마크만",
-                            checked = draft.bookmarkedOnly,
-                            onCheckedChange = onBookmarkedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        FilterSwitchRow(
-                            title = "관심 일정만",
-                            checked = draft.interestedOnly,
-                            onCheckedChange = onInterestedOnlyChange
-                        )
-                        Spacer(modifier = Modifier.height(18.dp)) **/
                         // 행사 종류 탭
                         EventTypeSection(
                             selected = draft.eventTypeIds,
@@ -156,7 +140,7 @@ fun CalendarFilterBottomSheet(
             // 초기화, 필터 버튼
             EventFilterFooter(
                 resultCount = uiState.filteredEventCount,
-                isLoggedIn = uiState.isLoggedIn,
+                isCountLoading = uiState.isFilterCountLoading,
                 isLoading = uiState.isLoading,
                 onClear = onClear,
                 onApply = onApply
@@ -211,29 +195,6 @@ private fun FilterTabRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-// 북마크, 관심 일정 같은 단일 토글 행 UI : 일단 지금은 삭제한 상태.
-private fun FilterSwitchRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
     }
 }
 

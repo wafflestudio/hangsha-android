@@ -3,6 +3,7 @@ package com.example.hangsha_android.data.repository
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.model.DayEventsResponse
+import com.example.hangsha_android.data.network.model.EventCountResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.EventSearchResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
@@ -33,8 +34,6 @@ class EventRepository @Inject constructor(
         return eventApi.getEvents(
             from = range.from.toString(),
             to = range.to.toString(),
-            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it && isLoggedIn() },
-            interestedOnly = filters.interestedOnly.takeIf { it },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
@@ -56,8 +55,6 @@ class EventRepository @Inject constructor(
     ): Response<DayEventsResponse> {
         return eventApi.getDayEvents(
             date = date.toString(),
-            bookmarkedOnly = filters.bookmarkedOnly.takeIf { it && isLoggedIn() },
-            interestedOnly = filters.interestedOnly.takeIf { it },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
@@ -65,6 +62,34 @@ class EventRepository @Inject constructor(
         )
     }
 
+
+    suspend fun getEventCount(
+        range: EventDateRange,
+        filters: CalendarFilterState
+    ): Response<EventCountResponse> {
+        return eventApi.getEventCount(
+            from = range.from.toString(),
+            to = range.to.toString(),
+            statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
+            eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
+            orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
+            applyExcludeKeywords = true
+        )
+    }
+
+    suspend fun getDayEventCount(
+        date: LocalDate,
+        filters: DailyEventsFilterState
+    ): Response<EventCountResponse> {
+        return eventApi.getEventCount(
+            from = date.toString(),
+            to = date.toString(),
+            statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
+            eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
+            orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
+            applyExcludeKeywords = true
+        )
+    }
     suspend fun searchEvents(
         query: String,
         page: Int,

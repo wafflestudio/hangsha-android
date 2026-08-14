@@ -2,6 +2,7 @@ package com.example.hangsha_android.ui.view.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.network.model.EventCountResponse
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
@@ -17,13 +18,16 @@ import java.net.UnknownHostException
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import retrofit2.HttpException
 import retrofit2.Response
 
@@ -37,13 +41,12 @@ class CalendarViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        CalendarUiState(
-            isLoggedIn = bookmarkRepository.isLoggedIn()
-        )
+        CalendarUiState()
     )
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var filterCountJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -148,15 +151,19 @@ class CalendarViewModel @Inject constructor(
                 excludeKeywordInput = ""
             )
         }
+        requestFilterCount()
     }
 
     fun dismissFilterSheet() {
+        filterCountJob?.cancel()
         _uiState.update {
             it.copy(
                 isFilterSheetVisible = false,
                 draftFilters = it.appliedFilters,
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = ""
+                excludeKeywordInput = "",
+                filteredEventCount = null,
+                isFilterCountLoading = false
             )
         }
     }
@@ -168,25 +175,10 @@ class CalendarViewModel @Inject constructor(
                 excludeKeywordInput = ""
             )
         }
+        requestFilterCount()
     }
     fun selectFilterTab(tab: CalendarFilterTab) {
         _uiState.update { it.copy(selectedFilterTab = tab) }
-    }
-
-    fun setDraftBookmarkedOnly(enabled: Boolean) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(bookmarkedOnly = enabled)
-            )
-        }
-    }
-
-    fun setDraftInterestedOnly(enabled: Boolean) {
-        _uiState.update {
-            it.copy(
-                draftFilters = it.draftFilters.copy(interestedOnly = enabled)
-            )
-        }
     }
 
     fun toggleDraftOrgId(orgId: Long) {
@@ -197,6 +189,7 @@ class CalendarViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
 
     fun toggleDraftStatus(statusId: Long) {
@@ -207,6 +200,7 @@ class CalendarViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
 
     fun toggleDraftEventType(eventTypeId: Long) {
@@ -217,8 +211,8 @@ class CalendarViewModel @Inject constructor(
                 )
             )
         }
+        requestFilterCount()
     }
-
     fun updateExcludeKeywordInput(value: String) {
         _uiState.update { it.copy(excludeKeywordInput = value) }
     }
@@ -254,6 +248,7 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun applyDraftFilters() {
+        filterCountJob?.cancel()
         val state = _uiState.value
         val appliedFilters = state.draftFilters
         _uiState.update {
@@ -264,6 +259,8 @@ class CalendarViewModel @Inject constructor(
                 selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
                 excludeKeywordInput = "",
                 isFilterSheetVisible = false,
+                filteredEventCount = null,
+                isFilterCountLoading = false,
                 errorMessage = null
             )
         }
@@ -273,7 +270,66 @@ class CalendarViewModel @Inject constructor(
             hasAppliedServerFilters = true
         )
     }
+    private fun requestFilterCount() {
+        val state = _uiState.value
+        if (!state.isFilterSheetVisible) return
 
+        val month = state.currentMonth
+        val filters = state.draftFilters
+        filterCountJob?.cancel()
+        _uiState.update {
+            it.copy(
+                filteredEventCount = null,
+                isFilterCountLoading = true
+            )
+        }
+
+        filterCountJob = viewModelScope.launch {
+            try {
+                delay(FILTER_COUNT_DEBOUNCE_MS)
+                val count = withTimeout(FILTER_COUNT_TIMEOUT_MS) {
+                    eventRepository.getEventCount(
+                        range = EventDateRange(
+                            from = month.atDay(1),
+                            to = month.atEndOfMonth()
+                        ),
+                        filters = filters
+                    ).requireCount()
+                }
+                _uiState.update { current ->
+                    if (
+                        current.isFilterSheetVisible &&
+                        current.currentMonth == month &&
+                        current.draftFilters == filters
+                    ) {
+                        current.copy(
+                            filteredEventCount = count,
+                            isFilterCountLoading = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                _uiState.update { current ->
+                    if (
+                        current.isFilterSheetVisible &&
+                        current.currentMonth == month &&
+                        current.draftFilters == filters
+                    ) {
+                        current.copy(
+                            filteredEventCount = null,
+                            isFilterCountLoading = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+            }
+        }
+    }
     // 현재 월의 전체 source 데이터를 먼저 가져오고,
     // 그다음 화면 표시용 데이터만 분기해서 구성한다.
     private fun loadMonth(
@@ -347,8 +403,7 @@ class CalendarViewModel @Inject constructor(
                         it.copy(
                             filterSourceEventsByDate = filterSourceEventsByDate,
                             eventsByDate = visibleEventsByDate.applyFilters(
-                                filters = filters,
-                                applyExcludedKeywords = !_uiState.value.isLoggedIn
+                                filters = filters
                             ),
                             availableFilterOptions = result.filterOptions,
                             isLoading = false,
@@ -456,14 +511,14 @@ class CalendarViewModel @Inject constructor(
             hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
             preserveFilterSheetState = true
         )
+        requestFilterCount()
     }
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
             val filterSourceEventsByDate = it.filterSourceEventsByDate.withBookmarkState(eventIds)
             val eventsByDate = it.eventsByDate.withBookmarkState(eventIds)
                 .applyFilters(
-                    filters = it.appliedFilters,
-                    applyExcludedKeywords = !it.isLoggedIn
+                    filters = it.appliedFilters
                 )
 
             it.copy(
@@ -561,6 +616,14 @@ private fun List<CalendarEvent>.withStablePriority(
         .map { it.value }
 }
 
+private fun Response<EventCountResponse>.requireCount(): Int {
+    if (!isSuccessful) {
+        throw HttpException(this)
+    }
+
+    return body()?.count?.coerceAtLeast(0)
+        ?: throw IllegalStateException("Event count response was empty.")
+}
 private fun Response<MonthlyEventsResponse>.requireBody(
     emptyMessage: String
 ): MonthlyEventsResponse {
@@ -578,3 +641,6 @@ private fun <T> Set<T>.toggle(value: T): Set<T> {
         this + value
     }
 }
+
+private const val FILTER_COUNT_DEBOUNCE_MS = 300L
+private const val FILTER_COUNT_TIMEOUT_MS = 3_000L

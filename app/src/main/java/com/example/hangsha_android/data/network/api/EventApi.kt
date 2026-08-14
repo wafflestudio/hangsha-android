@@ -1,6 +1,7 @@
 package com.example.hangsha_android.data.network.api
 
 import com.example.hangsha_android.data.network.model.DayEventsResponse
+import com.example.hangsha_android.data.network.model.EventCountResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.EventSearchResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
@@ -16,8 +17,6 @@ interface EventApi {
     suspend fun getEvents(
         @Query("from") from: String,
         @Query("to") to: String,
-        @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
-        @Query("interestedOnly") interestedOnly: Boolean? = null,
         @Query("orgId") orgId: List<Long>? = null,
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,
@@ -27,14 +26,22 @@ interface EventApi {
     @GET("api/v1/events/day")
     suspend fun getDayEvents(
         @Query("date") date: String,
-        @Query("bookmarkedOnly") bookmarkedOnly: Boolean? = null,
-        @Query("interestedOnly") interestedOnly: Boolean? = null,
         @Query("orgId") orgId: List<Long>? = null,
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,
         @Query("excludedKeywords") excludedKeywords: List<String>? = null
     ): Response<DayEventsResponse>
 
+
+    @GET("api/v1/events/count")
+    suspend fun getEventCount(
+        @Query("from") from: String,
+        @Query("to") to: String,
+        @Query("statusId") statusId: List<Long>? = null,
+        @Query("eventTypeId") eventTypeId: List<Long>? = null,
+        @Query("orgId") orgId: List<Long>? = null,
+        @Query("applyExcludeKeywords") applyExcludeKeywords: Boolean = true
+    ): Response<EventCountResponse>
     @GET("api/v1/events/search")
     suspend fun searchEvents(
         @Query("query") query: String,

@@ -3,17 +3,13 @@ package com.example.hangsha_android.ui.view.dailyevents
 import com.example.hangsha_android.data.repository.model.RECRUITING_STATUS_ID
 
 data class DailyEventsFilterState(
-    val bookmarkedOnly: Boolean = false,
-    val interestedOnly: Boolean = false,
     val orgIds: Set<Long> = emptySet(),
     val statusIds: Set<Long> = setOf(RECRUITING_STATUS_ID),
     val eventTypeIds: Set<Long> = emptySet(),
     val excludedKeywords: List<String> = emptyList()
 ) {
     val hasActiveFilters: Boolean
-        get() = bookmarkedOnly ||
-            interestedOnly ||
-            orgIds.isNotEmpty() ||
+        get() = orgIds.isNotEmpty() ||
             statusIds.isNotEmpty() ||
             eventTypeIds.isNotEmpty() ||
             excludedKeywords.isNotEmpty()
