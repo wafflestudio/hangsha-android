@@ -28,7 +28,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksScreen
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksViewModel
-import com.example.hangsha_android.ui.view.bookmarks.GuestBookmarksViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
@@ -39,8 +38,6 @@ import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
-import com.example.hangsha_android.ui.view.mypage.GuestMyPageScreen
-import com.example.hangsha_android.ui.view.guest.GuestMyPageViewModel
 import com.example.hangsha_android.ui.view.guest.LoginRequiredScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityScreen
 import com.example.hangsha_android.ui.view.interestpriority.InterestPriorityViewModel
@@ -499,6 +496,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) {
             val dailyEventsViewModel: DailyEventsViewModel = hiltViewModel()
             val dailyEventsUiState by dailyEventsViewModel.uiState.collectAsState()
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
             val previousSavedStateHandle = navController.previousBackStackEntry?.savedStateHandle
             val initialDailyFilters = previousSavedStateHandle?.toDailyEventsFilterState()
             val initialHasAppliedServerFilters = previousSavedStateHandle
@@ -524,6 +523,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             DailyEventsScreen(
                 uiState = dailyEventsUiState,
+                showBookmarkAction = isLoggedIn,
                 onPreviousDayClick = { dailyEventsViewModel.showPreviousDay() },
                 onNextDayClick = { dailyEventsViewModel.showNextDay() },
                 onOpenFilterClick = { dailyEventsViewModel.openFilterSheet() },
@@ -545,7 +545,13 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
-                onBookmarkClick = { eventId -> dailyEventsViewModel.toggleBookmark(eventId) }
+                onBookmarkClick = { eventId ->
+                    if (isLoggedIn) {
+                        dailyEventsViewModel.toggleBookmark(eventId)
+                    } else {
+                        navController.navigateToLoginFromMain()
+                    }
+                }
             )
         }
         composable(
@@ -558,6 +564,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) {
             val eventDetailViewModel: EventDetailViewModel = hiltViewModel()
             val eventDetailUiState by eventDetailViewModel.uiState.collectAsState()
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
             val context = LocalContext.current
 
             LaunchedEffect(eventDetailUiState.memoSaveMessage) {
@@ -573,15 +581,26 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             EventDetailScreen(
                 uiState = eventDetailUiState,
+                showMemberFeatures = isLoggedIn,
                 onNavigateBack = { navController.popBackStack() },
                 onBookmarkClick = {
-                    navController.previousBackStackEntry?.savedStateHandle?.set(
-                        MyBookmarksNavigationKeys.bookmarkChangedKey,
-                        true
-                    )
-                    eventDetailViewModel.toggleBookmark()
+                    if (isLoggedIn) {
+                        navController.previousBackStackEntry?.savedStateHandle?.set(
+                            MyBookmarksNavigationKeys.bookmarkChangedKey,
+                            true
+                        )
+                        eventDetailViewModel.toggleBookmark()
+                    } else {
+                        navController.navigateToLoginFromMain()
+                    }
                 },
-                onMemoClick = { eventDetailViewModel.openMemoEditor() },
+                onMemoClick = {
+                    if (isLoggedIn) {
+                        eventDetailViewModel.openMemoEditor()
+                    } else {
+                        navController.navigateToLoginFromMain()
+                    }
+                },
                 onMemoContentChanged = { value ->
                     eventDetailViewModel.onMemoContentChanged(value)
                 },
@@ -600,7 +619,18 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             )
         }
         composable(BottomTab.Timetable.route) {
-            TimetableScreen()
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
+            if (isLoggedIn) {
+                TimetableScreen()
+            } else {
+                LoginRequiredScreen(
+                    title = "\uC2DC\uAC04\uD45C\uB294 \uB85C\uADF8\uC778 \uD6C4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+                    message = "\uC2DC\uAC04\uD45C\uC640 \uC218\uC5C5 \uC815\uBCF4\uB294 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.navigateToCalendarTab() }
+                )
+            }
         }
         composable(BottomTab.Memos.route) {
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
@@ -631,27 +661,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
             if (!isLoggedIn) {
-                val guestBookmarksViewModel: GuestBookmarksViewModel = hiltViewModel()
-                val guestBookmarksUiState by guestBookmarksViewModel.uiState.collectAsState()
-
-                BookmarksScreen(
-                    uiState = guestBookmarksUiState,
-                    onNavigateBack = { navController.popBackStack() },
-                    onEventClick = { eventId ->
-                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                    },
-                    onBookmarkClick = { eventId ->
-                        guestBookmarksViewModel.removeBookmark(eventId)
-                    },
-                    onRetryClick = { guestBookmarksViewModel.retry() },
-                    onLoadNextPage = { guestBookmarksViewModel.loadNextPage() },
-                    onScrollPositionChanged = { index, offset, itemId ->
-                        guestBookmarksViewModel.saveScrollPosition(
-                            firstVisibleItemIndex = index,
-                            firstVisibleItemOffset = offset,
-                            firstVisibleItemId = itemId
-                        )
-                    }
+                LoginRequiredScreen(
+                    title = "\uCC1C\uD55C \uD589\uC0AC\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+                    message = "\uCC1C\uD55C \uD589\uC0AC\uB294 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.popBackStack() }
                 )
             } else {
                 val bookmarksViewModel: BookmarksViewModel = hiltViewModel()
@@ -710,10 +724,22 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             }
         }
         composable(HangshaDestinations.MyMemos.route) {
-            MyMemosRoute(
-                navController = navController,
-                onNavigateBack = { navController.popBackStack() }
-            )
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
+
+            if (isLoggedIn) {
+                MyMemosRoute(
+                    navController = navController,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            } else {
+                LoginRequiredScreen(
+                    title = "\uBA54\uBAA8\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+                    message = "\uD589\uC0AC\uC5D0 \uC791\uC131\uD55C \uBA54\uBAA8\uAC00 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    onLoginClick = { navController.navigateToLoginFromMain() },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
         }
         composable(
             route = HangshaDestinations.InterestPriority.route,
@@ -780,33 +806,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
 
             if (!isLoggedIn) {
-                val guestMyPageViewModel: GuestMyPageViewModel = hiltViewModel()
-                val guestMyPageUiState by guestMyPageViewModel.uiState.collectAsState()
-
-                GuestMyPageScreen(
-                    uiState = guestMyPageUiState,
+                LoginRequiredScreen(
+                    title = "\uB9C8\uC774\uD398\uC774\uC9C0\uB294 \uB85C\uADF8\uC778 \uD6C4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+                    message = "\uACC4\uC815 \uC815\uBCF4\uC640 \uAC1C\uC778 \uC800\uC7A5 \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD574 \uC8FC\uC138\uC694.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
-                    onTimetableClick = {
-                        navController.navigate(BottomTab.Timetable.route) {
-                            popUpTo(HangshaDestinations.Main.route) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onBookmarksClick = {
-                        navController.navigate(HangshaDestinations.MyBookmarks.route)
-                    },
-                    onBookmarkedEventClick = { eventId ->
-                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                    },
-                    onMemoListClick = {
-                        navController.navigate(HangshaDestinations.MyMemos.route)
-                    },
-                    onMemoEventClick = { eventId ->
-                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                    }
+                    onNavigateBack = { navController.navigateToCalendarTab() }
                 )
             } else {
                 val myPageViewModel: MyPageViewModel = hiltViewModel()
@@ -932,6 +936,15 @@ private fun NavHostController.navigateToSignUpFromMain() {
         launchSingleTop = true
     }
 }
+
+private fun NavHostController.navigateToCalendarTab() {
+    navigate(BottomTab.Calendar.route) {
+        popUpTo(HangshaDestinations.Main.route) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
 private object CalendarFilterNavigationKeys {
     const val orgIdsKey = "calendar_org_ids"
     const val statusIdsKey = "calendar_status_ids"

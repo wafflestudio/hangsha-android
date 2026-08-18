@@ -1,7 +1,5 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
-import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
-
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -138,8 +136,7 @@ class DailyEventsViewModel @Inject constructor(
             runCatching {
                 bookmarkRepository.setBookmark(
                     eventId = eventId,
-                    isBookmarked = shouldBookmark,
-                    guestSnapshot = if (shouldBookmark) targetItem.toGuestBookmarkSnapshot() else null
+                    isBookmarked = shouldBookmark
                 )
             }.onFailure { error ->
                 _uiState.update { state ->
@@ -632,18 +629,6 @@ private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     )
 }
 
-private fun DailyEventItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapshot {
-    return StoredGuestBookmarkSnapshot(
-        eventId = id,
-        title = title,
-        imageUrl = imageUrl,
-        organization = organization,
-        dDayLabel = dDayLabel,
-        applyPeriodDisplay = applyPeriodDisplay,
-        eventTypeId = eventTypeId,
-        updatedAt = OffsetDateTime.now().toString()
-    )
-}
 private fun List<DailyEventItem>.withBookmarkState(
     bookmarkedEventIds: Set<Long>
 ): List<DailyEventItem> {

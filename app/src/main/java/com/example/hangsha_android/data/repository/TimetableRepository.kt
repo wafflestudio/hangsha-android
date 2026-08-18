@@ -1,7 +1,6 @@
 package com.example.hangsha_android.data.repository
 
 import com.example.hangsha_android.data.local.AuthTokenStorage
-import com.example.hangsha_android.data.local.GuestTimetableLocalDataSource
 import com.example.hangsha_android.data.network.api.TimetableApi
 import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollRequest
 import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
@@ -16,12 +15,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.Response
 
 @Singleton
 class TimetableRepository @Inject constructor(
     private val timetableApi: TimetableApi,
-    private val localDataSource: GuestTimetableLocalDataSource,
     private val authTokenStorage: AuthTokenStorage
 ) {
     suspend fun getTimetables(
@@ -29,12 +28,7 @@ class TimetableRepository @Inject constructor(
         semester: String
     ): Response<TimetableListResponse> {
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.getTimetables(
-                    year = year,
-                    semester = semester
-                )
-            )
+            return unauthorizedResponse()
         }
 
         return timetableApi.getTimetables(
@@ -49,13 +43,7 @@ class TimetableRepository @Inject constructor(
         semester: String
     ): Response<TimetableResponse> {
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.createTimetable(
-                    name = name,
-                    year = year,
-                    semester = semester
-                )
-            )
+            return unauthorizedResponse()
         }
 
         return timetableApi.createTimetable(
@@ -73,12 +61,7 @@ class TimetableRepository @Inject constructor(
     ): Response<TimetableResponse> {
         val normalizedName = name.trim()
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.updateTimetableName(
-                    timetableId = timetableId,
-                    name = normalizedName
-                )
-            )
+            return unauthorizedResponse()
         }
 
         return timetableApi.updateTimetable(
@@ -89,8 +72,7 @@ class TimetableRepository @Inject constructor(
 
     suspend fun deleteTimetable(timetableId: Long): Response<Unit> {
         if (!isLoggedIn()) {
-            localDataSource.deleteTimetable(timetableId)
-            return Response.success(Unit)
+            return unauthorizedResponse()
         }
 
         return timetableApi.deleteTimetable(timetableId = timetableId)
@@ -98,7 +80,7 @@ class TimetableRepository @Inject constructor(
 
     suspend fun getEnrolls(timetableId: Long): Response<TimetableEnrollListResponse> {
         if (!isLoggedIn()) {
-            return Response.success(localDataSource.getEnrolls(timetableId = timetableId))
+            return unauthorizedResponse()
         }
 
         return timetableApi.getEnrolls(timetableId = timetableId)
@@ -109,12 +91,7 @@ class TimetableRepository @Inject constructor(
         enrollId: Long
     ): Response<TimetableEnrollResponse> {
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.getEnroll(
-                    timetableId = timetableId,
-                    enrollId = enrollId
-                )
-            )
+            return unauthorizedResponse()
         }
 
         return timetableApi.getEnroll(
@@ -146,12 +123,7 @@ class TimetableRepository @Inject constructor(
         )
 
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.createCustomEnroll(
-                    timetableId = timetableId,
-                    request = request
-                )
-            )
+            return unauthorizedResponse()
         }
 
         return timetableApi.createCustomEnroll(
@@ -167,13 +139,7 @@ class TimetableRepository @Inject constructor(
         request: UpdateCustomTimetableEnrollRequest
     ): Response<TimetableEnrollResponse> {
         if (!isLoggedIn()) {
-            return Response.success(
-                localDataSource.updateCustomEnroll(
-                    timetableId = timetableId,
-                    enrollId = enrollId,
-                    request = request
-                )
-            )
+            return unauthorizedResponse()
         }
 
         val requestBody = request.toJsonObject()
@@ -191,11 +157,7 @@ class TimetableRepository @Inject constructor(
         enrollId: Long
     ): Response<Unit> {
         if (!isLoggedIn()) {
-            localDataSource.deleteEnroll(
-                timetableId = timetableId,
-                enrollId = enrollId
-            )
-            return Response.success(Unit)
+            return unauthorizedResponse()
         }
 
         return timetableApi.deleteEnroll(
@@ -206,6 +168,10 @@ class TimetableRepository @Inject constructor(
 
     private fun isLoggedIn(): Boolean {
         return authTokenStorage.hasAuthenticatedUser()
+    }
+
+    private fun <T> unauthorizedResponse(): Response<T> {
+        return Response.error(401, "".toResponseBody(null))
     }
 }
 

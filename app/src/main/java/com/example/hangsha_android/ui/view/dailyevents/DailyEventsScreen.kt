@@ -76,7 +76,8 @@ fun DailyEventsScreen(
     onClearFilters: () -> Unit,
     onRetryClick: () -> Unit,
     onEventClick: (Long) -> Unit,
-    onBookmarkClick: (Long) -> Unit
+    onBookmarkClick: (Long) -> Unit,
+    showBookmarkAction: Boolean
 ) {
     if (uiState.isFilterSheetVisible) {
         DailyEventsFilterBottomSheet(
@@ -143,7 +144,8 @@ fun DailyEventsScreen(
                                 item = item,
                                 organizationNames = uiState.organizationNames,
                                 onClick = { onEventClick(item.id) },
-                                onBookmarkClick = { onBookmarkClick(item.id) }
+                                onBookmarkClick = { onBookmarkClick(item.id) },
+                                showBookmarkAction = showBookmarkAction
                             )
                         }
                     }
@@ -287,7 +289,8 @@ private fun DailyEventCard(
     item: DailyEventItem,
     organizationNames: Map<Long, String>,
     onClick: () -> Unit,
-    onBookmarkClick: () -> Unit
+    onBookmarkClick: () -> Unit,
+    showBookmarkAction: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -338,19 +341,21 @@ private fun DailyEventCard(
             )
         }
 
-        Icon(
-            imageVector = if (item.isBookmarked) {
-                Icons.Rounded.Bookmark
-            } else {
-                Icons.Rounded.BookmarkBorder
-            },
-            contentDescription = "\uBD81\uB9C8\uD06C",
-            tint = DailyBookmarkTint,
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .size(32.dp)
-                .clickable(onClick = onBookmarkClick)
-        )
+        if (showBookmarkAction) {
+            Icon(
+                imageVector = if (item.isBookmarked) {
+                    Icons.Rounded.Bookmark
+                } else {
+                    Icons.Rounded.BookmarkBorder
+                },
+                contentDescription = "\uBD81\uB9C8\uD06C",
+                tint = DailyBookmarkTint,
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .size(32.dp)
+                    .clickable(onClick = onBookmarkClick)
+            )
+        }
     }
 }
 

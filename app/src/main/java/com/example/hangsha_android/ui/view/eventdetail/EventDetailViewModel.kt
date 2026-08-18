@@ -1,7 +1,5 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
-import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
-
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -79,8 +77,7 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 bookmarkRepository.setBookmark(
                     eventId = currentItem.id,
-                    isBookmarked = shouldBookmark,
-                    guestSnapshot = if (shouldBookmark) currentItem.toGuestBookmarkSnapshot() else null
+                    isBookmarked = shouldBookmark
                 )
             }.onFailure { error ->
                 _uiState.update { currentState ->
@@ -253,8 +250,7 @@ class EventDetailViewModel @Inject constructor(
                     memoRepository.createMemo(
                         eventId = currentItem.id,
                         content = content,
-                        tagNames = tagNames,
-                        eventTitle = currentItem.title
+                        tagNames = tagNames
                     ).requireBody("Memo response was empty.")
                 } else if (content.isBlank() && tagNames.isEmpty()) {
                     val response = memoRepository.deleteMemo(savedMemo.id)
@@ -482,18 +478,6 @@ private const val BUG_REPORT_CONTENT_MAX_LENGTH = 1_000
 private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
-private fun EventDetailItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapshot {
-    return StoredGuestBookmarkSnapshot(
-        eventId = id,
-        title = title,
-        imageUrl = imageUrl,
-        organization = organization,
-        dDayLabel = dDayLabel,
-        applyPeriodDisplay = applyPeriodDisplay,
-        eventTypeId = 0L,
-        updatedAt = OffsetDateTime.now().toString()
-    )
-}
 private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
     return EventDetailMemo(
         id = id,
