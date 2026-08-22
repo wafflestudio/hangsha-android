@@ -8,9 +8,9 @@ data class UserProfileResponse(
     @SerializedName("id")
     val id: Long,
     @SerializedName("username")
-    val username: String,
+    val username: String?,
     @SerializedName("email")
-    val email: String,
+    val email: String?,
     @SerializedName("profileImageUrl")
     val profileImageUrl: String?,
     @SerializedName("interestCategories")

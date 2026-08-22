@@ -155,8 +155,8 @@ class UpdateCustomTimetableEnrollRequest private constructor(
 
 data class UpdateCustomTimetableEnrollTimeSlotRequest(
     val dayOfWeek: String,
-    val startAt: String,
-    val endAt: String
+    val startAt: Int,
+    val endAt: Int
 )
 
 sealed interface TimetableEnrollPatchValue<out T> {

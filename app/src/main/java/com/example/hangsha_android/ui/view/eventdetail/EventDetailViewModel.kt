@@ -10,6 +10,8 @@ import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -335,10 +337,12 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 val response = eventRepository.getEventDetail(eventId)
                     .requireBody("Event detail response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(
-                    remoteBookmarks = mapOf(response.id to response.isBookmarked),
-                    sourceUserId = sourceUserId
-                )
+                response.isBookmarked?.let { isBookmarked ->
+                    bookmarkRepository.syncKnownRemoteBookmarks(
+                        remoteBookmarks = mapOf(response.id to isBookmarked),
+                        sourceUserId = sourceUserId
+                    )
+                }
                 response.toEventDetailItem(
                     bookmarkedEventIds = bookmarkRepository.currentBookmarkedEventIds()
                 )
@@ -492,7 +496,7 @@ private fun EventDetailResponse.toEventDetailItem(
 ): EventDetailItem {
     val applyEndDate = parseEventDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
         when {
             diff == 0L -> "D-DAY"
             diff > 0L -> "D-$diff"
@@ -537,7 +541,7 @@ private fun parseEventDate(value: String?): LocalDate? {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }

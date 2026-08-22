@@ -23,6 +23,6 @@ data class SearchEventItem(
     val organization: String?,
     val eventDateDisplay: String,
     val dDayLabel: String,
-    val eventTypeId: Long,
+    val eventTypeId: Long?,
     val eventTypeLabel: String
 )

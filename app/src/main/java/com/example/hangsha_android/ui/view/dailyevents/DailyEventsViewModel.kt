@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -10,6 +12,7 @@ import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
+import com.example.hangsha_android.data.repository.model.CategoryType
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -49,7 +52,7 @@ class DailyEventsViewModel @Inject constructor(
         DailyEventsUiState(
             selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-                ?: LocalDate.now()
+                ?: currentHangshaDate()
         )
     )
     val uiState: StateFlow<DailyEventsUiState> = _uiState.asStateFlow()
@@ -95,6 +98,11 @@ class DailyEventsViewModel @Inject constructor(
                         )
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            categoryRepository.loadedCategoryTypes.collect { loadedTypes ->
+                normalizeFiltersForLoadedCatalog(loadedTypes)
             }
         }
         viewModelScope.launch {
@@ -168,7 +176,7 @@ class DailyEventsViewModel @Inject constructor(
 
         val initialFilters = (filters ?: _uiState.value.appliedFilters).copy(
             excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
-        )
+        ).normalizedAgainstCatalog(categoryRepository.loadedCategoryTypes.value)
         val initialHasAppliedServerFilters =
             initialFilters.hasActiveFilters
 
@@ -399,35 +407,15 @@ class DailyEventsViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             val sourceUserId = bookmarkRepository.currentUserId()
             runCatching {
-                val sourceResponse = eventRepository.getAllDayEvents(date)
-                val sourceItems = sourceResponse
-                    .requireBody("Daily events response was empty.")
-                    .items
+                val response = eventRepository.getDayEvents(date, filters)
+                val visibleItems = response.items
                     .orEmpty()
                     .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap(), sourceUserId) }
                     .toDailyEventItems()
                 val filterOptions = buildFilterOptions()
-                val visibleItems = if (hasAppliedServerFilters) {
-                    val filteredResponses = eventRepository.getDayEvents(date, filters)
-                        .requireBody("Filtered daily events response was empty.")
-                        .items
-                        .orEmpty()
-                    bookmarkRepository.syncKnownRemoteBookmarks(filteredResponses.toBookmarkMap(), sourceUserId)
-                    filteredResponses.toDailyEventItems()
-                } else {
-                    val prioritizedResponses = eventRepository.getDayEvents(
-                        date = date,
-                        filters = DailyEventsFilterState()
-                    ).requireBody("Prioritized daily events response was empty.")
-                        .items
-                        .orEmpty()
-                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedResponses.toBookmarkMap(), sourceUserId)
-                    val prioritizedItems = prioritizedResponses.toDailyEventItems()
-                    sourceItems.reorderedBy(prioritizedItems)
-                }
 
                 DailyEventsLoadResult(
-                    filterSourceItems = sourceItems,
+                    filterSourceItems = visibleItems,
                     visibleItems = visibleItems,
                     filterOptions = filterOptions
                 )
@@ -568,6 +556,51 @@ class DailyEventsViewModel @Inject constructor(
             )
         }
     }
+
+    private fun normalizeFiltersForLoadedCatalog(loadedTypes: Set<CategoryType>) {
+        val state = _uiState.value
+        val applied = state.appliedFilters.normalizedAgainstCatalog(loadedTypes)
+        val draft = state.draftFilters.normalizedAgainstCatalog(loadedTypes)
+        if (applied == state.appliedFilters && draft == state.draftFilters) return
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = applied,
+                draftFilters = draft,
+                hasAppliedServerFilters = applied.hasActiveFilters
+            )
+        }
+        if (hasInitialized) {
+            loadDate(
+                date = state.selectedDate,
+                filters = applied,
+                hasAppliedServerFilters = applied.hasActiveFilters,
+                preserveFilterSheetState = true
+            )
+        }
+    }
+
+    private fun DailyEventsFilterState.normalizedAgainstCatalog(
+        loadedTypes: Set<CategoryType>
+    ): DailyEventsFilterState {
+        return copy(
+            orgIds = if (CategoryType.ORGANIZATION in loadedTypes) {
+                orgIds intersect categoryRepository.organizations.value.map { it.key.id }.toSet()
+            } else {
+                orgIds
+            },
+            statusIds = if (CategoryType.EVENT_STATUS in loadedTypes) {
+                statusIds intersect categoryRepository.eventStatuses.value.map { it.key.id }.toSet()
+            } else {
+                statusIds
+            },
+            eventTypeIds = if (CategoryType.EVENT_TYPE in loadedTypes) {
+                eventTypeIds intersect categoryRepository.eventTypes.value.map { it.key.id }.toSet()
+            } else {
+                eventTypeIds
+            }
+        )
+    }
 }
 
 private data class DailyEventsLoadResult(
@@ -587,14 +620,16 @@ private fun List<EventSummaryResponse>.toDailyEventItems(): List<DailyEventItem>
 }
 
 private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> {
-    return associate { event -> event.id to event.isBookmarked }
+    return mapNotNull { event ->
+        event.isBookmarked?.let { isBookmarked -> event.id to isBookmarked }
+    }.toMap()
 }
 
 private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
     val eventEndDate = parseEventDate(eventEnd)
     val applyEndDate = parseEventDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
         when {
             diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
@@ -614,8 +649,8 @@ private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
         accentColor = eventTypeColor(eventTypeId),
-        isBookmarked = isBookmarked,
-        isInterested = isInterested,
+        isBookmarked = isBookmarked == true,
+        isInterested = isInterested == true,
         orgId = orgId,
         statusId = statusId,
         eventTypeId = eventTypeId,
@@ -632,29 +667,12 @@ private fun List<DailyEventItem>.withBookmarkState(
     }
 }
 
-private fun List<DailyEventItem>.reorderedBy(
-    prioritizedItems: List<DailyEventItem>
-): List<DailyEventItem> {
-    val prioritizedIds = prioritizedItems
-        .mapIndexed { index, item -> item.id to index }
-        .toMap()
-
-    return withIndex()
-        .sortedWith(
-            compareBy<IndexedValue<DailyEventItem>>(
-                { prioritizedIds[it.value.id] ?: Int.MAX_VALUE },
-                { it.index }
-            )
-        )
-        .map { it.value }
-}
-
 private fun parseEventDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }
@@ -683,7 +701,7 @@ private fun formatEventEnd(value: String?): String? {
     }
 
     return runCatching {
-        OffsetDateTime.parse(value).toLocalDate().format(ItemDateFormatter)
+        OffsetDateTime.parse(value).toHangshaDate().format(ItemDateFormatter)
     }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate().format(ItemDateFormatter) }.getOrElse {
             runCatching { LocalDate.parse(value).format(ItemDateFormatter) }.getOrNull()
@@ -699,16 +717,6 @@ private fun Response<EventCountResponse>.requireCount(): Int {
     return body()?.count?.coerceAtLeast(0)
         ?: throw IllegalStateException("Event count response was empty.")
 }
-private fun Response<com.example.hangsha_android.data.network.model.DayEventsResponse>.requireBody(
-    emptyMessage: String
-): com.example.hangsha_android.data.network.model.DayEventsResponse {
-    if (!isSuccessful) {
-        throw HttpException(this)
-    }
-
-    return body() ?: throw IllegalStateException(emptyMessage)
-}
-
 private fun <T> Set<T>.toggle(value: T): Set<T> {
     return if (value in this) {
         this - value

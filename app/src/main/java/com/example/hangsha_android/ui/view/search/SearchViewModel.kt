@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.search
 
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSearchHighlightResponse
@@ -34,12 +36,14 @@ class SearchViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private var searchJob: Job? = null
+    private var searchGeneration = 0L
 
     fun onInputChanged(value: String) {
         _uiState.update { it.copy(input = value.take(QUERY_MAX_LENGTH)) }
     }
 
     fun clearSearch() {
+        searchGeneration += 1
         searchJob?.cancel()
         _uiState.value = SearchUiState()
     }
@@ -66,20 +70,20 @@ class SearchViewModel @Inject constructor(
 
     private fun loadPage(query: String, page: Int, reset: Boolean) {
         if (reset) searchJob?.cancel()
+        val generation = ++searchGeneration
+        _uiState.update {
+            it.copy(
+                submittedQuery = query,
+                isLoading = reset,
+                isLoadingMore = !reset,
+                hasSearched = true,
+                errorMessage = null,
+                items = if (reset) emptyList() else it.items,
+                total = if (reset) 0 else it.total,
+                page = if (reset) 0 else it.page
+            )
+        }
         searchJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    submittedQuery = query,
-                    isLoading = reset,
-                    isLoadingMore = !reset,
-                    hasSearched = true,
-                    errorMessage = null,
-                    items = if (reset) emptyList() else it.items,
-                    total = if (reset) 0 else it.total,
-                    page = if (reset) 0 else it.page
-                )
-            }
-
             runCatching {
                 val response = eventRepository.searchEvents(
                     query = query,
@@ -93,6 +97,7 @@ class SearchViewModel @Inject constructor(
                     val names = categoryRepository.eventTypeNames.value
                     val mappedItems = response.items.orEmpty().map { it.toSearchEventItem(names) }
                     _uiState.update { current ->
+                        if (generation != searchGeneration) return@update current
                         val items = if (reset) mappedItems else current.items + mappedItems
                         current.copy(
                             items = items.distinctBy(SearchEventItem::id),
@@ -105,8 +110,9 @@ class SearchViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
+                    _uiState.update { current ->
+                        if (generation != searchGeneration) return@update current
+                        current.copy(
                             isLoading = false,
                             isLoadingMore = false,
                             errorMessage = mapSearchErrorMessage(error)
@@ -162,7 +168,9 @@ private fun EventSummaryResponse.toSearchEventItem(
         eventDateDisplay = formatSearchPeriod(eventStart, eventEnd),
         dDayLabel = applyEndDate.toSearchDDay(),
         eventTypeId = eventTypeId,
-        eventTypeLabel = eventTypeNames[eventTypeId] ?: eventTypeLabel(eventTypeId)
+        eventTypeLabel = eventTypeId
+            ?.let(eventTypeNames::get)
+            ?: eventTypeLabel(eventTypeId)
     )
 }
 
@@ -177,7 +185,7 @@ private fun String?.toPlainSearchText(): String? {
 
 private fun LocalDate?.toSearchDDay(): String {
     val target = this ?: return "-"
-    val diff = target.toEpochDay() - LocalDate.now().toEpochDay()
+    val diff = target.toEpochDay() - currentHangshaDate().toEpochDay()
     return when {
         diff == 0L -> "D-DAY"
         diff > 0L -> "D-$diff"
@@ -200,7 +208,7 @@ private fun formatSearchPeriod(startValue: String?, endValue: String?): String {
 
 private fun parseSearchDate(value: String?): LocalDate? {
     if (value.isNullOrBlank()) return null
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }

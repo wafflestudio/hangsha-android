@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import com.example.hangsha_android.util.currentHangshaDate
 import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -103,8 +104,8 @@ private val SemesterOptions = listOf(
     TimetableSemesterOption("FALL", "2\uD559\uAE30"),
     TimetableSemesterOption("WINTER", "\uACA8\uC6B8\uD559\uAE30")
 )
-private val DefaultYear = LocalDate.now().year
-private val DefaultSemester = semesterForMonth(LocalDate.now().monthValue).apiValue
+private val DefaultYear = currentHangshaDate().year
+private val DefaultSemester = semesterForMonth(currentHangshaDate().monthValue).apiValue
 private val WeekdayLabels = listOf("월", "화", "수", "목", "금")
 private val CourseColors = listOf(
     Color(0xFF55B9DC),
@@ -120,7 +121,7 @@ private data class TimetableSemesterOption(
 )
 
 private fun buildYearOptions(): List<Int> {
-    val currentYear = LocalDate.now().year
+    val currentYear = currentHangshaDate().year
     return (currentYear - 2..currentYear + 2).toList()
 }
 

@@ -18,7 +18,7 @@ private val WebFilterBlue = Color(0x260088FF)
 private val WebFilterPurple = Color(0x26A25AFF)
 private val WebFilterPink = Color(0x26FF2D53)
 
-fun eventTypeColor(eventTypeId: Long): Color {
+fun eventTypeColor(eventTypeId: Long?): Color {
     return when (eventTypeId) {
         1L -> WebEventOrange
         2L -> WebEventGold

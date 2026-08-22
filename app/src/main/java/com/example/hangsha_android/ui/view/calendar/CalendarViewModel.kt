@@ -9,6 +9,7 @@ import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
+import com.example.hangsha_android.data.repository.model.CategoryType
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -87,6 +88,11 @@ class CalendarViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            categoryRepository.loadedCategoryTypes.collect { loadedTypes ->
+                normalizeFiltersForLoadedCatalog(loadedTypes)
+            }
+        }
+        viewModelScope.launch {
             excludedKeywordsRepository.excludedKeywords.collect { keywords ->
                 onExcludedKeywordsChanged(keywords)
             }
@@ -121,7 +127,7 @@ class CalendarViewModel @Inject constructor(
     ) {
         val normalizedFilters = filters.copy(
             excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
-        )
+        ).normalizedAgainstCatalog(categoryRepository.loadedCategoryTypes.value)
         val currentState = _uiState.value
         if (
             currentState.appliedFilters == normalizedFilters &&
@@ -368,34 +374,17 @@ class CalendarViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             val sourceUserId = bookmarkRepository.currentUserId()
             runCatching {
-                val sourceResponse = eventRepository.getAllEvents(visibleRange)
-                val sourceBody = sourceResponse.requireBody("Events response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(sourceBody.toBookmarkMap(), sourceUserId)
-                val sourceEventsByDate = sourceBody.toCalendarEventsByDate()
+                val response = eventRepository.getEvents(
+                    range = visibleRange,
+                    filters = filters
+                )
+                val body = response.requireBody("Events response was empty.")
+                bookmarkRepository.syncKnownRemoteBookmarks(body.toBookmarkMap(), sourceUserId)
+                val visibleEventsByDate = body.toCalendarEventsByDate()
                 val filterOptions = buildFilterOptions()
-                val visibleEventsByDate = if (hasAppliedServerFilters) {
-                    val filteredResponse = eventRepository.getEvents(
-                        range = visibleRange,
-                        filters = filters
-                    )
-                    val filteredBody = filteredResponse
-                        .requireBody("Filtered events response was empty.")
-                    bookmarkRepository.syncKnownRemoteBookmarks(filteredBody.toBookmarkMap(), sourceUserId)
-                    filteredBody.toCalendarEventsByDate()
-                } else {
-                    val prioritizedResponse = eventRepository.getEvents(
-                        range = visibleRange,
-                        filters = CalendarFilterState()
-                    )
-                    val prioritizedBody = prioritizedResponse
-                        .requireBody("Prioritized events response was empty.")
-                    bookmarkRepository.syncKnownRemoteBookmarks(prioritizedBody.toBookmarkMap(), sourceUserId)
-                    val prioritizedEventsByDate = prioritizedBody.toCalendarEventsByDate()
-                    sourceEventsByDate.reorderedBy(prioritizedEventsByDate)
-                }
 
                 CalendarMonthLoadResult(
-                    filterSourceEventsByDate = sourceEventsByDate,
+                    filterSourceEventsByDate = visibleEventsByDate,
                     visibleEventsByDate = visibleEventsByDate,
                     filterOptions = filterOptions
                 )
@@ -519,6 +508,49 @@ class CalendarViewModel @Inject constructor(
             )
         }
     }
+
+    private fun normalizeFiltersForLoadedCatalog(loadedTypes: Set<CategoryType>) {
+        val state = _uiState.value
+        val applied = state.appliedFilters.normalizedAgainstCatalog(loadedTypes)
+        val draft = state.draftFilters.normalizedAgainstCatalog(loadedTypes)
+        if (applied == state.appliedFilters && draft == state.draftFilters) return
+
+        _uiState.update {
+            it.copy(
+                appliedFilters = applied,
+                draftFilters = draft,
+                hasAppliedServerFilters = applied.hasActiveFilters
+            )
+        }
+        loadMonth(
+            month = state.currentMonth,
+            filters = applied,
+            hasAppliedServerFilters = applied.hasActiveFilters,
+            preserveFilterSheetState = true
+        )
+    }
+
+    private fun CalendarFilterState.normalizedAgainstCatalog(
+        loadedTypes: Set<CategoryType>
+    ): CalendarFilterState {
+        return copy(
+            orgIds = if (CategoryType.ORGANIZATION in loadedTypes) {
+                orgIds intersect categoryRepository.organizations.value.map { it.key.id }.toSet()
+            } else {
+                orgIds
+            },
+            statusIds = if (CategoryType.EVENT_STATUS in loadedTypes) {
+                statusIds intersect categoryRepository.eventStatuses.value.map { it.key.id }.toSet()
+            } else {
+                statusIds
+            },
+            eventTypeIds = if (CategoryType.EVENT_TYPE in loadedTypes) {
+                eventTypeIds intersect categoryRepository.eventTypes.value.map { it.key.id }.toSet()
+            } else {
+                eventTypeIds
+            }
+        )
+    }
 }
 
 private data class CalendarMonthLoadResult(
@@ -544,7 +576,10 @@ private fun MonthlyEventsResponse.toCalendarEventsByDate(): Map<LocalDate, List<
 private fun MonthlyEventsResponse.toBookmarkMap(): Map<Long, Boolean> {
     return byDate.values
         .flatMap { it.events }
-        .associate { event -> event.id to event.isBookmarked }
+        .mapNotNull { event ->
+            event.isBookmarked?.let { isBookmarked -> event.id to isBookmarked }
+        }
+        .toMap()
 }
 
 private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent {
@@ -568,9 +603,9 @@ private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent
         location = location,
         applyLink = applyLink,
         tags = tags,
-        isInterested = isInterested,
+        isInterested = isInterested == true,
         matchedInterestPriority = matchedInterestPriority,
-        isBookmarked = isBookmarked
+        isBookmarked = isBookmarked == true
         )
 }
 
@@ -582,30 +617,6 @@ private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
             event.copy(isBookmarked = event.id in bookmarkedEventIds)
         }
     }
-}
-
-private fun Map<LocalDate, List<CalendarEvent>>.reorderedBy(
-    prioritizedEventsByDate: Map<LocalDate, List<CalendarEvent>>
-): Map<LocalDate, List<CalendarEvent>> {
-    return entries.associate { (date, events) ->
-        val prioritizedIds = prioritizedEventsByDate[date].orEmpty()
-            .mapIndexed { index, event -> event.id to index }
-            .toMap()
-        date to events.withStablePriority(prioritizedIds)
-    }
-}
-
-private fun List<CalendarEvent>.withStablePriority(
-    prioritizedIds: Map<Long, Int>
-): List<CalendarEvent> {
-    return withIndex()
-        .sortedWith(
-            compareBy<IndexedValue<CalendarEvent>>(
-                { prioritizedIds[it.value.id] ?: Int.MAX_VALUE },
-                { it.index }
-            )
-        )
-        .map { it.value }
 }
 
 private fun Response<EventCountResponse>.requireCount(): Int {

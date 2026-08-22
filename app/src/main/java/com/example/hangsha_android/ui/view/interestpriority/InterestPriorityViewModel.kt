@@ -72,6 +72,13 @@ class InterestPriorityViewModel @Inject constructor(
                         sortOrder = 1,
                         catalog = categoryRepository.organizations.value,
                         interests = visibleInterests
+                    ),
+                    buildGroup(
+                        type = CategoryType.EVENT_STATUS,
+                        name = "행사 상태",
+                        sortOrder = 2,
+                        catalog = categoryRepository.eventStatuses.value,
+                        interests = visibleInterests
                     )
                 )
                 selectedKeys to groups
@@ -228,5 +235,6 @@ private fun buildGroup(
 private const val MAX_INTEREST_PRIORITY_COUNT = 3
 private val VISIBLE_CATEGORY_TYPES = setOf(
     CategoryType.EVENT_TYPE,
-    CategoryType.ORGANIZATION
+    CategoryType.ORGANIZATION,
+    CategoryType.EVENT_STATUS
 )

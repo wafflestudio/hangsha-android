@@ -5,8 +5,8 @@ data class EventSummaryResponse(
     val title: String,
     val imageUrl: String?,
     val operationMode: String?,
-    val statusId: Long,
-    val eventTypeId: Long,
+    val statusId: Long?,
+    val eventTypeId: Long?,
     val orgId: Long?,
     val applyStart: String?,
     val applyEnd: String?,
@@ -19,7 +19,7 @@ data class EventSummaryResponse(
     val location: String?,
     val applyLink: String?,
     val tags: String?,
-    val isInterested: Boolean,
+    val isInterested: Boolean?,
     val matchedInterestPriority: Int?,
-    val isBookmarked: Boolean
+    val isBookmarked: Boolean?
 )

@@ -1,10 +1,11 @@
 package com.example.hangsha_android.ui.view.dailyevents
 
+import com.example.hangsha_android.util.currentHangshaDate
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
 
 data class DailyEventsUiState(
-    val selectedDate: LocalDate = LocalDate.now(),
+    val selectedDate: LocalDate = currentHangshaDate(),
     val filterSourceItems: List<DailyEventItem> = emptyList(),
     val items: List<DailyEventItem> = emptyList(),
     val organizationNames: Map<Long, String> = emptyMap(),
@@ -38,8 +39,8 @@ data class DailyEventItem(
     val isBookmarked: Boolean,
     val isInterested: Boolean,
     val orgId: Long?,
-    val statusId: Long,
-    val eventTypeId: Long,
+    val statusId: Long?,
+    val eventTypeId: Long?,
     val location: String?,
     val tags: String?
 )
@@ -58,7 +59,7 @@ private fun DailyEventItem.matches(
     filters: DailyEventsFilterState
 ): Boolean {
     if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
-    if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
-    if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
+    if (filters.statusIds.isNotEmpty() && (statusId == null || statusId !in filters.statusIds)) return false
+    if (filters.eventTypeIds.isNotEmpty() && (eventTypeId == null || eventTypeId !in filters.eventTypeIds)) return false
     return true
 }

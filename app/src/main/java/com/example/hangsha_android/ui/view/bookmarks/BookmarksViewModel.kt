@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -240,7 +242,7 @@ class BookmarksViewModel @Inject constructor(
 private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val applyEndDate = parseDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
         when {
             diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
@@ -257,7 +259,7 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
         dDayLabel = dDayLabel,
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         organization = organization,
-        isBookmarked = isBookmarked
+        isBookmarked = true
     )
 }
 
@@ -266,7 +268,7 @@ private fun parseDate(value: String?): LocalDate? {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }
