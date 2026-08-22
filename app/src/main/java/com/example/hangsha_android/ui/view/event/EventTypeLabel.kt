@@ -2,14 +2,13 @@ package com.example.hangsha_android.ui.view.event
 
 internal fun eventTypeLabel(eventTypeId: Long): String {
     return when (eventTypeId) {
-        4L -> "\uAD50\uC721(\uD2B9\uAC15/\uC138\uBBF8\uB098)"
-        5L -> "\uACF5\uBAA8\uC804/\uACBD\uC9C4\uB300\uD68C"
-        6L -> "\uD604\uC7A5\uD559\uC2B5/\uC778\uD134"
-        7L -> "\uC0AC\uD68C\uACF5\uD5CC(\uBD09\uC0AC)"
-        8L -> "\uD559\uC2B5/\uC9C4\uB85C\uC0C1\uB2F4"
-        9L -> "OpenLnL"
-        10L -> "\uAE30\uD0C0"
-        else -> "\uD589\uC0AC \uC720\uD615 $eventTypeId"
+        1L -> "교육(특강/세미나)"
+        2L -> "공모전/경진대회"
+        3L -> "현장학습/인턴"
+        4L -> "사회공헌(봉사)"
+        5L -> "학습/진로상담"
+        6L -> "OpenLnL"
+        7L -> "기타"
+        else -> "행사 유형 " + eventTypeId
     }
 }
-

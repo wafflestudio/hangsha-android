@@ -88,6 +88,10 @@ class GuestMemosLocalDataSource @Inject constructor(
         replaceAll(memos.first().filterNot { it.id == memoId })
     }
 
+    suspend fun clearAllData() {
+        context.guestMemosDataStore.edit { preferences -> preferences.clear() }
+    }
+
     private suspend fun replaceStoredMemo(memo: StoredGuestMemo) {
         val updatedMemos = memos.first()
             .filterNot { it.id == memo.id || it.eventId == memo.eventId } + memo

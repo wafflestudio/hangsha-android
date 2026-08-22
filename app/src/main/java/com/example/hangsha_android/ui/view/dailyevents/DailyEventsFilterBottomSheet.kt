@@ -102,17 +102,13 @@ fun DailyEventsFilterBottomSheet(
                     }
 
                     DailyEventsFilterTab.RECRUITMENT_STATUS -> {
-                        val validStatusIds = uiState.availableFilterOptions.statusIds.filter { statusId ->
-                            statusId in listOf(1L, 2L, 3L)
-                        }
-
                         FilterChecklistSection(
                             allLabel = "모집 현황 전체",
                             title = "모집 현황",
                             emptyText = "선택 가능한 모집 현황이 없습니다.",
-                            options = validStatusIds,
+                            options = uiState.availableFilterOptions.statusIds,
                             selected = draft.statusIds,
-                            label = { statusLabel(it) },
+                            label = { uiState.statusNames[it] ?: statusLabel(it) },
                             onToggle = onToggleStatus
                         )
                     }
@@ -400,9 +396,9 @@ private fun ExcludeKeywordSection(
 
 private fun statusLabel(statusId: Long): String {
     return when (statusId) {
-        1L -> "모집 대기"
-        2L -> "모집 중"
-        3L -> "모집 마감"
+        1L -> "모집대기"
+        2L -> "모집중"
+        3L -> "모집마감"
         else -> "상태 $statusId"
     }
 }

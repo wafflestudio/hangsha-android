@@ -10,7 +10,6 @@ import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
-import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -41,7 +40,6 @@ class DailyEventsViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val categoryRepository: CategoryRepository,
-    private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -76,7 +74,7 @@ class DailyEventsViewModel @Inject constructor(
             runCatching { categoryRepository.ensureCategoryCatalogLoaded() }
         }
         viewModelScope.launch {
-            userRepository.organizationNames.collect { organizationNames ->
+            categoryRepository.organizationNames.collect { organizationNames ->
                 _uiState.update { state ->
                     state.copy(
                         organizationNames = organizationNames,
@@ -88,7 +86,16 @@ class DailyEventsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            runCatching { userRepository.ensureOrganizationNamesLoaded() }
+            categoryRepository.eventStatusNames.collect { statusNames ->
+                _uiState.update { state ->
+                    state.copy(
+                        statusNames = statusNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            statusIds = statusNames.keys.toList()
+                        )
+                    )
+                }
+            }
         }
         viewModelScope.launch {
             excludedKeywordsRepository.excludedKeywords.collect { keywords ->
@@ -399,7 +406,7 @@ class DailyEventsViewModel @Inject constructor(
                     .orEmpty()
                     .also { bookmarkRepository.syncKnownRemoteBookmarks(it.toBookmarkMap(), sourceUserId) }
                     .toDailyEventItems()
-                val filterOptions = buildFilterOptions(sourceItems)
+                val filterOptions = buildFilterOptions()
                 val visibleItems = if (hasAppliedServerFilters) {
                     val filteredResponses = eventRepository.getDayEvents(date, filters)
                         .requireBody("Filtered daily events response was empty.")
@@ -456,24 +463,12 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 
-    // 전체 source 데이터에서 현재 날짜에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
-    private fun buildFilterOptions(items: List<DailyEventItem>): DailyEventsFilterOptions {
+    // 새 카테고리 목록 API의 ID만 행사 조회 필터로 사용한다.
+    private fun buildFilterOptions(): DailyEventsFilterOptions {
         return DailyEventsFilterOptions(
-            orgIds = userRepository.organizationNames.value.keys
-                .takeIf { it.isNotEmpty() }
-                ?.toList()
-                ?: items.mapNotNull { it.orgId }
-                    .distinct()
-                    .sorted(),
-            statusIds = items.map { it.statusId }
-                .distinct()
-                .sorted(),
-            eventTypeIds = categoryRepository.eventTypeNames.value.keys
-                .takeIf { it.isNotEmpty() }
-                ?.toList()
-                ?: items.map { it.eventTypeId }
-                    .distinct()
-                    .sorted()
+            orgIds = categoryRepository.organizations.value.map { item -> item.key.id },
+            statusIds = categoryRepository.eventStatuses.value.map { item -> item.key.id },
+            eventTypeIds = categoryRepository.eventTypes.value.map { item -> item.key.id }
         )
     }
 

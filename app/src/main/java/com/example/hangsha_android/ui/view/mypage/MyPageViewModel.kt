@@ -89,7 +89,7 @@ class MyPageViewModel @Inject constructor(
                             draftProfileImageUrl = profile.profileImageUrl,
                             draftProfileImageUri = null,
                             isProfileImageMarkedForDeletion = false,
-                            interests = sortedInterests.map { interest -> interest.category.name },
+                            interests = sortedInterests.map { interest -> interest.name },
                             usernameErrorMessage = null,
                             profileSaveErrorMessage = null,
                             errorMessage = null

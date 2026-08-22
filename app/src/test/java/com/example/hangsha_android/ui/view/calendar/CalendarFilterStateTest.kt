@@ -10,7 +10,7 @@ class CalendarFilterStateTest {
         val reset = CalendarFilterState(
             orgIds = setOf(1L),
             statusIds = setOf(3L),
-            eventTypeIds = setOf(4L),
+            eventTypeIds = setOf(1L),
             excludedKeywords = listOf("contest")
         ).resetSelections()
 

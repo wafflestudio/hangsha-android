@@ -11,6 +11,7 @@ data class CalendarUiState(
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val organizationNames: Map<Long, String> = emptyMap(),
+    val statusNames: Map<Long, String> = emptyMap(),
     val eventTypeNames: Map<Long, String> = emptyMap(),
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),

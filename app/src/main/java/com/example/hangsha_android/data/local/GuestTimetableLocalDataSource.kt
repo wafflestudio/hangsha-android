@@ -203,6 +203,10 @@ class GuestTimetableLocalDataSource @Inject constructor(
         })
     }
 
+    suspend fun clearAllData() {
+        context.guestTimetablesDataStore.edit { preferences -> preferences.clear() }
+    }
+
     private suspend fun replaceAll(items: List<StoredGuestTimetable>) {
         context.guestTimetablesDataStore.edit { preferences ->
             preferences[GUEST_TIMETABLES_JSON] = gson.toJson(

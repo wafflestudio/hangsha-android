@@ -156,6 +156,10 @@ class BookmarksLocalDataSource @Inject constructor(
         }
     }
 
+    suspend fun clearAllData() {
+        context.bookmarksDataStore.edit { preferences -> preferences.clear() }
+    }
+
     private fun bookmarkKey(userId: Long?): Preferences.Key<String> {
         return userId?.let { id ->
             require(id > 0L) { "User ID must be positive." }

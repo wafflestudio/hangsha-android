@@ -1,9 +1,13 @@
 package com.example.hangsha_android.ui
 
+import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -14,7 +18,15 @@ import com.example.hangsha_android.ui.navigation.HangshaNavHost
 
 @Composable
 fun HangshaApp() {
-    hiltViewModel<AppBootstrapViewModel>()
+    val bootstrapViewModel = hiltViewModel<AppBootstrapViewModel>()
+    val catalogErrorMessage by bootstrapViewModel.catalogErrorMessage.collectAsState()
+    val context = LocalContext.current
+    LaunchedEffect(catalogErrorMessage) {
+        catalogErrorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            bootstrapViewModel.consumeCatalogError()
+        }
+    }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination

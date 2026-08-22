@@ -9,7 +9,6 @@ import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
-import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -36,7 +35,6 @@ class CalendarViewModel @Inject constructor(
     private val eventRepository: EventRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val categoryRepository: CategoryRepository,
-    private val userRepository: UserRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository
 ) : ViewModel() {
 
@@ -65,7 +63,7 @@ class CalendarViewModel @Inject constructor(
             runCatching { categoryRepository.ensureCategoryCatalogLoaded() }
         }
         viewModelScope.launch {
-            userRepository.organizationNames.collect { organizationNames ->
+            categoryRepository.organizationNames.collect { organizationNames ->
                 _uiState.update { state ->
                     state.copy(
                         organizationNames = organizationNames,
@@ -77,7 +75,16 @@ class CalendarViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            runCatching { userRepository.ensureOrganizationNamesLoaded() }
+            categoryRepository.eventStatusNames.collect { statusNames ->
+                _uiState.update { state ->
+                    state.copy(
+                        statusNames = statusNames,
+                        availableFilterOptions = state.availableFilterOptions.copy(
+                            statusIds = statusNames.keys.toList()
+                        )
+                    )
+                }
+            }
         }
         viewModelScope.launch {
             excludedKeywordsRepository.excludedKeywords.collect { keywords ->
@@ -365,7 +372,7 @@ class CalendarViewModel @Inject constructor(
                 val sourceBody = sourceResponse.requireBody("Events response was empty.")
                 bookmarkRepository.syncKnownRemoteBookmarks(sourceBody.toBookmarkMap(), sourceUserId)
                 val sourceEventsByDate = sourceBody.toCalendarEventsByDate()
-                val filterOptions = buildFilterOptions(sourceEventsByDate)
+                val filterOptions = buildFilterOptions()
                 val visibleEventsByDate = if (hasAppliedServerFilters) {
                     val filteredResponse = eventRepository.getEvents(
                         range = visibleRange,
@@ -426,27 +433,12 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    // 전체 source 데이터에서 현재 월에 노출 가능한 필터 항목을 추출 (행사 개수 세기 용도)
-    private fun buildFilterOptions(
-        eventsByDate: Map<LocalDate, List<CalendarEvent>>
-    ): CalendarFilterOptions {
-        val events = eventsByDate.values.flatten()
+    // 새 카테고리 목록 API의 ID만 행사 조회 필터로 사용한다.
+    private fun buildFilterOptions(): CalendarFilterOptions {
         return CalendarFilterOptions(
-            orgIds = userRepository.organizationNames.value.keys
-                .takeIf { it.isNotEmpty() }
-                ?.toList()
-                ?: events.mapNotNull { it.orgId }
-                    .distinct()
-                    .sorted(),
-            statusIds = events.map { it.statusId }
-                .distinct()
-                .sorted(),
-            eventTypeIds = categoryRepository.eventTypeNames.value.keys
-                .takeIf { it.isNotEmpty() }
-                ?.toList()
-                ?: events.map { it.eventTypeId }
-                    .distinct()
-                    .sorted()
+            orgIds = categoryRepository.organizations.value.map { item -> item.key.id },
+            statusIds = categoryRepository.eventStatuses.value.map { item -> item.key.id },
+            eventTypeIds = categoryRepository.eventTypes.value.map { item -> item.key.id }
         )
     }
 
