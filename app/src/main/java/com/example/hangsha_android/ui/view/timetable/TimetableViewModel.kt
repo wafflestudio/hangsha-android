@@ -3,14 +3,18 @@ package com.example.hangsha_android.ui.view.timetable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
+import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
 import com.example.hangsha_android.data.network.model.TimetableResponse
 import com.example.hangsha_android.data.network.model.UpdateCustomTimetableEnrollRequest
+import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.TimetableRepository
+import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,13 +25,69 @@ import retrofit2.HttpException
 
 @HiltViewModel
 class TimetableViewModel @Inject constructor(
-    private val timetableRepository: TimetableRepository
+    private val timetableRepository: TimetableRepository,
+    private val eventRepository: EventRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TimetableApiUiState())
     val uiState: StateFlow<TimetableApiUiState> = _uiState.asStateFlow()
 
     private var loadingTimetableKey: Pair<Int, String>? = null
     private var isEnrollLoadInFlight = false
+    private var loadingEventsWeek: LocalDate? = null
+
+    fun loadWeeklyEvents(weekStart: LocalDate) {
+        val monday = weekStart.minusDays((weekStart.dayOfWeek.value - 1).toLong())
+        if (loadingEventsWeek == monday) return
+
+        loadingEventsWeek = monday
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoadingWeeklyEvents = true,
+                    loadWeeklyEventsError = null
+                )
+            }
+
+            runCatching {
+                val response = eventRepository.getEvents(
+                    range = EventDateRange(
+                        from = monday,
+                        to = monday.plusDays(6)
+                    )
+                )
+                if (!response.isSuccessful) throw HttpException(response)
+                response.body()?.byDate
+                    ?.values
+                    ?.flatMap { day -> day.events }
+                    ?.distinctBy { event -> event.id }
+                    ?: throw IllegalStateException("Weekly events response was empty.")
+            }.fold(
+                onSuccess = { events ->
+                    if (loadingEventsWeek == monday) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingWeeklyEvents = false,
+                                loadWeeklyEventsError = null,
+                                loadedEventsWeek = monday,
+                                weeklyEventSummaries = events
+                            )
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    if (loadingEventsWeek == monday) {
+                        _uiState.update {
+                            it.copy(
+                                isLoadingWeeklyEvents = false,
+                                loadWeeklyEventsError = mapWeeklyEventsError(error)
+                            )
+                        }
+                    }
+                }
+            )
+            if (loadingEventsWeek == monday) loadingEventsWeek = null
+        }
+    }
 
     fun loadTimetables(
         year: Int,
@@ -682,6 +742,20 @@ class TimetableViewModel @Inject constructor(
         }
     }
 
+    private fun mapWeeklyEventsError(error: Throwable): String {
+        return when (error) {
+            is HttpException -> when (error.code()) {
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uB85C \uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+                else -> "\uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uD589\uC0AC \uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uB85C \uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            else -> error.message ?: "\uD589\uC0AC\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+        }
+    }
+
     private fun mapCreateErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
@@ -700,6 +774,10 @@ class TimetableViewModel @Inject constructor(
 }
 
 data class TimetableApiUiState(
+    val isLoadingWeeklyEvents: Boolean = false,
+    val loadWeeklyEventsError: String? = null,
+    val loadedEventsWeek: LocalDate? = null,
+    val weeklyEventSummaries: List<EventSummaryResponse> = emptyList(),
     val isLoadingTimetables: Boolean = false,
     val loadTimetablesError: String? = null,
     val timetables: List<TimetableResponse> = emptyList(),

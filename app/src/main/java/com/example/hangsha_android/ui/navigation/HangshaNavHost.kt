@@ -622,7 +622,11 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
             if (isLoggedIn) {
-                TimetableScreen()
+                TimetableScreen(
+                    onEventClick = { eventId ->
+                        navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                    }
+                )
             } else {
                 LoginRequiredScreen(
                     title = "\uC2DC\uAC04\uD45C\uB294 \uB85C\uADF8\uC778 \uD6C4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
