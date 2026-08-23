@@ -6,6 +6,10 @@ import com.example.hangsha_android.data.network.model.RefreshTokenRequest
 import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
 import com.example.hangsha_android.data.network.model.SocialLoginResponse
+import com.example.hangsha_android.data.network.model.SendEmailVerificationCodeRequest
+import com.example.hangsha_android.data.network.model.SendEmailVerificationCodeResponse
+import com.example.hangsha_android.data.network.model.VerifyEmailVerificationCodeRequest
+import com.example.hangsha_android.data.network.model.VerifyEmailVerificationCodeResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Header
@@ -31,6 +35,16 @@ interface AuthApi {
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<LoginResponse>
+
+    @POST("api/v1/auth/email/send-code")
+    suspend fun sendEmailVerificationCode(
+        @Body request: SendEmailVerificationCodeRequest
+    ): Response<SendEmailVerificationCodeResponse>
+
+    @POST("api/v1/auth/email/verify-code")
+    suspend fun verifyEmailVerificationCode(
+        @Body request: VerifyEmailVerificationCodeRequest
+    ): Response<VerifyEmailVerificationCodeResponse>
 
     @POST("api/v1/mobile/auth/refresh")
     suspend fun refresh(

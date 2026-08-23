@@ -7,6 +7,10 @@ import com.example.hangsha_android.data.network.model.RefreshTokenRequest
 import com.example.hangsha_android.data.network.model.RegisterRequest
 import com.example.hangsha_android.data.network.model.SocialLoginRequest
 import com.example.hangsha_android.data.network.model.SocialLoginResponse
+import com.example.hangsha_android.data.network.model.SendEmailVerificationCodeRequest
+import com.example.hangsha_android.data.network.model.SendEmailVerificationCodeResponse
+import com.example.hangsha_android.data.network.model.VerifyEmailVerificationCodeRequest
+import com.example.hangsha_android.data.network.model.VerifyEmailVerificationCodeResponse
 import javax.inject.Inject
 import retrofit2.Response
 
@@ -70,13 +74,35 @@ class AuthRepository @Inject constructor(
     suspend fun register(
         email: String,
         password: String,
+        signupToken: String,
         username: String
     ): Response<LoginResponse> {
         return authApi.register(
             RegisterRequest(
                 email = email,
                 password = password,
+                signupToken = signupToken,
                 username = username
+            )
+        )
+    }
+
+    suspend fun sendEmailVerificationCode(
+        email: String
+    ): Response<SendEmailVerificationCodeResponse> {
+        return authApi.sendEmailVerificationCode(
+            SendEmailVerificationCodeRequest(email = email)
+        )
+    }
+
+    suspend fun verifyEmailVerificationCode(
+        email: String,
+        code: String
+    ): Response<VerifyEmailVerificationCodeResponse> {
+        return authApi.verifyEmailVerificationCode(
+            VerifyEmailVerificationCodeRequest(
+                email = email,
+                code = code
             )
         )
     }
