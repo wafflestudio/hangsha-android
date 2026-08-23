@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,7 +49,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.window.Dialog
+import java.time.Instant
+import kotlinx.coroutines.delay
 
 private val SignUpContentWidth = 280.dp
 private val SignUpFieldHeight = 37.dp
@@ -67,6 +74,9 @@ fun SignUpScreen(
     onPasswordChanged: (String) -> Unit,
     onPrivacyPolicyAgreementChanged: (Boolean) -> Unit,
     onPasswordConfirmationChanged: (String) -> Unit,
+    onVerificationCodeChanged: (String) -> Unit,
+    onSendVerificationCodeClick: () -> Unit,
+    onVerifyVerificationCodeClick: () -> Unit,
     onSignUpClick: () -> Unit
 ) {
     val passwordErrors = passwordValidationErrors(uiState.password)
@@ -74,6 +84,17 @@ fun SignUpScreen(
     val hasPasswordConfirmationError = uiState.passwordConfirmation.isNotEmpty() &&
         uiState.password != uiState.passwordConfirmation
     var isPrivacyPolicyDetailsVisible by rememberSaveable { mutableStateOf(false) }
+
+    if (uiState.signupToken.isNullOrBlank()) {
+        EmailVerificationContent(
+            uiState = uiState,
+            onEmailChanged = onEmailChanged,
+            onVerificationCodeChanged = onVerificationCodeChanged,
+            onSendVerificationCodeClick = onSendVerificationCodeClick,
+            onVerifyVerificationCodeClick = onVerifyVerificationCodeClick
+        )
+        return
+    }
 
     Box(
         modifier = Modifier
@@ -159,6 +180,122 @@ fun SignUpScreen(
     }
 }
 
+@Composable
+private fun EmailVerificationContent(
+    uiState: SignUpUiState,
+    onEmailChanged: (String) -> Unit,
+    onVerificationCodeChanged: (String) -> Unit,
+    onSendVerificationCodeClick: () -> Unit,
+    onVerifyVerificationCodeClick: () -> Unit
+) {
+    val isCodeStep = uiState.verificationCodeExpiresAt != null
+    val expiryMillis = remember(uiState.verificationCodeExpiresAt) {
+        runCatching { Instant.parse(uiState.verificationCodeExpiresAt.orEmpty()).toEpochMilli() }.getOrDefault(0L)
+    }
+    var nowMillis by remember(uiState.verificationCodeExpiresAt) { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(expiryMillis) {
+        while (expiryMillis > System.currentTimeMillis()) {
+            nowMillis = System.currentTimeMillis()
+            delay(1_000)
+        }
+        nowMillis = System.currentTimeMillis()
+    }
+    var resendSeconds by rememberSaveable(uiState.verificationCodeExpiresAt) { mutableStateOf(if (isCodeStep) 60 else 0) }
+    LaunchedEffect(isCodeStep) {
+        while (isCodeStep && resendSeconds > 0) {
+            delay(1_000)
+            resendSeconds -= 1
+        }
+    }
+    val remainingSeconds = ((expiryMillis - nowMillis).coerceAtLeast(0L) / 1_000L).toInt()
+    val errorMessage = uiState.signUpMessage
+
+    Box(modifier = Modifier.fillMaxSize().background(SignUpWhite), contentAlignment = Alignment.Center) {
+        Column(modifier = Modifier.width(SignUpContentWidth).offset(y = (-5).dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "\uACC4\uC815 \uC0DD\uC131", color = SignUpBlack, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694", color = SignUpBlack, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(if (isCodeStep) 25.dp else 46.dp))
+            SignUpTextField(value = uiState.email, onValueChange = onEmailChanged, placeholder = "email@snu.ac.kr", keyboardType = KeyboardType.Email, readOnly = isCodeStep, isError = errorMessage != null)
+            if (!isCodeStep) {
+                Spacer(modifier = Modifier.height(20.dp))
+                VerificationButton(text = "\uC774\uBA54\uC77C \uC778\uC99D", onClick = onSendVerificationCodeClick, isLoading = uiState.isVerificationCodeSending)
+                errorMessage?.let { InlineVerificationError(it) }
+            } else {
+                Spacer(modifier = Modifier.height(20.dp))
+                VerificationButton(text = if (resendSeconds > 0) "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30 (${resendSeconds}\uCD08)" else "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30", onClick = onSendVerificationCodeClick, enabled = resendSeconds == 0 && !uiState.isVerificationCodeSending, isLoading = uiState.isVerificationCodeSending, color = if (resendSeconds == 0) SignUpBlack else Color(0xFF777777))
+                Spacer(modifier = Modifier.height(25.dp))
+                Text(text = "\uC774\uBA54\uC77C\uB85C \uC628 \uC778\uC99D\uBC88\uD638\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694!", color = SignUpBlack, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(text = "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60), color = SignUpError, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(24.dp))
+                VerificationCodeBoxes(code = uiState.verificationCode, onCodeChanged = onVerificationCodeChanged, isError = errorMessage != null)
+                errorMessage?.let { InlineVerificationError(it) }
+                Spacer(modifier = Modifier.height(22.dp))
+                VerificationButton(text = "\uC778\uC99D\uD558\uAE30", onClick = onVerifyVerificationCodeClick, enabled = remainingSeconds > 0 && !uiState.isVerificationCodeVerifying, isLoading = uiState.isVerificationCodeVerifying)
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerificationCodeBoxes(code: String, onCodeChanged: (String) -> Unit, isError: Boolean) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    BasicTextField(
+        value = code,
+        onValueChange = { input -> onCodeChanged(input.filter(Char::isDigit).take(6)) },
+        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+        singleLine = true,
+        textStyle = TextStyle(color = Color.Transparent),
+        cursorBrush = SolidColor(Color.Transparent),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        decorationBox = { innerTextField ->
+            Box {
+                innerTextField()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
+                ) {
+                    repeat(6) { index ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(64.dp)
+                                .background(SignUpWhite, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isError) SignUpError else SignUpBorder, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = code.getOrNull(index)?.toString().orEmpty(),
+                                color = SignUpBlack,
+                                fontSize = 22.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun VerificationButton(text: String, onClick: () -> Unit, enabled: Boolean = true, isLoading: Boolean = false, color: Color = SignUpBlack) {
+    Surface(onClick = onClick, enabled = enabled && !isLoading, modifier = Modifier.fillMaxWidth().height(SignUpButtonHeight), shape = SignUpRoundShape, color = color, contentColor = SignUpWhite) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { if (isLoading) SignUpProgressIndicator(16.dp) else Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
+    }
+}
+
+@Composable
+private fun InlineVerificationError(message: String) {
+    Spacer(modifier = Modifier.height(10.dp))
+    Text(text = message, color = SignUpError, fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
+}
 
 @Composable
 private fun SignUpPrivacyPolicyAgreement(
@@ -280,6 +417,7 @@ private fun SignUpTextField(
     placeholder: String,
     keyboardType: KeyboardType,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
     isError: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
@@ -299,6 +437,7 @@ private fun SignUpTextField(
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            readOnly = readOnly,
             textStyle = TextStyle(
                 color = SignUpBlack,
                 fontSize = 16.sp,

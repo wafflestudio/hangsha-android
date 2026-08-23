@@ -37,6 +37,24 @@ class SignUpViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 email = email,
+                verificationCode = "",
+                signupToken = null,
+                verificationCodeExpiresAt = null,
+                signupTokenExpiresAt = null,
+                isVerificationCodeSending = false,
+                isVerificationCodeVerifying = false,
+                isSignUpSuccessful = false,
+                signUpMessage = null
+            )
+        }
+    }
+
+    fun onVerificationCodeChanged(verificationCode: String) {
+        _uiState.update {
+            it.copy(
+                verificationCode = verificationCode,
+                signupToken = null,
+                signupTokenExpiresAt = null,
                 isSignUpSuccessful = false,
                 signUpMessage = null
             )
@@ -73,12 +91,105 @@ class SignUpViewModel @Inject constructor(
         }
     }
 
+    fun sendVerificationCode() {
+        val email = _uiState.value.email.trim()
+        if (!email.isValidEmailAddress()) {
+            onSignUpFailure("\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                isVerificationCodeSending = true,
+                verificationCode = "",
+                signupToken = null,
+                verificationCodeExpiresAt = null,
+                signupTokenExpiresAt = null,
+                isSignUpSuccessful = false,
+                signUpMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                val response = authRepository.sendEmailVerificationCode(email)
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body()?.expiresAt
+                    ?: throw IllegalStateException("\uC778\uC99D\uBC88\uD638 \uBC1C\uC1A1 \uC751\uB2F5\uC5D0 \uB9CC\uB8CC \uC2DC\uAC01\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.")
+            }.fold(
+                onSuccess = { expiresAt ->
+                    _uiState.update {
+                        if (it.email.trim() != email) it else it.copy(
+                            isVerificationCodeSending = false,
+                            verificationCodeExpiresAt = expiresAt,
+                            signUpMessage = null
+                        )
+                    }
+                },
+                onFailure = ::onEmailVerificationFailure
+            )
+        }
+    }
+
+    fun verifyVerificationCode() {
+        val email = _uiState.value.email.trim()
+        val code = _uiState.value.verificationCode.trim()
+        if (!email.isValidEmailAddress()) {
+            onSignUpFailure("\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            return
+        }
+        if (code.isBlank()) {
+            onSignUpFailure("\uC774\uBA54\uC77C\uB85C \uBC1B\uC740 \uC778\uC99D\uBC88\uD638\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                isVerificationCodeVerifying = true,
+                signupToken = null,
+                signupTokenExpiresAt = null,
+                isSignUpSuccessful = false,
+                signUpMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                val response = authRepository.verifyEmailVerificationCode(email, code)
+                if (!response.isSuccessful) {
+                    throw HttpException(response)
+                }
+                response.body()?.also { verification ->
+                    check(verification.signupToken.isNotBlank()) {
+                        "\uC774\uBA54\uC77C \uC778\uC99D \uC751\uB2F5\uC5D0 signupToken\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                    }
+                } ?: throw IllegalStateException("\uC774\uBA54\uC77C \uC778\uC99D \uC751\uB2F5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.")
+            }.fold(
+                onSuccess = { verification ->
+                    _uiState.update {
+                        if (it.email.trim() != email) it else it.copy(
+                            isVerificationCodeVerifying = false,
+                            signupToken = verification.signupToken,
+                            signupTokenExpiresAt = verification.expiresAt,
+                            signUpMessage = null
+                        )
+                    }
+                },
+                onFailure = ::onEmailVerificationFailure
+            )
+        }
+    }
+
     fun signUp() {
         val currentState = _uiState.value
 
         if (!currentState.isSubmitEnabled) {
             val message = if (!currentState.isPrivacyPolicyAgreed) {
                 "\uAC1C\uC778\uC815\uBCF4 \uC218\uC9D1\u00B7\uC774\uC6A9 \uB3D9\uC758\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+            } else if (currentState.signupToken.isNullOrBlank()) {
+                "\uC774\uBA54\uC77C \uC778\uC99D\uC744 \uC644\uB8CC\uD574 \uC8FC\uC138\uC694."
             } else {
                 "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
             }
@@ -99,6 +210,7 @@ class SignUpViewModel @Inject constructor(
                 val response = authRepository.register(
                     email = currentState.email.trim(),
                     password = currentState.password,
+                    signupToken = currentState.signupToken.orEmpty(),
                     username = ""
                 )
 
@@ -114,6 +226,33 @@ class SignUpViewModel @Inject constructor(
                     authTokenStorage.clearTokens()
                     onSignUpFailure(error)
                 }
+            )
+        }
+    }
+
+    private fun onEmailVerificationFailure(error: Throwable) {
+        val message = when (error) {
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is HttpException -> when (error.code()) {
+                400 -> "\uC778\uC99D\uBC88\uD638\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+                404 -> "\uC694\uCCAD\uD55C \uC774\uBA54\uC77C \uC778\uC99D \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4."
+                409 -> "\uC774\uBBF8 \uC0AC\uC6A9 \uC911\uC778 \uC774\uBA54\uC77C\uC785\uB2C8\uB2E4."
+                410 -> "\uC778\uC99D\uBC88\uD638\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC7AC\uBC1C\uC1A1\uD574 \uC8FC\uC138\uC694."
+                429 -> "\uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC694\uCCAD\uD574 \uC8FC\uC138\uC694."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uC774\uBA54\uC77C \uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uC774\uBA54\uC77C \uC778\uC99D \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4."
+        }
+
+        _uiState.update {
+            it.copy(
+                isVerificationCodeSending = false,
+                isVerificationCodeVerifying = false,
+                isSignUpSuccessful = false,
+                signUpMessage = message
             )
         }
     }
@@ -208,4 +347,9 @@ class SignUpViewModel @Inject constructor(
             )
         }
     }
+}
+
+private fun String.isValidEmailAddress(): Boolean {
+    val emailPattern = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+    return matches(emailPattern)
 }
