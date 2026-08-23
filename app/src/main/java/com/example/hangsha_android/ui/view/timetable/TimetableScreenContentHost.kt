@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import com.example.hangsha_android.util.currentHangshaDate
 import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +31,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
@@ -103,8 +107,8 @@ private val SemesterOptions = listOf(
     TimetableSemesterOption("FALL", "2\uD559\uAE30"),
     TimetableSemesterOption("WINTER", "\uACA8\uC6B8\uD559\uAE30")
 )
-private val DefaultYear = LocalDate.now().year
-private val DefaultSemester = semesterForMonth(LocalDate.now().monthValue).apiValue
+private val DefaultYear = currentHangshaDate().year
+private val DefaultSemester = semesterForMonth(currentHangshaDate().monthValue).apiValue
 private val WeekdayLabels = listOf("월", "화", "수", "목", "금")
 private val CourseColors = listOf(
     Color(0xFF55B9DC),
@@ -120,7 +124,7 @@ private data class TimetableSemesterOption(
 )
 
 private fun buildYearOptions(): List<Int> {
-    val currentYear = LocalDate.now().year
+    val currentYear = currentHangshaDate().year
     return (currentYear - 2..currentYear + 2).toList()
 }
 
@@ -143,16 +147,25 @@ private val EmptyTimetable = TimetableUiModel(
 
 // 시간표 화면 상태 호스트: 로컬 시간표 생성, 선택, 수업 추가 상태를 관리한다.
 @Composable
-internal fun TimetableScreenContentHost() {
+internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     val timetableViewModel: TimetableViewModel = hiltViewModel()
     val apiUiState by timetableViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val events = remember { emptyList<TimetableEventItem>() }
+    val currentWeekStart = remember {
+        val today = currentHangshaDate()
+        today.minusDays((today.dayOfWeek.value - 1).toLong())
+    }
+    var selectedWeekOffset by rememberSaveable { mutableStateOf(0) }
+    val weekStart = remember(currentWeekStart, selectedWeekOffset) { currentWeekStart.plusWeeks(selectedWeekOffset.toLong()) }
+    val weekEvents = remember(apiUiState.weeklyEventSummaries, weekStart) {
+        TimetableEventMapper.map(apiUiState.weeklyEventSummaries, weekStart)
+    }
     var timetables by remember { mutableStateOf(emptyList<TimetableUiModel>()) }
     var selectedYear by rememberSaveable { mutableStateOf(DefaultYear) }
     var selectedSemester by rememberSaveable { mutableStateOf(DefaultSemester) }
     var selectedTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
     var isEventOverlayEnabled by rememberSaveable { mutableStateOf(false) }
+    var isEventTimelineExpanded by rememberSaveable { mutableStateOf(false) }
     var isTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
     var isCreateTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
     var isEditTimetablePanelOpen by rememberSaveable { mutableStateOf(false) }
@@ -169,6 +182,13 @@ internal fun TimetableScreenContentHost() {
     }
     var submitError by rememberSaveable { mutableStateOf<String?>(null) }
     var submitMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(isEventOverlayEnabled, weekStart) {
+        if (isEventOverlayEnabled) {
+            timetableViewModel.loadWeeklyEvents(weekStart)
+        }
+    }
+
     LaunchedEffect(selectedYear, selectedSemester) {
         selectedTimetableId = null
         timetables = emptyList()
@@ -307,6 +327,7 @@ internal fun TimetableScreenContentHost() {
     fun closePanels() {
         isTimetablePanelOpen = false
         isCreateTimetablePanelOpen = false
+        isEditTimetablePanelOpen = false
         isAddCoursePanelOpen = false
     }
 
@@ -332,13 +353,19 @@ internal fun TimetableScreenContentHost() {
         semesterOptions = SemesterOptions,
         selectedTimetable = selectedTimetable,
         timetables = timetables,
-        events = events,
+        weekStart = weekStart,
+        events = weekEvents.timed,
+        periodEvents = weekEvents.period,
+        allDayEvents = weekEvents.allDay,
+        isLoadingWeeklyEvents = apiUiState.isLoadingWeeklyEvents,
+        loadWeeklyEventsError = apiUiState.loadWeeklyEventsError,
         isLoadingTimetables = apiUiState.isLoadingTimetables,
         loadTimetablesError = apiUiState.loadTimetablesError,
-                deletingTimetableId = apiUiState.deletingTimetableId?.toString(),
+        deletingTimetableId = apiUiState.deletingTimetableId?.toString(),
         deleteTimetableError = apiUiState.deleteTimetableError,
         hasSelectedTimetable = hasSelectedTimetable,
         isEventOverlayEnabled = isEventOverlayEnabled,
+        isEventTimelineExpanded = isEventTimelineExpanded,
         isTimetablePanelOpen = isTimetablePanelOpen,
         isCreateTimetablePanelOpen = isCreateTimetablePanelOpen,
         isEditTimetablePanelOpen = isEditTimetablePanelOpen,
@@ -360,8 +387,21 @@ internal fun TimetableScreenContentHost() {
         deletingCourseId = apiUiState.deletingEnrollId?.toString(),
         onYearSelected = { year -> selectedYear = year },
         onSemesterSelected = { semester -> selectedSemester = semester.apiValue },
-        onEventOverlayChanged = { isEventOverlayEnabled = it },
+        onPreviousWeek = { selectedWeekOffset -= 1 },
+        onNextWeek = { selectedWeekOffset += 1 },
+        onEventOverlayChanged = { enabled ->
+            isEventOverlayEnabled = enabled
+            if (!enabled) isEventTimelineExpanded = false
+        },
+        onEventTimelineExpandedChanged = { expanded ->
+            isEventTimelineExpanded = expanded
+        },
+        onRetryWeeklyEvents = {
+            timetableViewModel.loadWeeklyEvents(weekStart)
+        },
+        onEventClick = onEventClick,
         onOpenTimetablePanel = {
+            isEventTimelineExpanded = false
             isAddCoursePanelOpen = false
             isCreateTimetablePanelOpen = false
             isTimetablePanelOpen = true
@@ -374,6 +414,7 @@ internal fun TimetableScreenContentHost() {
                 onOpenEditTimetable = { timetableId ->
             val target = timetables.firstOrNull { timetable -> timetable.id == timetableId }
             if (target != null) {
+                isEventTimelineExpanded = false
                 timetableViewModel.clearUpdateError()
                 editTimetableId = target.id
                 editTimetableName = target.name
@@ -388,6 +429,7 @@ internal fun TimetableScreenContentHost() {
             timetableId.toLongOrNull()?.let { id -> timetableViewModel.deleteTimetable(id) }
         },
         onOpenCreateTimetable = {
+            isEventTimelineExpanded = false
             isTimetablePanelOpen = false
             isAddCoursePanelOpen = false
             isCreateTimetablePanelOpen = true
@@ -413,6 +455,7 @@ internal fun TimetableScreenContentHost() {
         },
         onOpenAddCourse = {
             if (hasSelectedTimetable) {
+                isEventTimelineExpanded = false
                 isTimetablePanelOpen = false
                 isCreateTimetablePanelOpen = false
                 isAddCoursePanelOpen = true
@@ -499,13 +542,19 @@ private fun TimetableScreenContent(
     semesterOptions: List<TimetableSemesterOption>,
     selectedTimetable: TimetableUiModel,
     timetables: List<TimetableUiModel>,
+    weekStart: LocalDate,
     events: List<TimetableEventItem>,
+    periodEvents: List<TimetableTimelineEventItem>,
+    allDayEvents: List<TimetableTimelineEventItem>,
+    isLoadingWeeklyEvents: Boolean,
+    loadWeeklyEventsError: String?,
     isLoadingTimetables: Boolean,
     loadTimetablesError: String?,
-        deletingTimetableId: String?,
+    deletingTimetableId: String?,
     deleteTimetableError: String?,
     hasSelectedTimetable: Boolean,
     isEventOverlayEnabled: Boolean,
+    isEventTimelineExpanded: Boolean,
     isTimetablePanelOpen: Boolean,
     isCreateTimetablePanelOpen: Boolean,
     isEditTimetablePanelOpen: Boolean,
@@ -527,7 +576,12 @@ private fun TimetableScreenContent(
     deletingCourseId: String?,
     onYearSelected: (Int) -> Unit,
     onSemesterSelected: (TimetableSemesterOption) -> Unit,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
     onEventOverlayChanged: (Boolean) -> Unit,
+    onEventTimelineExpandedChanged: (Boolean) -> Unit,
+    onRetryWeeklyEvents: () -> Unit,
+    onEventClick: (Long) -> Unit,
     onOpenTimetablePanel: () -> Unit,
     onClosePanels: () -> Unit,
     onSelectTimetable: (String) -> Unit,
@@ -552,7 +606,13 @@ private fun TimetableScreenContent(
 ) {
     val gridScrollState = rememberScrollState()
     val hasPanelOpen = isTimetablePanelOpen || isCreateTimetablePanelOpen || isEditTimetablePanelOpen || isAddCoursePanelOpen
-    BackHandler(enabled = hasPanelOpen, onBack = onClosePanels)
+    BackHandler(enabled = hasPanelOpen || isEventTimelineExpanded) {
+        if (isEventTimelineExpanded) {
+            onEventTimelineExpandedChanged(false)
+        } else {
+            onClosePanels()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -577,7 +637,10 @@ private fun TimetableScreenContent(
             TimetableHeader(
                 name = selectedTimetable.name,
                 credits = selectedTimetable.totalCredits,
+                weekStart = weekStart,
                 isEventOverlayEnabled = isEventOverlayEnabled,
+                onPreviousWeek = onPreviousWeek,
+                onNextWeek = onNextWeek,
                 onEventOverlayChanged = onEventOverlayChanged
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -590,7 +653,7 @@ private fun TimetableScreenContent(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(gridScrollState)
+                        .verticalScroll(gridScrollState, enabled = !isEventTimelineExpanded)
                 ) {
                     WeeklyTimetableGrid(
                         courses = selectedTimetable.courses,
@@ -598,21 +661,39 @@ private fun TimetableScreenContent(
                         showEvents = isEventOverlayEnabled,
                         deletingCourseId = deletingCourseId,
                         onDeleteCourse = onDeleteCourse,
+                        onEventClick = onEventClick,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(GridContentHeight)
                     )
                 }
-                TimetableFloatingActions(
-                    hasSelectedTimetable = hasSelectedTimetable,
-                    onChangeTimetableClick = onOpenTimetablePanel,
-                    onAddCourseClick = onOpenAddCourse,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 16.dp)
-                )
+                if (!isEventTimelineExpanded) {
+                    TimetableFloatingActions(
+                        hasSelectedTimetable = hasSelectedTimetable,
+                        onChangeTimetableClick = onOpenTimetablePanel,
+                        onAddCourseClick = onOpenAddCourse,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = if (isEventOverlayEnabled) 48.dp else 16.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (isEventOverlayEnabled && !hasPanelOpen) {
+            TimetableEventTimelineSheet(
+                weekStart = weekStart,
+                periodEvents = periodEvents,
+                allDayEvents = allDayEvents,
+                expanded = isEventTimelineExpanded,
+                isLoading = isLoadingWeeklyEvents,
+                errorMessage = loadWeeklyEventsError,
+                onExpandedChange = onEventTimelineExpandedChanged,
+                onRetry = onRetryWeeklyEvents,
+                onEventClick = onEventClick,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
 
         if (isTimetablePanelOpen) {
@@ -786,13 +867,16 @@ private fun <T> TimetableDropdown(
 private fun TimetableHeader(
     name: String,
     credits: Int,
+    weekStart: LocalDate,
     isEventOverlayEnabled: Boolean,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
     onEventOverlayChanged: (Boolean) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(38.dp),
+            .height(40.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -800,11 +884,12 @@ private fun TimetableHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = Ink100,
             fontSize = 17.sp,
+            modifier = Modifier.widthIn(max = 78.dp),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "(${credits}학점)",
             style = MaterialTheme.typography.bodyMedium,
@@ -812,7 +897,7 @@ private fun TimetableHeader(
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Switch(
             checked = isEventOverlayEnabled,
             onCheckedChange = onEventOverlayChanged,
@@ -831,7 +916,70 @@ private fun TimetableHeader(
                 checkedBorderColor = Color.Transparent
             )
         )
+        Spacer(modifier = Modifier.weight(1f))
+        TimetableWeekNavigator(
+            weekStart = weekStart,
+            onPreviousWeek = onPreviousWeek,
+            onNextWeek = onNextWeek
+        )
     }
+}
+
+@Composable
+private fun TimetableWeekNavigator(
+    weekStart: LocalDate,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit
+) {
+    val weekEnd = weekStart.plusDays(7)
+    Row(
+        modifier = Modifier.height(32.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onPreviousWeek,
+            modifier = Modifier
+                .size(24.dp)
+                .semantics { contentDescription = "이전 주" }
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Ink60,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Text(
+            text = formatWeekRange(weekStart, weekEnd),
+            modifier = Modifier
+                .width(68.dp)
+                .semantics {
+                    contentDescription = "${weekStart.year}년 ${weekStart.monthValue}월 ${weekStart.dayOfMonth}일부터 ${weekEnd.monthValue}월 ${weekEnd.dayOfMonth}일까지"
+                },
+            color = Ink100,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+        IconButton(
+            onClick = onNextWeek,
+            modifier = Modifier
+                .size(24.dp)
+                .semantics { contentDescription = "다음 주" }
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Ink60,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+private fun formatWeekRange(start: LocalDate, end: LocalDate): String {
+    return "${start.monthValue}/${start.dayOfMonth}~${end.monthValue}/${end.dayOfMonth}"
 }
 
 // 요일 헤더: 시간 라벨 영역을 제외한 월~금 열 제목을 그린다.
@@ -869,6 +1017,7 @@ private fun WeeklyTimetableGrid(
     showEvents: Boolean,
     deletingCourseId: String?,
     onDeleteCourse: (String) -> Unit,
+    onEventClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val courseBlocks = remember(courses) { courses.toCourseBlocks() }
@@ -911,17 +1060,35 @@ private fun WeeklyTimetableGrid(
         HourLabels(gridHeight = gridHeight)
 
         if (showEvents) {
-            events.forEach { event ->
-                val position = eventPositions[event.id] ?: return@forEach
-                TimetableBlockBackground(position, dayWidth, gridHeight, event.categoryColor, 1f)
-            }
             courseBlocks.forEach { block ->
                 val position = coursePositions[block.id] ?: return@forEach
                 TimetableBlockBackground(position, dayWidth, gridHeight, CourseMaskColor, 0.72f)
             }
+            courseBlocks.forEach { block ->
+                val position = coursePositions[block.id] ?: return@forEach
+                TimetableBlockLabel(
+                    position = position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    text = listOfNotNull(block.title, block.subtitle).joinToString("\n"),
+                    textColor = PureWhite.copy(alpha = 0.58f),
+                    onClick = null
+                )
+            }
             events.forEach { event ->
                 val position = eventPositions[event.id] ?: return@forEach
-                TimetableBlockLabel(position, dayWidth, gridHeight, event.title, PureWhite, onClick = {})
+                TimetableBlockBackground(position, dayWidth, gridHeight, event.categoryColor, 0.7f)
+            }
+            events.forEach { event ->
+                val position = eventPositions[event.id] ?: return@forEach
+                TimetableBlockLabel(
+                    position = position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    text = event.title,
+                    textColor = PureWhite,
+                    onClick = { onEventClick(event.eventId) }
+                )
             }
         } else {
             courseBlocks.forEach { block ->
@@ -1034,9 +1201,16 @@ private fun TimetableBlockBackground(position: PositionedTimetableBlock, dayWidt
 }
 
 @Composable
-private fun TimetableBlockLabel(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, text: String, textColor: Color, onClick: () -> Unit) {
+private fun TimetableBlockLabel(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, text: String, textColor: Color, onClick: (() -> Unit)?) {
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else {
+        Modifier
+    }
     Box(
-        modifier = blockModifier(position, dayWidth, gridHeight).clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 5.dp),
+        modifier = blockModifier(position, dayWidth, gridHeight)
+            .then(clickModifier)
+            .padding(horizontal = 4.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = textColor, fontSize = 9.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, maxLines = 5, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)

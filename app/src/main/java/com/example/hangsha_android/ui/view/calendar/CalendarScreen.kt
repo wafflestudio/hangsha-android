@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.calendar
 
+import com.example.hangsha_android.util.currentHangshaDate
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -398,7 +399,7 @@ private fun HeaderCircleButton(
 
 @Composable
 private fun WeekdayHeader() {
-    val todayIndex = when (LocalDate.now().dayOfWeek) {
+    val todayIndex = when (currentHangshaDate().dayOfWeek) {
         DayOfWeek.SUNDAY -> 0
         DayOfWeek.MONDAY -> 1
         DayOfWeek.TUESDAY -> 2
@@ -575,7 +576,7 @@ private fun buildCalendarDayUiModel(
     currentMonth: YearMonth,
     events: List<CalendarEvent>
 ): CalendarDayUiModel {
-    val today = LocalDate.now()
+    val today = currentHangshaDate()
     val isCurrentMonth = YearMonth.from(date) == currentMonth
     val isToday = date == today
     val contentAlpha = when {                  // 날짜 조건에 맞춰 알파값 수정

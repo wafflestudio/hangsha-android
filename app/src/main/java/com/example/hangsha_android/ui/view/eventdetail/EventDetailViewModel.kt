@@ -1,7 +1,5 @@
 package com.example.hangsha_android.ui.view.eventdetail
 
-import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
-
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +10,8 @@ import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,8 +79,7 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 bookmarkRepository.setBookmark(
                     eventId = currentItem.id,
-                    isBookmarked = shouldBookmark,
-                    guestSnapshot = if (shouldBookmark) currentItem.toGuestBookmarkSnapshot() else null
+                    isBookmarked = shouldBookmark
                 )
             }.onFailure { error ->
                 _uiState.update { currentState ->
@@ -253,8 +252,7 @@ class EventDetailViewModel @Inject constructor(
                     memoRepository.createMemo(
                         eventId = currentItem.id,
                         content = content,
-                        tagNames = tagNames,
-                        eventTitle = currentItem.title
+                        tagNames = tagNames
                     ).requireBody("Memo response was empty.")
                 } else if (content.isBlank() && tagNames.isEmpty()) {
                     val response = memoRepository.deleteMemo(savedMemo.id)
@@ -339,10 +337,12 @@ class EventDetailViewModel @Inject constructor(
             runCatching {
                 val response = eventRepository.getEventDetail(eventId)
                     .requireBody("Event detail response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(
-                    remoteBookmarks = mapOf(response.id to response.isBookmarked),
-                    sourceUserId = sourceUserId
-                )
+                response.isBookmarked?.let { isBookmarked ->
+                    bookmarkRepository.syncKnownRemoteBookmarks(
+                        remoteBookmarks = mapOf(response.id to isBookmarked),
+                        sourceUserId = sourceUserId
+                    )
+                }
                 response.toEventDetailItem(
                     bookmarkedEventIds = bookmarkRepository.currentBookmarkedEventIds()
                 )
@@ -482,18 +482,6 @@ private const val BUG_REPORT_CONTENT_MAX_LENGTH = 1_000
 private val DetailFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)
 private val DetailMonthDayFormatter = DateTimeFormatter.ofPattern("MM.dd", Locale.KOREA)
 
-private fun EventDetailItem.toGuestBookmarkSnapshot(): StoredGuestBookmarkSnapshot {
-    return StoredGuestBookmarkSnapshot(
-        eventId = id,
-        title = title,
-        imageUrl = imageUrl,
-        organization = organization,
-        dDayLabel = dDayLabel,
-        applyPeriodDisplay = applyPeriodDisplay,
-        eventTypeId = 0L,
-        updatedAt = OffsetDateTime.now().toString()
-    )
-}
 private fun MemoResponse.toEventDetailMemo(): EventDetailMemo {
     return EventDetailMemo(
         id = id,
@@ -508,7 +496,7 @@ private fun EventDetailResponse.toEventDetailItem(
 ): EventDetailItem {
     val applyEndDate = parseEventDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
         when {
             diff == 0L -> "D-DAY"
             diff > 0L -> "D-$diff"
@@ -553,7 +541,7 @@ private fun parseEventDate(value: String?): LocalDate? {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }

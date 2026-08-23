@@ -18,28 +18,28 @@ private val WebFilterBlue = Color(0x260088FF)
 private val WebFilterPurple = Color(0x26A25AFF)
 private val WebFilterPink = Color(0x26FF2D53)
 
-fun eventTypeColor(eventTypeId: Long): Color {
+fun eventTypeColor(eventTypeId: Long?): Color {
     return when (eventTypeId) {
-        4L -> WebEventOrange
-        5L -> WebEventGold
-        6L -> WebEventGreen
-        7L -> WebEventSkyBlue
-        8L -> WebEventBlue
-        9L -> WebEventPurple
-        10L -> WebEventPink
+        1L -> WebEventOrange
+        2L -> WebEventGold
+        3L -> WebEventGreen
+        4L -> WebEventSkyBlue
+        5L -> WebEventBlue
+        6L -> WebEventPurple
+        7L -> WebEventPink
         else -> WebEventPink
     }
 }
 
 fun eventTypeFilterColor(eventTypeId: Long): Color {
     return when (eventTypeId) {
-        4L -> WebFilterOrange
-        5L -> WebFilterYellow
-        6L -> WebFilterGreen
-        7L -> WebFilterSkyBlue
-        8L -> WebFilterBlue
-        9L -> WebFilterPurple
-        10L -> WebFilterPink
+        1L -> WebFilterOrange
+        2L -> WebFilterYellow
+        3L -> WebFilterGreen
+        4L -> WebFilterSkyBlue
+        5L -> WebFilterBlue
+        6L -> WebFilterPurple
+        7L -> WebFilterPink
         else -> WebFilterPink
     }
 }

@@ -26,6 +26,8 @@ interface EventApi {
     @GET("api/v1/events/day")
     suspend fun getDayEvents(
         @Query("date") date: String,
+        @Query("page") page: Int,
+        @Query("size") size: Int,
         @Query("orgId") orgId: List<Long>? = null,
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.MemoRepository
+import com.example.hangsha_android.util.toHangshaDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -358,7 +359,7 @@ private fun parseDate(value: String?): LocalDate? {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }

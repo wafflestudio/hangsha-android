@@ -1,5 +1,7 @@
 package com.example.hangsha_android.data.network.model
 
+import com.example.hangsha_android.data.repository.model.CategoryKey
+import com.example.hangsha_android.data.repository.model.CategoryType
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -10,40 +12,27 @@ class UserProfileResponseTest {
     private val gson = Gson()
 
     @Test
-    fun parsesMyPageProfileResponse() {
+    fun parsesFlatInterestCategoriesWithCategoryType() {
         val json = """
             {
               "id": 10,
               "username": "푱푱한 토끼",
               "email": "123@test.com",
-              "profileImageUrl": "https://objectstorage.ap-chuncheon-1.oraclecloud.com/n/ax1dvc8vmenm/b/hangsha-asset/o/default/43513b43-2f84-4f0f-8de8-7d61120fe3aa.png",
+              "profileImageUrl": "https://example.com/profile.png",
               "interestCategories": [
                 {
-                  "category": {
-                    "id": 16,
-                    "groupId": 2,
-                    "name": "글로벌사회공헌단",
-                    "sortOrder": 6
-                  },
+                  "categoryType": "ORGANIZATION",
+                  "categoryId": 6,
+                  "name": "글로벌사회공헌단",
+                  "sortOrder": 6,
                   "priority": 1
                 },
                 {
-                  "category": {
-                    "id": 18,
-                    "groupId": 2,
-                    "name": "인권센터",
-                    "sortOrder": 8
-                  },
+                  "categoryType": "EVENT_TYPE",
+                  "categoryId": 6,
+                  "name": "OpenLnL",
+                  "sortOrder": 6,
                   "priority": 2
-                },
-                {
-                  "category": {
-                    "id": 17,
-                    "groupId": 2,
-                    "name": "아동가족학과",
-                    "sortOrder": 7
-                  },
-                  "priority": 3
                 }
               ]
             }
@@ -55,8 +44,13 @@ class UserProfileResponseTest {
         assertEquals("푱푱한 토끼", response.username)
         assertEquals("123@test.com", response.email)
         assertNotNull(response.profileImageUrl)
-        assertEquals(3, response.interestCategories.orEmpty().size)
-        assertEquals("글로벌사회공헌단", response.interestCategories.orEmpty()[0].category.name)
-        assertEquals(1, response.interestCategories.orEmpty()[0].priority)
+        assertEquals(2, response.interestCategories.orEmpty().size)
+        val organization = response.interestCategories.orEmpty()[0]
+        val eventType = response.interestCategories.orEmpty()[1]
+        assertEquals(CategoryType.ORGANIZATION, organization.categoryType)
+        assertEquals(CategoryKey(CategoryType.ORGANIZATION, 6L), organization.key)
+        assertEquals("글로벌사회공헌단", organization.name)
+        assertEquals(CategoryKey(CategoryType.EVENT_TYPE, 6L), eventType.key)
+        assertEquals(1, organization.priority)
     }
 }

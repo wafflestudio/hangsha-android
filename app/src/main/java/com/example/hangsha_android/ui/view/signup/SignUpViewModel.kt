@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
+import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,7 @@ class SignUpViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val authTokenStorage: AuthTokenStorage,
     private val userRepository: UserRepository,
+    private val categoryRepository: CategoryRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository
 ) : ViewModel() {
 
@@ -187,7 +189,7 @@ class SignUpViewModel @Inject constructor(
 
     private suspend fun loadOrganizationNames() {
         runCatching {
-            userRepository.ensureOrganizationNamesLoaded()
+            categoryRepository.ensureCategoryCatalogLoaded()
         }
     }
 

@@ -6,27 +6,20 @@ import com.example.hangsha_android.data.network.model.DayEventsResponse
 import com.example.hangsha_android.data.network.model.EventCountResponse
 import com.example.hangsha_android.data.network.model.EventDetailResponse
 import com.example.hangsha_android.data.network.model.EventSearchResponse
+import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
 import com.example.hangsha_android.ui.view.dailyevents.DailyEventsFilterState
 import java.time.LocalDate
 import javax.inject.Inject
+import retrofit2.HttpException
 import retrofit2.Response
 
 class EventRepository @Inject constructor(
     private val eventApi: EventApi,
     private val authTokenStorage: AuthTokenStorage
 ) {
-    suspend fun getAllEvents(
-        range: EventDateRange
-    ): Response<MonthlyEventsResponse> {
-        return eventApi.getEvents(
-            from = range.from.toString(),
-            to = range.to.toString()
-        )
-    }
-
     suspend fun getEvents(
         range: EventDateRange,
         filters: CalendarFilterState = CalendarFilterState()
@@ -41,25 +34,22 @@ class EventRepository @Inject constructor(
         )
     }
 
-    suspend fun getAllDayEvents(
-        date: LocalDate
-    ): Response<DayEventsResponse> {
-        return eventApi.getDayEvents(
-            date = date.toString()
-        )
-    }
-
     suspend fun getDayEvents(
         date: LocalDate,
         filters: DailyEventsFilterState = DailyEventsFilterState()
-    ): Response<DayEventsResponse> {
-        return eventApi.getDayEvents(
-            date = date.toString(),
-            orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
-            statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
-            eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
-            excludedKeywords = filters.excludedKeywords.takeIf { it.isNotEmpty() && isLoggedIn() }
-        )
+    ): DayEventsResponse {
+        return collectDayEventPages { page, size ->
+            eventApi.getDayEvents(
+                date = date.toString(),
+                page = page,
+                size = size,
+                orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
+                statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
+                eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
+                excludedKeywords = filters.excludedKeywords
+                    .takeIf { it.isNotEmpty() && isLoggedIn() }
+            )
+        }
     }
 
 
@@ -134,3 +124,40 @@ class EventRepository @Inject constructor(
         return authTokenStorage.hasAuthenticatedUser()
     }
 }
+
+internal suspend fun collectDayEventPages(
+    loader: suspend (page: Int, size: Int) -> Response<DayEventsResponse>
+): DayEventsResponse {
+    val uniqueItems = linkedMapOf<Long, EventSummaryResponse>()
+    var page = 1
+    var total = 0
+    var responseDate = ""
+
+    while (true) {
+        val response = loader(page, DAY_EVENT_PAGE_SIZE)
+        if (!response.isSuccessful) throw HttpException(response)
+        val body = response.body()
+            ?: throw IllegalStateException("Daily events response was empty.")
+        val pageItems = body.items.orEmpty()
+        if (responseDate.isBlank()) responseDate = body.date
+        total = maxOf(total, body.total.coerceAtLeast(0))
+        pageItems.forEach { item -> uniqueItems.putIfAbsent(item.id, item) }
+
+        if (pageItems.size < DAY_EVENT_PAGE_SIZE) break
+        check(page < MAX_DAY_EVENT_PAGES) {
+            "Daily events pagination exceeded the safety limit."
+        }
+        page += 1
+    }
+
+    return DayEventsResponse(
+        page = 1,
+        size = uniqueItems.size,
+        total = maxOf(total, uniqueItems.size),
+        date = responseDate,
+        items = uniqueItems.values.toList()
+    )
+}
+
+private const val DAY_EVENT_PAGE_SIZE = 20
+private const val MAX_DAY_EVENT_PAGES = 100

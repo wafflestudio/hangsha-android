@@ -1,7 +1,5 @@
 package com.example.hangsha_android.data.repository
 
-import com.example.hangsha_android.data.local.StoredGuestBookmarkSnapshot
-
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.local.BookmarksLocalDataSource
 import com.example.hangsha_android.data.network.api.BookmarkApi
@@ -18,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,7 +39,13 @@ class BookmarkRepository @Inject constructor(
     init {
         repositoryScope.launch {
             authTokenStorage.currentUserId
-                .flatMapLatest { userId -> localDataSource.bookmarkedEventIds(userId) }
+                .flatMapLatest { userId ->
+                    if (userId == null) {
+                        flowOf(emptySet())
+                    } else {
+                        localDataSource.bookmarkedEventIds(userId)
+                    }
+                }
                 .collectLatest { eventIds ->
                     _bookmarkedEventIds.value = eventIds
                 }
@@ -55,22 +60,18 @@ class BookmarkRepository @Inject constructor(
 
     suspend fun setBookmark(
         eventId: Long,
-        isBookmarked: Boolean,
-        guestSnapshot: StoredGuestBookmarkSnapshot? = null
+        isBookmarked: Boolean
     ): Set<Long> {
         return mutationMutex.withLock {
-            val userId = authTokenStorage.getCurrentUserId()
+            val userId = checkNotNull(authTokenStorage.getCurrentUserId()) {
+                "Login is required to update bookmarks."
+            }
             val previousEventIds = localDataSource.getBookmarkedEventIds(userId)
             val updatedEventIds = localDataSource.setBookmarked(
                 eventId = eventId,
                 isBookmarked = isBookmarked,
-                userId = userId,
-                guestSnapshot = guestSnapshot
+                userId = userId
             )
-
-            if (userId == null) {
-                return@withLock updatedEventIds
-            }
 
             val response = if (isBookmarked) {
                 eventApi.createBookmark(eventId)
@@ -103,9 +104,10 @@ class BookmarkRepository @Inject constructor(
         sourceUserId: Long? = authTokenStorage.getCurrentUserId()
     ): Set<Long> {
         val userId = sourceUserId
-            ?: return localDataSource.getBookmarkedEventIds(userId = null)
+            ?: return emptySet()
         if (authTokenStorage.getCurrentUserId() != userId) {
-            return localDataSource.getBookmarkedEventIds(authTokenStorage.getCurrentUserId())
+            val currentUserId = authTokenStorage.getCurrentUserId() ?: return emptySet()
+            return localDataSource.getBookmarkedEventIds(currentUserId)
         }
         if (remoteBookmarks.isEmpty()) {
             return localDataSource.getBookmarkedEventIds(userId)
@@ -113,9 +115,9 @@ class BookmarkRepository @Inject constructor(
 
         return mutationMutex.withLock {
             if (authTokenStorage.getCurrentUserId() != userId) {
-                return@withLock localDataSource.getBookmarkedEventIds(
-                    authTokenStorage.getCurrentUserId()
-                )
+                val currentUserId = authTokenStorage.getCurrentUserId()
+                    ?: return@withLock emptySet()
+                return@withLock localDataSource.getBookmarkedEventIds(currentUserId)
             }
 
             val currentEventIds = localDataSource.getBookmarkedEventIds(userId)

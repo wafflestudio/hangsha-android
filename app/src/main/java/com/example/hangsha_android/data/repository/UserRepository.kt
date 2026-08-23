@@ -1,7 +1,5 @@
 package com.example.hangsha_android.data.repository
 
-import com.example.hangsha_android.data.network.api.CategoryApi
-import com.example.hangsha_android.data.network.model.OrganizationCategoryResponse
 import com.example.hangsha_android.data.network.api.UserApi
 import com.example.hangsha_android.data.network.model.ProfileImageUploadResponse
 import com.example.hangsha_android.data.network.model.UpdateInterestCategoriesRequest
@@ -9,6 +7,7 @@ import com.example.hangsha_android.data.network.model.UpdateInterestCategoryItem
 import com.example.hangsha_android.data.network.model.UpdateUserProfileRequest
 import com.example.hangsha_android.data.network.model.UserInterestCategoriesResponse
 import com.example.hangsha_android.data.network.model.UserProfileResponse
+import com.example.hangsha_android.data.repository.model.CategoryKey
 import java.io.File
 import javax.inject.Singleton
 import javax.inject.Inject
@@ -16,21 +15,12 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import retrofit2.HttpException
 import retrofit2.Response
 
 @Singleton
 class UserRepository @Inject constructor(
-    private val userApi: UserApi,
-    private val categoryApi: CategoryApi
+    private val userApi: UserApi
 ) {
-    private val _organizationNames = MutableStateFlow<Map<Long, String>>(emptyMap())
-    val organizationNames: StateFlow<Map<Long, String>> = _organizationNames.asStateFlow()
-
     suspend fun getMyProfile(): Response<UserProfileResponse> {
         return userApi.getMyProfile()
     }
@@ -43,13 +33,14 @@ class UserRepository @Inject constructor(
         return userApi.deleteMyAccount()
     }
 
-    suspend fun updateMyInterestCategories(categoryIds: List<Long>): Response<Unit> {
+    suspend fun updateMyInterestCategories(categoryKeys: List<CategoryKey>): Response<Unit> {
         val request = UpdateInterestCategoriesRequest(
-            items = categoryIds
+            items = categoryKeys
                 .take(MAX_INTEREST_PRIORITY_COUNT)
-                .mapIndexed { index, categoryId ->
+                .mapIndexed { index, categoryKey ->
                     UpdateInterestCategoryItemRequest(
-                        categoryId = categoryId,
+                        categoryType = categoryKey.type,
+                        categoryId = categoryKey.id,
                         priority = index + 1
                     )
                 }
@@ -103,27 +94,6 @@ class UserRepository @Inject constructor(
         return userApi.updateMyProfile(requestBody)
     }
 
-    suspend fun ensureOrganizationNamesLoaded(forceRefresh: Boolean = false) {
-        if (!forceRefresh && _organizationNames.value.isNotEmpty()) {
-            return
-        }
-
-        val response = categoryApi.getOrganizationCategories()
-        if (!response.isSuccessful) {
-            throw HttpException(response)
-        }
-
-        val mappedNames = response.body()
-            .toOrganizationNameMap()
-
-        _organizationNames.update { current ->
-            if (!forceRefresh && current.isNotEmpty()) {
-                current
-            } else {
-                mappedNames
-            }
-        }
-    }
 }
 
 private fun validateUsername(username: String) {
@@ -156,13 +126,6 @@ private fun validateProfileImageUrl(profileImageUrl: String?) {
     require(profileImageUrl.startsWith("http://") || profileImageUrl.startsWith("https://")) {
         "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC8FC\uC18C\uB294 http:// \uB610\uB294 https://\uB85C \uC2DC\uC791\uD574\uC57C \uD569\uB2C8\uB2E4."
     }
-}
-
-private fun OrganizationCategoryResponse?.toOrganizationNameMap(): Map<Long, String> {
-    return this?.items
-        .orEmpty()
-        .sortedBy { item -> item.sortOrder }
-        .associate { item -> item.id to item.name }
 }
 
 private const val ENGLISH_USERNAME_MAX_LENGTH = 20

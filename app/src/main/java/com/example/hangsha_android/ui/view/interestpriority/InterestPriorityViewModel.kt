@@ -2,8 +2,12 @@ package com.example.hangsha_android.ui.view.interestpriority
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.network.model.UserInterestCategory
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.UserRepository
+import com.example.hangsha_android.data.repository.model.CategoryItem
+import com.example.hangsha_android.data.repository.model.CategoryKey
+import com.example.hangsha_android.data.repository.model.CategoryType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -29,7 +33,6 @@ class InterestPriorityViewModel @Inject constructor(
         load()
     }
 
-    // 관심사 데이터 로드
     fun load() {
         viewModelScope.launch {
             _uiState.update {
@@ -42,57 +45,49 @@ class InterestPriorityViewModel @Inject constructor(
             }
 
             runCatching {
-                val interestCategoriesResponse = userRepository.getMyInterestCategories()
-                if (!interestCategoriesResponse.isSuccessful) {
-                    throw HttpException(interestCategoriesResponse)
-                }
-
+                val response = userRepository.getMyInterestCategories()
+                if (!response.isSuccessful) throw HttpException(response)
                 categoryRepository.ensureCategoryCatalogLoaded()
 
-                val selectedIds = interestCategoriesResponse.body()
+                val visibleInterests = response.body()
                     ?.items
                     .orEmpty()
+                    .filter { interest -> interest.categoryType in VISIBLE_CATEGORY_TYPES }
+                val selectedKeys = visibleInterests
                     .sortedBy { interest -> interest.priority }
-                    .map { interest -> interest.category.id }
+                    .map { interest -> interest.key }
+                    .distinct()
                     .take(MAX_INTEREST_PRIORITY_COUNT)
-
-                val groups = categoryRepository.categoryGroups.value
-                    .filterNot { item ->
-                        item.group.id == RECRUITMENT_STATUS_GROUP_ID ||
-                            item.group.name == RECRUITMENT_STATUS_GROUP_NAME
-                    }
-                    .sortedWith(
-                        compareBy(
-                            { item -> interestGroupDisplayOrder(item.group.name) },
-                            { item -> item.group.sortOrder }
-                        )
+                val groups = listOf(
+                    buildGroup(
+                        type = CategoryType.EVENT_TYPE,
+                        name = "프로그램 유형",
+                        sortOrder = 0,
+                        catalog = categoryRepository.eventTypes.value,
+                        interests = visibleInterests
+                    ),
+                    buildGroup(
+                        type = CategoryType.ORGANIZATION,
+                        name = "주체기관",
+                        sortOrder = 1,
+                        catalog = categoryRepository.organizations.value,
+                        interests = visibleInterests
+                    ),
+                    buildGroup(
+                        type = CategoryType.EVENT_STATUS,
+                        name = "행사 상태",
+                        sortOrder = 2,
+                        catalog = categoryRepository.eventStatuses.value,
+                        interests = visibleInterests
                     )
-                    .map { item ->
-                        InterestCategoryGroupUiModel(
-                            id = item.group.id,
-                            name = item.group.name,
-                            sortOrder = item.group.sortOrder,
-                            categories = item.categories
-                                .orEmpty()
-                                .sortedBy { category -> category.sortOrder }
-                                .map { category ->
-                                    InterestCategoryUiModel(
-                                        id = category.id,
-                                        groupId = category.groupId,
-                                        name = category.name,
-                                        sortOrder = category.sortOrder
-                                    )
-                                }
-                        )
-                    }
-
-                selectedIds to groups
+                )
+                selectedKeys to groups
             }.fold(
-                onSuccess = { (selectedIds, groups) ->
+                onSuccess = { (selectedKeys, groups) ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            selectedCategoryIds = selectedIds,
+                            selectedCategoryIds = selectedKeys,
                             categoryGroups = groups,
                             errorMessage = null,
                             saveErrorMessage = null
@@ -111,30 +106,25 @@ class InterestPriorityViewModel @Inject constructor(
         }
     }
 
-    // 카테고리 선택 토글
-    fun toggleCategory(categoryId: Long) {
+    fun toggleCategory(categoryKey: CategoryKey) {
         _uiState.update { current ->
-            val selectedIds = current.selectedCategoryIds
-            val updatedIds = when {
-                categoryId in selectedIds -> selectedIds - categoryId
-                selectedIds.size < MAX_INTEREST_PRIORITY_COUNT -> selectedIds + categoryId
-                else -> selectedIds
+            val selectedKeys = current.selectedCategoryIds
+            val updatedKeys = when {
+                categoryKey in selectedKeys -> selectedKeys - categoryKey
+                selectedKeys.size < MAX_INTEREST_PRIORITY_COUNT -> selectedKeys + categoryKey
+                else -> selectedKeys
             }
-
             current.copy(
-                selectedCategoryIds = updatedIds,
+                selectedCategoryIds = updatedKeys,
                 saveErrorMessage = null,
                 isSaveSuccessful = false
             )
         }
     }
 
-    // 관심사 우선순위 저장
     fun save() {
-        val selectedIds = _uiState.value.selectedCategoryIds.take(MAX_INTEREST_PRIORITY_COUNT)
-        if (_uiState.value.isSaving) {
-            return
-        }
+        val selectedKeys = _uiState.value.selectedCategoryIds.take(MAX_INTEREST_PRIORITY_COUNT)
+        if (_uiState.value.isSaving) return
 
         viewModelScope.launch {
             _uiState.update {
@@ -146,16 +136,14 @@ class InterestPriorityViewModel @Inject constructor(
             }
 
             runCatching {
-                val response = userRepository.updateMyInterestCategories(selectedIds)
-                if (!response.isSuccessful) {
-                    throw HttpException(response)
-                }
+                val response = userRepository.updateMyInterestCategories(selectedKeys)
+                if (!response.isSuccessful) throw HttpException(response)
             }.fold(
                 onSuccess = {
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            selectedCategoryIds = selectedIds,
+                            selectedCategoryIds = selectedKeys,
                             saveErrorMessage = null,
                             isSaveSuccessful = true
                         )
@@ -174,20 +162,16 @@ class InterestPriorityViewModel @Inject constructor(
         }
     }
 
-    // 저장 성공 소비
     fun onSaveSuccessConsumed() {
-        _uiState.update {
-            it.copy(isSaveSuccessful = false)
-        }
+        _uiState.update { it.copy(isSaveSuccessful = false) }
     }
 
-    // 오류 문구 매핑
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
                 401 -> "로그인이 필요합니다."
                 in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "카테고리 목록을 불러오지 못했습니다. (${error.code()})"
+                else -> "카테고리 목록을 불러오지 못했습니다. (" + error.code() + ")"
             }
             is UnknownHostException -> "인터넷 연결을 확인해 주세요."
             is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
@@ -196,14 +180,13 @@ class InterestPriorityViewModel @Inject constructor(
         }
     }
 
-    // 저장 오류 문구 매핑
     private fun mapSaveErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
                 400 -> "관심사 우선순위를 확인해 주세요."
                 401 -> "로그인이 필요합니다."
                 in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "관심사 우선순위 저장에 실패했습니다. (${error.code()})"
+                else -> "관심사 우선순위 저장에 실패했습니다. (" + error.code() + ")"
             }
             is UnknownHostException -> "인터넷 연결을 확인해 주세요."
             is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
@@ -213,15 +196,45 @@ class InterestPriorityViewModel @Inject constructor(
     }
 }
 
-// 그룹 표시 순서 계산
-private fun interestGroupDisplayOrder(groupName: String): Int {
-    return when (groupName) {
-        "프로그램 유형" -> 0
-        "주체기관" -> 1
-        else -> 2
-    }
+private fun buildGroup(
+    type: CategoryType,
+    name: String,
+    sortOrder: Int,
+    catalog: List<CategoryItem>,
+    interests: List<UserInterestCategory>
+): InterestCategoryGroupUiModel {
+    val currentInterestItems = interests
+        .asSequence()
+        .filter { interest -> interest.categoryType == type }
+        .map { interest ->
+            CategoryItem(
+                key = interest.key,
+                name = interest.name,
+                sortOrder = interest.sortOrder
+            )
+        }
+        .toList()
+    val mergedItems = (catalog + currentInterestItems)
+        .associateBy { item -> item.key }
+        .values
+        .sortedWith(compareBy<CategoryItem> { it.sortOrder }.thenBy { it.key.id })
+    return InterestCategoryGroupUiModel(
+        type = type,
+        name = name,
+        sortOrder = sortOrder,
+        categories = mergedItems.map { item ->
+            InterestCategoryUiModel(
+                key = item.key,
+                name = item.name,
+                sortOrder = item.sortOrder
+            )
+        }
+    )
 }
 
 private const val MAX_INTEREST_PRIORITY_COUNT = 3
-private const val RECRUITMENT_STATUS_GROUP_ID = 1L
-private const val RECRUITMENT_STATUS_GROUP_NAME = "모집현황"
+private val VISIBLE_CATEGORY_TYPES = setOf(
+    CategoryType.EVENT_TYPE,
+    CategoryType.ORGANIZATION,
+    CategoryType.EVENT_STATUS
+)

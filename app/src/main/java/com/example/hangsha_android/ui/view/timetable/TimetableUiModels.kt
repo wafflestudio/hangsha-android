@@ -33,6 +33,7 @@ internal data class CourseTimeSlot(
 
 internal data class TimetableEventItem(
     val id: String,
+    val eventId: Long,
     val title: String,
     val weekday: Int,
     val startMinute: Int,

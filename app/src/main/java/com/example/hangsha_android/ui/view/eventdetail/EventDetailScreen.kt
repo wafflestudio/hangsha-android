@@ -59,6 +59,7 @@ import com.example.hangsha_android.ui.theme.PureWhite
 @Composable
 fun EventDetailScreen(
     uiState: EventDetailUiState,
+    showMemberFeatures: Boolean,
     onNavigateBack: () -> Unit,
     onBookmarkClick: () -> Unit,
     onMemoClick: () -> Unit,
@@ -97,6 +98,7 @@ fun EventDetailScreen(
                 EventDetailContent(
                     uiState = uiState,
                     item = uiState.item,
+                    showMemberFeatures = showMemberFeatures,
                     onNavigateBack = onNavigateBack,
                     onBookmarkClick = onBookmarkClick,
                     onMemoClick = onMemoClick,
@@ -126,6 +128,7 @@ fun EventDetailScreen(
 private fun EventDetailContent(
     uiState: EventDetailUiState,
     item: EventDetailItem,
+    showMemberFeatures: Boolean,
     onNavigateBack: () -> Unit,
     onBookmarkClick: () -> Unit,
     onMemoClick: () -> Unit,
@@ -198,19 +201,21 @@ private fun EventDetailContent(
         }
 
         // 북마크 로고
-        item {
-            Icon(
-                imageVector = if (item.isBookmarked) {
-                    Icons.Rounded.Bookmark
-                } else {
-                    Icons.Rounded.BookmarkBorder
-                },
-                contentDescription = "Bookmark",
-                tint = Ink60,
-                modifier = Modifier
-                    .size(32.dp)
-                    .clickable(onClick = onBookmarkClick)
-            )
+        if (showMemberFeatures) {
+            item {
+                Icon(
+                    imageVector = if (item.isBookmarked) {
+                        Icons.Rounded.Bookmark
+                    } else {
+                        Icons.Rounded.BookmarkBorder
+                    },
+                    contentDescription = "Bookmark",
+                    tint = Ink60,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clickable(onClick = onBookmarkClick)
+                )
+            }
         }
 
         item {
@@ -297,22 +302,24 @@ private fun EventDetailContent(
         }
 
         // 메모 기능 - 별도 파일로 분리
-        item {
-            EventDetailMemoSection(
-                isOpen = uiState.isMemoEditorOpen,
-                savedMemo = uiState.savedMemo,
-                content = uiState.memoContent,
-                tagInput = uiState.memoTagInput,
-                tagNames = uiState.memoTagNames,
-                isSaving = uiState.isMemoSaving,
-                onOpen = onMemoClick,
-                onContentChanged = onMemoContentChanged,
-                onTagInputChanged = onMemoTagInputChanged,
-                onAddTag = onAddMemoTag,
-                onRemoveTag = onRemoveMemoTag,
-                onSaveClick = onSaveMemoClick
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        if (showMemberFeatures) {
+            item {
+                EventDetailMemoSection(
+                    isOpen = uiState.isMemoEditorOpen,
+                    savedMemo = uiState.savedMemo,
+                    content = uiState.memoContent,
+                    tagInput = uiState.memoTagInput,
+                    tagNames = uiState.memoTagNames,
+                    isSaving = uiState.isMemoSaving,
+                    onOpen = onMemoClick,
+                    onContentChanged = onMemoContentChanged,
+                    onTagInputChanged = onMemoTagInputChanged,
+                    onAddTag = onAddMemoTag,
+                    onRemoveTag = onRemoveMemoTag,
+                    onSaveClick = onSaveMemoClick
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
 
         item {

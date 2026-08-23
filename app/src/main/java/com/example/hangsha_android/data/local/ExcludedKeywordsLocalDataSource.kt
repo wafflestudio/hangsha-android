@@ -115,6 +115,10 @@ class ExcludedKeywordsLocalDataSource @Inject constructor(
         }
     }
 
+    suspend fun clearAllData() {
+        context.excludedKeywordsDataStore.edit { preferences -> preferences.clear() }
+    }
+
     private fun excludedKeywordsKey(userId: Long?): Preferences.Key<String> {
         return userId?.let { id ->
             require(id > 0L) { "User ID must be positive." }

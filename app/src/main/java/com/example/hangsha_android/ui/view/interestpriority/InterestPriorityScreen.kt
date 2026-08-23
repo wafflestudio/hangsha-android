@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.data.repository.model.CategoryKey
 import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
@@ -49,13 +50,13 @@ private val SelectedCategoryChipColor = Color(0xFF9E9E9E)
 fun InterestPriorityScreen(
     uiState: InterestPriorityUiState,
     onNavigateBack: () -> Unit,
-    onCategoryClick: (Long) -> Unit,
+    onCategoryClick: (CategoryKey) -> Unit,
     onRetryClick: () -> Unit,
     onDoneClick: () -> Unit
 ) {
     val categoriesById = uiState.categoryGroups
         .flatMap { group -> group.categories }
-        .associateBy { category -> category.id }
+        .associateBy { category -> category.key }
 
     Box(
         modifier = Modifier
@@ -222,8 +223,8 @@ fun InterestPriorityScreen(
 // 선택 우선순위 행 구성
 @Composable
 private fun SelectedInterestPriorityRow(
-    selectedIds: List<Long>,
-    categoriesById: Map<Long, InterestCategoryUiModel>
+    selectedIds: List<CategoryKey>,
+    categoriesById: Map<CategoryKey, InterestCategoryUiModel>
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -269,9 +270,9 @@ private fun SelectedPriorityChip(text: String) {
 private fun InterestCategorySection(
     title: String,
     categories: List<InterestCategoryUiModel>,
-    selectedIds: List<Long>,
+    selectedIds: List<CategoryKey>,
     chipColor: Color,
-    onCategoryClick: (Long) -> Unit
+    onCategoryClick: (CategoryKey) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -287,12 +288,12 @@ private fun InterestCategorySection(
             verticalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             categories.forEach { category ->
-                val selectedOrder = selectedIds.indexOf(category.id)
+                val selectedOrder = selectedIds.indexOf(category.key)
                 InterestCategoryChip(
                     text = category.name,
                     selectedOrder = selectedOrder.takeIf { it >= 0 }?.plus(1),
                     color = chipColor,
-                    onClick = { onCategoryClick(category.id) }
+                    onClick = { onCategoryClick(category.key) }
                 )
             }
         }

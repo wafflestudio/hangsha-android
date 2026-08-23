@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,7 +55,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -67,14 +64,6 @@ import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
-import com.example.hangsha_android.ui.view.guest.GuestBookmarkPreviewItem
-import com.example.hangsha_android.ui.view.guest.GuestMemoPreviewItem
-import com.example.hangsha_android.ui.view.guest.GuestMyPageUiState
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private val MyPageActionBorderColor = Color(0xFFCACACA)
 private val MyPageActionMutedIconColor = Color(0xFF9B9B9B)
@@ -248,140 +237,6 @@ fun MyPageScreen(
     }
 }
 
-// 우선순위 목록 영역
-@Composable
-fun GuestMyPageScreen(
-    uiState: GuestMyPageUiState,
-    onLoginClick: () -> Unit,
-    onTimetableClick: () -> Unit,
-    onBookmarksClick: () -> Unit,
-    onBookmarkedEventClick: (Long) -> Unit,
-    onMemoListClick: () -> Unit,
-    onMemoEventClick: (Long) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 29.dp,
-                end = 29.dp,
-                top = 17.dp,
-                bottom = 28.dp
-            )
-        ) {
-            item {
-                GuestProfileLoginPrompt(onLoginClick = onLoginClick)
-                Spacer(modifier = Modifier.height(20.dp))
-                TimetableRegistrationRow(onClick = onTimetableClick)
-                Spacer(modifier = Modifier.height(29.dp))
-                BookmarksPreviewSection(
-                    items = uiState.bookmarkItems
-                        .take(MY_PAGE_PREVIEW_SIZE)
-                        .map { item -> item.toBookmarkedEventItem() },
-                    isLoading = false,
-                    errorMessage = null,
-                    hasMoreItems = uiState.bookmarkItems.size > MY_PAGE_PREVIEW_SIZE,
-                    onHeaderClick = onBookmarksClick,
-                    onEventClick = onBookmarkedEventClick,
-                    onMoreClick = onBookmarksClick
-                )
-                Spacer(modifier = Modifier.height(28.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(17.dp))
-                MemosPreviewSection(
-                    items = uiState.memoItems
-                        .take(MY_PAGE_PREVIEW_SIZE)
-                        .map { item -> item.toMyPageMemoItem() },
-                    isLoading = false,
-                    errorMessage = null,
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Rounded.Edit,
-                            contentDescription = null,
-                            tint = MyPageActionMutedIconColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    onHeaderClick = onMemoListClick,
-                    onMemoClick = onMemoEventClick
-                )
-
-            }
-        }
-    }
-}
-@Composable
-private fun GuestProfileLoginPrompt(
-    onLoginClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.size(76.dp)) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(65.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF87959E)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Person,
-                    contentDescription = null,
-                    tint = PureWhite,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(20.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "비로그인 사용자",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "프로필 설정 및 편집은 로그인이 필요합니다.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
-                fontSize = 12.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Button(
-            onClick = onLoginClick,
-            shape = RoundedCornerShape(5.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF555555),
-                contentColor = PureWhite
-            ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                horizontal = 12.dp,
-                vertical = 0.dp
-            ),
-            modifier = Modifier.height(30.dp)
-        ) {
-            Text(
-                text = "로그인",
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
 @Composable
 private fun DeleteAccountDialog(
     email: String,
@@ -597,62 +452,4 @@ private fun MyPageErrorState(
     }
 }
 
-// 구분선 영역
-private fun GuestBookmarkPreviewItem.toBookmarkedEventItem(): BookmarkedEventItem {
-    return BookmarkedEventItem(
-        id = eventId,
-        title = title,
-        imageUrl = imageUrl,
-        eventTypeId = eventTypeId,
-        statusId = 0L,
-        dDayLabel = dDayLabel.toDdayLabel(),
-        applyPeriodDisplay = applyPeriodDisplay ?: "-",
-        organization = organization,
-        isBookmarked = true
-    )
-}
-
-private fun String?.toDdayLabel(): String {
-    val normalized = this?.trim().orEmpty()
-        .removePrefix("Apply")
-        .removePrefix("지원")
-        .trim()
-    if (normalized.isBlank()) {
-        return "-"
-    }
-    return when {
-        normalized.equals("D-DAY", ignoreCase = true) -> "D-day"
-        normalized.startsWith("D") -> normalized
-        else -> normalized
-    }
-}
-private fun GuestMemoPreviewItem.toMyPageMemoItem(): MyPageMemoItem {
-    return MyPageMemoItem(
-        id = id,
-        eventId = eventId,
-        eventTitle = eventTitle.ifBlank { "Event #$eventId" },
-        content = content,
-        tagNames = tagNames,
-        updatedDateDisplay = formatGuestMemoDate(updatedAt) ?: "-"
-    )
-}
-
-private fun formatGuestMemoDate(value: String?): String? {
-    val date = parseGuestDate(value)
-    return date?.format(GuestFullDateFormatter)
-}
-
-private fun parseGuestDate(value: String?): LocalDate? {
-    if (value.isNullOrBlank()) {
-        return null
-    }
-
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
-        runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
-            runCatching { LocalDate.parse(value) }.getOrNull()
-        }
-    }
-}
-
 private const val MY_PAGE_PREVIEW_SIZE = 20
-private val GuestFullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREA)

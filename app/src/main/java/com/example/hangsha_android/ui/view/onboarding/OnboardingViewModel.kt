@@ -1,13 +1,11 @@
 package com.example.hangsha_android.ui.view.onboarding
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hangsha_android.data.local.ProfileImageFilePreparer
 import com.example.hangsha_android.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -22,7 +20,7 @@ import retrofit2.HttpException
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    @param:ApplicationContext private val appContext: Context
+    private val profileImageFilePreparer: ProfileImageFilePreparer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -149,39 +147,24 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private suspend fun uploadProfileImage(uri: Uri): String {
-        val imageFile = copyUriToCacheFile(uri)
-        val mimeType = appContext.contentResolver.getType(uri)
-        val response = userRepository.uploadMyProfileImage(
-            imageFile = imageFile,
-            mimeType = mimeType
-        )
-        if (!response.isSuccessful) {
-            throw HttpException(response)
-        }
-
-        val url = response.body()?.url
-        require(!url.isNullOrBlank()) {
-            "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC751\uB2F5\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
-        }
-        return url
-    }
-
-    private fun copyUriToCacheFile(uri: Uri): File {
-        val extension = when (appContext.contentResolver.getType(uri)) {
-            "image/png" -> ".png"
-            "image/webp" -> ".webp"
-            else -> ".jpg"
-        }
-        val file = File.createTempFile("profile-image-", extension, appContext.cacheDir)
-        appContext.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) {
-                "Could not open selected image."
+        val preparedImage = profileImageFilePreparer.prepare(uri)
+        try {
+            val response = userRepository.uploadMyProfileImage(
+                imageFile = preparedImage.file,
+                mimeType = preparedImage.mimeType
+            )
+            if (!response.isSuccessful) {
+                throw HttpException(response)
             }
-            file.outputStream().use { output ->
-                input.copyTo(output)
+
+            val url = response.body()?.url
+            require(!url.isNullOrBlank()) {
+                "프로필 이미지 업로드 응답이 비어 있습니다."
             }
+            return url
+        } finally {
+            profileImageFilePreparer.delete(preparedImage.file)
         }
-        return file
     }
 
     private fun validateUsername(username: String): String? {

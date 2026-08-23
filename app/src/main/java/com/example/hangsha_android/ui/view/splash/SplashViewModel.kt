@@ -1,14 +1,18 @@
 package com.example.hangsha_android.ui.view.splash
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
+import com.example.hangsha_android.data.local.LocalDataMigration
 import com.example.hangsha_android.data.network.model.LoginResponse
 import com.example.hangsha_android.data.repository.AuthRepository
+import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,36 +26,49 @@ class SplashViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val authTokenStorage: AuthTokenStorage,
     private val userRepository: UserRepository,
-    private val excludedKeywordsRepository: ExcludedKeywordsRepository
+    private val categoryRepository: CategoryRepository,
+    private val excludedKeywordsRepository: ExcludedKeywordsRepository,
+    private val localDataMigration: LocalDataMigration
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SplashUiState())
     val uiState: StateFlow<SplashUiState> = _uiState.asStateFlow()
 
     init {
-        verifyRefreshToken()
+        viewModelScope.launch {
+            resetLocalDataIfNeeded()
+            verifyRefreshToken()
+        }
     }
 
-    private fun verifyRefreshToken() {
+    private suspend fun resetLocalDataIfNeeded() {
+        try {
+            localDataMigration.runIfNeeded()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Log.w(TAG, "Local data migration failed.", error)
+        }
+    }
+
+    private suspend fun verifyRefreshToken() {
         val refreshToken = authTokenStorage.getRefreshToken()
         if (refreshToken.isNullOrBlank()) {
             navigateTo(SplashNavigationTarget.Login)
             return
         }
 
-        viewModelScope.launch {
-            val target = runCatching {
-                refreshSession(refreshToken)
-            }.fold(
-                onSuccess = { SplashNavigationTarget.Calendar },
-                onFailure = {
-                    authTokenStorage.clearTokens()
-                    SplashNavigationTarget.Login
-                }
-            )
+        val target = runCatching {
+            refreshSession(refreshToken)
+        }.fold(
+            onSuccess = { SplashNavigationTarget.Calendar },
+            onFailure = {
+                authTokenStorage.clearTokens()
+                SplashNavigationTarget.Login
+            }
+        )
 
-            navigateTo(target)
-        }
+        navigateTo(target)
     }
 
     private suspend fun refreshSession(refreshToken: String) {
@@ -92,7 +109,7 @@ class SplashViewModel @Inject constructor(
 
     private suspend fun loadOrganizationNames() {
         runCatching {
-            userRepository.ensureOrganizationNamesLoaded()
+            categoryRepository.ensureCategoryCatalogLoaded()
         }
     }
 
@@ -106,5 +123,9 @@ class SplashViewModel @Inject constructor(
         _uiState.update {
             it.copy(navigationTarget = target)
         }
+    }
+
+    private companion object {
+        const val TAG = "SplashViewModel"
     }
 }

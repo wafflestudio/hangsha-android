@@ -1,16 +1,18 @@
 package com.example.hangsha_android.ui.view.calendar
 
+import com.example.hangsha_android.util.currentHangshaMonth
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import java.time.LocalDate
 import java.time.YearMonth
 
 data class CalendarUiState(
-    val currentMonth: YearMonth = YearMonth.now(),
+    val currentMonth: YearMonth = currentHangshaMonth(),
     val visibleRange: EventDateRange = currentMonth.toCalendarGridRange(),
     val visibleDates: List<LocalDate> = visibleRange.toDateList(),
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val organizationNames: Map<Long, String> = emptyMap(),
+    val statusNames: Map<Long, String> = emptyMap(),
     val eventTypeNames: Map<Long, String> = emptyMap(),
     val appliedFilters: CalendarFilterState = CalendarFilterState(),
     val draftFilters: CalendarFilterState = CalendarFilterState(),
@@ -51,7 +53,7 @@ private fun CalendarEvent.matches(
     filters: CalendarFilterState
 ): Boolean {
     if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
-    if (filters.statusIds.isNotEmpty() && statusId !in filters.statusIds) return false
-    if (filters.eventTypeIds.isNotEmpty() && eventTypeId !in filters.eventTypeIds) return false
+    if (filters.statusIds.isNotEmpty() && (statusId == null || statusId !in filters.statusIds)) return false
+    if (filters.eventTypeIds.isNotEmpty() && (eventTypeId == null || eventTypeId !in filters.eventTypeIds)) return false
     return true
 }

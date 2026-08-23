@@ -1,12 +1,14 @@
 package com.example.hangsha_android.ui.view.mypage
 
-import android.content.Context
+import com.example.hangsha_android.util.currentHangshaDate
+import com.example.hangsha_android.util.toHangshaDate
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.local.BookmarksLocalDataSource
 import com.example.hangsha_android.data.local.ExcludedKeywordsLocalDataSource
+import com.example.hangsha_android.data.local.ProfileImageFilePreparer
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.AuthRepository
@@ -15,8 +17,6 @@ import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
-import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -44,7 +44,7 @@ class MyPageViewModel @Inject constructor(
     private val authTokenStorage: AuthTokenStorage,
     private val bookmarksLocalDataSource: BookmarksLocalDataSource,
     private val excludedKeywordsLocalDataSource: ExcludedKeywordsLocalDataSource,
-    @param:ApplicationContext private val appContext: Context
+    private val profileImageFilePreparer: ProfileImageFilePreparer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MyPageUiState())
@@ -82,14 +82,14 @@ class MyPageViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            username = profile.username,
-                            email = profile.email,
+                            username = profile.username.orEmpty(),
+                            email = profile.email.orEmpty(),
                             profileImageUrl = profile.profileImageUrl,
-                            draftUsername = profile.username,
+                            draftUsername = profile.username.orEmpty(),
                             draftProfileImageUrl = profile.profileImageUrl,
                             draftProfileImageUri = null,
                             isProfileImageMarkedForDeletion = false,
-                            interests = sortedInterests.map { interest -> interest.category.name },
+                            interests = sortedInterests.map { interest -> interest.name },
                             usernameErrorMessage = null,
                             profileSaveErrorMessage = null,
                             errorMessage = null
@@ -504,39 +504,24 @@ class MyPageViewModel @Inject constructor(
     }
 
     private suspend fun uploadProfileImage(uri: Uri): String {
-        val imageFile = copyUriToCacheFile(uri)
-        val mimeType = appContext.contentResolver.getType(uri)
-        val response = userRepository.uploadMyProfileImage(
-            imageFile = imageFile,
-            mimeType = mimeType
-        )
-        if (!response.isSuccessful) {
-            throw HttpException(response)
-        }
-
-        val url = response.body()?.url
-        require(!url.isNullOrBlank()) {
-            "\uD504\uB85C\uD544 \uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC \uC751\uB2F5\uC774 \uBE44\uC5B4 \uC788\uC2B5\uB2C8\uB2E4."
-        }
-        return url
-    }
-
-    private fun copyUriToCacheFile(uri: Uri): File {
-        val extension = when (appContext.contentResolver.getType(uri)) {
-            "image/png" -> ".png"
-            "image/webp" -> ".webp"
-            else -> ".jpg"
-        }
-        val file = File.createTempFile("profile-image-", extension, appContext.cacheDir)
-        appContext.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) {
-                "\uC120\uD0DD\uD55C \uC774\uBBF8\uC9C0\uB97C \uC5F4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+        val preparedImage = profileImageFilePreparer.prepare(uri)
+        try {
+            val response = userRepository.uploadMyProfileImage(
+                imageFile = preparedImage.file,
+                mimeType = preparedImage.mimeType
+            )
+            if (!response.isSuccessful) {
+                throw HttpException(response)
             }
-            file.outputStream().use { output ->
-                input.copyTo(output)
+
+            val url = response.body()?.url
+            require(!url.isNullOrBlank()) {
+                "프로필 이미지 업로드 응답이 비어 있습니다."
             }
+            return url
+        } finally {
+            profileImageFilePreparer.delete(preparedImage.file)
         }
-        return file
     }
 
     private fun validateDraftUsername(username: String): String? {
@@ -559,7 +544,8 @@ class MyPageViewModel @Inject constructor(
 
     private fun mapProfileSaveErrorMessage(error: Throwable): String {
         return when (error) {
-            is IllegalArgumentException -> "\uD504\uB85C\uD544 \uC785\uB825 \uC815\uBCF4\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is IllegalArgumentException ->
+                error.message ?: "프로필 입력 정보를 확인해 주세요."
             else -> mapErrorMessage(error)
         }
     }
@@ -648,7 +634,7 @@ private fun Char.isKorean(): Boolean {
 private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val applyEndDate = parseDate(applyEnd)
     val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - LocalDate.now().toEpochDay()
+        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
         when {
             diff == 0L -> "D-day"
             diff > 0L -> "D-$diff"
@@ -665,7 +651,7 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
         dDayLabel = dDayLabel,
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         organization = organization,
-        isBookmarked = isBookmarked
+        isBookmarked = true
     )
 }
 
@@ -687,7 +673,7 @@ private fun parseDate(value: String?): LocalDate? {
         return null
     }
 
-    return runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrElse {
+    return runCatching { OffsetDateTime.parse(value).toHangshaDate() }.getOrElse {
         runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrElse {
             runCatching { LocalDate.parse(value) }.getOrNull()
         }
