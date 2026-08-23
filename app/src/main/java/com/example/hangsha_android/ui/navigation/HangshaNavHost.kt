@@ -325,12 +325,6 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
         val signUpUiState by signUpViewModel.uiState.collectAsState()
         val context = LocalContext.current
 
-        LaunchedEffect(signUpUiState.signUpMessage) {
-            val message = signUpUiState.signUpMessage ?: return@LaunchedEffect
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            signUpViewModel.onSignUpMessageConsumed()
-        }
-
         LaunchedEffect(signUpUiState.isSignUpSuccessful) {
             if (!signUpUiState.isSignUpSuccessful) {
                 return@LaunchedEffect
@@ -352,6 +346,9 @@ fun NavGraphBuilder.signUpGraph(navController: NavHostController) {
             onPrivacyPolicyAgreementChanged = { isAgreed ->
                 signUpViewModel.onPrivacyPolicyAgreementChanged(isAgreed)
             },
+            onVerificationCodeChanged = { value -> signUpViewModel.onVerificationCodeChanged(value) },
+            onSendVerificationCodeClick = { signUpViewModel.sendVerificationCode() },
+            onVerifyVerificationCodeClick = { signUpViewModel.verifyVerificationCode() },
             onSignUpClick = { signUpViewModel.signUp() }
         )
     }

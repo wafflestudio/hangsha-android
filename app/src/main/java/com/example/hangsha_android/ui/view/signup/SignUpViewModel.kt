@@ -124,7 +124,7 @@ class SignUpViewModel @Inject constructor(
                         if (it.email.trim() != email) it else it.copy(
                             isVerificationCodeSending = false,
                             verificationCodeExpiresAt = expiresAt,
-                            signUpMessage = "\uC778\uC99D\uBC88\uD638\uB97C \uC774\uBA54\uC77C\uB85C \uBCF4\uB0C8\uC2B5\uB2C8\uB2E4."
+                            signUpMessage = null
                         )
                     }
                 },
@@ -173,7 +173,7 @@ class SignUpViewModel @Inject constructor(
                             isVerificationCodeVerifying = false,
                             signupToken = verification.signupToken,
                             signupTokenExpiresAt = verification.expiresAt,
-                            signUpMessage = "\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+                            signUpMessage = null
                         )
                     }
                 },
