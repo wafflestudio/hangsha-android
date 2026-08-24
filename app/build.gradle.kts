@@ -54,8 +54,8 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.0.3"
+        versionCode = 7
+        versionName = "1.0.4"
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",

@@ -96,6 +96,7 @@ fun CalendarScreen(
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
+    onEventClick: (Long) -> Unit,
     onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
@@ -115,6 +116,7 @@ fun CalendarScreen(
         onPreviousMonthClick = onPreviousMonthClick,
         onNextMonthClick = onNextMonthClick,
         onDateClick = onDateClick,
+        onEventClick = onEventClick,
         onSearchClick = onSearchClick,
         onOpenFilterClick = onOpenFilterClick,
         onDismissFilterSheet = onDismissFilterSheet,
@@ -137,6 +139,7 @@ private fun CalendarScreenContent(
     onPreviousMonthClick: () -> Unit,
     onNextMonthClick: () -> Unit,
     onDateClick: (LocalDate) -> Unit,
+    onEventClick: (Long) -> Unit,
     onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
@@ -210,6 +213,7 @@ private fun CalendarScreenContent(
                 currentMonth = uiState.currentMonth,
                 eventsByDate = uiState.eventsByDate,
                 onDateClick = onDateClick,
+                onEventClick = onEventClick,
                 isLoading = uiState.isLoading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -335,6 +339,7 @@ private fun CalendarBody(
     currentMonth: YearMonth,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
     onDateClick: (LocalDate) -> Unit,
+    onEventClick: (Long) -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -346,11 +351,12 @@ private fun CalendarBody(
             .verticalScroll(scrollState)
     ) {
         // 날짜 카드들의 월간 그리드
-        CalendarMonthGrid(
+        ConnectedCalendarMonthGrid(
             visibleDates = visibleDates,
             currentMonth = currentMonth,
             eventsByDate = eventsByDate,
             onDateClick = onDateClick,
+            onEventClick = onEventClick,
             modifier = Modifier.fillMaxWidth()
         )
 
