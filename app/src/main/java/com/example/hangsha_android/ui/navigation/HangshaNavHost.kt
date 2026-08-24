@@ -452,6 +452,9 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     }
                     navController.navigate(HangshaDestinations.DailyEvents.createRoute(date.toString()))
                 },
+                onEventClick = { eventId ->
+                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
+                },
                 onOpenFilterClick = { calendarViewModel.openFilterSheet() },
                 onDismissFilterSheet = { calendarViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { calendarViewModel.selectFilterTab(it) },
