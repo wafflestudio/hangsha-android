@@ -47,6 +47,7 @@ import java.time.YearMonth
 
 private const val CalendarDayCount = 7
 private const val MaxVisibleEventLanes = 4
+private const val ReferenceVisibleEventLanes = 4
 private const val DayCellAspectRatio = 0.4f
 private val DayCellHorizontalGap = 3.dp
 private val WeekVerticalGap = 5.dp
@@ -115,7 +116,9 @@ private fun ConnectedCalendarWeek(
         val dayWidth = (maxWidth - DayCellHorizontalGap * (CalendarDayCount - 1)) /
             CalendarDayCount
         val dayStride = dayWidth + DayCellHorizontalGap
-        val weekHeight = dayWidth / DayCellAspectRatio
+        val eventLanePitch = EventLaneHeight + EventLaneGap
+        val weekHeight = dayWidth / DayCellAspectRatio +
+            eventLanePitch * (MaxVisibleEventLanes - ReferenceVisibleEventLanes)
 
         Box(
             modifier = Modifier
