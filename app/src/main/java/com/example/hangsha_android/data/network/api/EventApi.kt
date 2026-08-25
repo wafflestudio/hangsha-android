@@ -20,7 +20,7 @@ interface EventApi {
         @Query("orgId") orgId: List<Long>? = null,
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,
-        @Query("excludedKeywords") excludedKeywords: List<String>? = null
+        @Query("excludedKeyword") excludedKeywords: List<String>? = null
     ): Response<MonthlyEventsResponse>
 
     @GET("api/v1/events/day")
@@ -31,7 +31,7 @@ interface EventApi {
         @Query("orgId") orgId: List<Long>? = null,
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,
-        @Query("excludedKeywords") excludedKeywords: List<String>? = null
+        @Query("excludedKeyword") excludedKeywords: List<String>? = null
     ): Response<DayEventsResponse>
 
 
