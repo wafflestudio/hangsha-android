@@ -65,7 +65,9 @@ class EventRepository @Inject constructor(
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
-            applyExcludeKeywords = true
+            applyExcludedKeywords = true,
+            excludedKeywords = filters.excludedKeywords
+                .takeIf { it.isNotEmpty() && !isLoggedIn() }
         )
     }
 
@@ -79,7 +81,9 @@ class EventRepository @Inject constructor(
             statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
             eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
             orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
-            applyExcludeKeywords = true
+            applyExcludedKeywords = true,
+            excludedKeywords = filters.excludedKeywords
+                .takeIf { it.isNotEmpty() && !isLoggedIn() }
         )
     }
     suspend fun searchEvents(

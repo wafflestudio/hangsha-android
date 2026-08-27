@@ -42,7 +42,8 @@ interface EventApi {
         @Query("statusId") statusId: List<Long>? = null,
         @Query("eventTypeId") eventTypeId: List<Long>? = null,
         @Query("orgId") orgId: List<Long>? = null,
-        @Query("applyExcludeKeywords") applyExcludeKeywords: Boolean = true
+        @Query("applyExcludedKeywords") applyExcludedKeywords: Boolean = true,
+        @Query("excludedKeyword") excludedKeywords: List<String>? = null
     ): Response<EventCountResponse>
     @GET("api/v1/events/search")
     suspend fun searchEvents(
