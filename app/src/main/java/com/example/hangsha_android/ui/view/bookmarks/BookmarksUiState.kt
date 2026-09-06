@@ -19,6 +19,7 @@ data class BookmarkedEventItem(
     val eventTypeId: Long?,
     val statusId: Long?,
     val dDayLabel: String,
+    val eventDDayLabel: String,
     val applyPeriodDisplay: String,
     val organization: String?,
     val isBookmarked: Boolean

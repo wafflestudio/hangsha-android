@@ -30,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +46,7 @@ import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -292,6 +295,13 @@ private fun DailyEventCard(
     onBookmarkClick: () -> Unit,
     showBookmarkAction: Boolean
 ) {
+    val showEventDDay = rememberSaveable(item.id) { mutableStateOf(false) }
+    val countdownLabel = resolveCountdownLabel(
+        applicationLabel = item.dDayLabel,
+        eventLabel = item.eventDDayLabel,
+        showEvent = showEventDDay.value
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -317,7 +327,13 @@ private fun DailyEventCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = item.dDayLabel,
+                    text = countdownLabel.text,
+                    modifier = Modifier.clickable(
+                        enabled = countdownLabel.canToggle,
+                        onClickLabel = countdownLabel.toggleActionLabel
+                    ) {
+                        showEventDDay.value = !showEventDDay.value
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = Ink60,
                     fontSize = 15.sp

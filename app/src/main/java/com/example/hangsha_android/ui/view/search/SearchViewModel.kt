@@ -1,6 +1,5 @@
 package com.example.hangsha_android.ui.view.search
 
-import com.example.hangsha_android.util.currentHangshaDate
 import com.example.hangsha_android.util.toHangshaDate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +9,8 @@ import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
+import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -159,6 +160,8 @@ private fun EventSummaryResponse.toSearchEventItem(
     eventTypeNames: Map<Long, String>
 ): SearchEventItem {
     val applyEndDate = parseSearchDate(applyEnd)
+    val eventStartDate = parseSearchDate(eventStart)
+    val eventEndDate = parseSearchDate(eventEnd)
     return SearchEventItem(
         id = id,
         title = title,
@@ -166,7 +169,8 @@ private fun EventSummaryResponse.toSearchEventItem(
         imageUrl = imageUrl,
         organization = organization,
         eventDateDisplay = formatSearchPeriod(eventStart, eventEnd),
-        dDayLabel = applyEndDate.toSearchDDay(),
+        dDayLabel = formatApplicationDeadlineLabel(applyEndDate),
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         eventTypeId = eventTypeId,
         eventTypeLabel = eventTypeId
             ?.let(eventTypeNames::get)
@@ -181,16 +185,6 @@ private fun String?.toPlainSearchText(): String? {
         ?.replace("&amp;", "&")
         ?.trim()
         ?.takeIf { it.isNotBlank() }
-}
-
-private fun LocalDate?.toSearchDDay(): String {
-    val target = this ?: return "-"
-    val diff = target.toEpochDay() - currentHangshaDate().toEpochDay()
-    return when {
-        diff == 0L -> "D-DAY"
-        diff > 0L -> "D-$diff"
-        else -> "D$diff"
-    }
 }
 
 private fun formatSearchPeriod(startValue: String?, endValue: String?): String {

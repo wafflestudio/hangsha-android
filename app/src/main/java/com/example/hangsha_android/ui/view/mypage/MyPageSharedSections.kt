@@ -36,6 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +55,7 @@ import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 private val MyPageSectionDividerColor = Color(0xFFE7E7E7)
 private val MyPageSectionBorderColor = Color(0xFFCACACA)
 private val MyPageSectionMutedIconColor = Color(0xFF9B9B9B)
@@ -305,6 +308,13 @@ private fun BookmarkedEventPreviewCard(
     item: BookmarkedEventItem,
     onClick: () -> Unit
 ) {
+    val showEventDDay = rememberSaveable(item.id) { mutableStateOf(false) }
+    val countdownLabel = resolveCountdownLabel(
+        applicationLabel = item.dDayLabel,
+        eventLabel = item.eventDDayLabel,
+        showEvent = showEventDDay.value
+    )
+
     Column(
         modifier = Modifier
             .width(180.dp)
@@ -336,7 +346,13 @@ private fun BookmarkedEventPreviewCard(
             )
             Spacer(modifier = Modifier.width(9.dp))
             Text(
-                text = item.dDayLabel,
+                text = countdownLabel.text,
+                modifier = Modifier.clickable(
+                    enabled = countdownLabel.canToggle,
+                    onClickLabel = countdownLabel.toggleActionLabel
+                ) {
+                    showEventDDay.value = !showEventDDay.value
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = Ink100,
                 fontSize = 13.sp,

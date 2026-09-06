@@ -37,6 +37,7 @@ data class EventDetailItem(
     val eventPeriodDisplay: String,
     val applyPeriodDisplay: String,
     val dDayLabel: String,
+    val eventDDayLabel: String,
     val eventTypeLabel: String,
     val eventTypeColor: Color,
     val applyLink: String?,
