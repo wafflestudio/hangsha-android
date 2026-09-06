@@ -10,6 +10,7 @@ import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -159,6 +160,8 @@ private fun EventSummaryResponse.toSearchEventItem(
     eventTypeNames: Map<Long, String>
 ): SearchEventItem {
     val applyEndDate = parseSearchDate(applyEnd)
+    val eventStartDate = parseSearchDate(eventStart)
+    val eventEndDate = parseSearchDate(eventEnd)
     return SearchEventItem(
         id = id,
         title = title,
@@ -167,6 +170,7 @@ private fun EventSummaryResponse.toSearchEventItem(
         organization = organization,
         eventDateDisplay = formatSearchPeriod(eventStart, eventEnd),
         dDayLabel = formatApplicationDeadlineLabel(applyEndDate),
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         eventTypeId = eventTypeId,
         eventTypeLabel = eventTypeId
             ?.let(eventTypeNames::get)

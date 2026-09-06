@@ -14,6 +14,7 @@ import com.example.hangsha_android.util.toHangshaDate
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -495,6 +496,8 @@ private fun EventDetailResponse.toEventDetailItem(
     bookmarkedEventIds: Set<Long>
 ): EventDetailItem {
     val applyEndDate = parseEventDate(applyEnd)
+    val eventStartDate = parseEventDate(eventStart)
+    val eventEndDate = parseEventDate(eventEnd)
     val dDayLabel = formatApplicationDeadlineLabel(applyEndDate)
 
     return EventDetailItem(
@@ -506,6 +509,7 @@ private fun EventDetailResponse.toEventDetailItem(
         eventPeriodDisplay = formatPeriod(eventStart, eventEnd),
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         eventTypeLabel = eventTypeLabel(eventTypeId),
         eventTypeColor = eventTypeColor(eventTypeId),
         applyLink = applyLink,

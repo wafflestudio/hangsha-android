@@ -31,4 +31,59 @@ class ApplicationDeadlineLabelTest {
     fun `missing deadline shows fallback`() {
         assertEquals("-", formatApplicationDeadlineLabel(null, today))
     }
+
+    @Test
+    fun `future event shows event d-day from its start date`() {
+        val eventStart = today.plusDays(10)
+
+        assertEquals("행사 D-10", formatEventCountdownLabel(eventStart, eventStart, today))
+    }
+
+    @Test
+    fun `event start date shows event d-day`() {
+        assertEquals("행사 D-DAY", formatEventCountdownLabel(today, today.plusDays(2), today))
+    }
+
+    @Test
+    fun `event between start and end dates shows in progress`() {
+        assertEquals(
+            "행사 진행중",
+            formatEventCountdownLabel(today.minusDays(1), today.plusDays(1), today)
+        )
+    }
+
+    @Test
+    fun `event past its end date shows ended`() {
+        assertEquals(
+            "행사 종료",
+            formatEventCountdownLabel(today.minusDays(2), today.minusDays(1), today)
+        )
+    }
+
+    @Test
+    fun `missing event start shows fallback`() {
+        assertEquals("-", formatEventCountdownLabel(null, today.plusDays(1), today))
+    }
+
+    @Test
+    fun `countdown resolver defaults to application label and toggles when both exist`() {
+        val application = resolveCountdownLabel("지원 D-3", "행사 D-10", showEvent = false)
+        val event = resolveCountdownLabel("지원 D-3", "행사 D-10", showEvent = true)
+
+        assertEquals("지원 D-3", application.text)
+        assertEquals(true, application.canToggle)
+        assertEquals("행사 D-10", event.text)
+        assertEquals(true, event.canToggle)
+    }
+
+    @Test
+    fun `countdown resolver uses only available label without toggle`() {
+        val eventOnly = resolveCountdownLabel("-", "행사 D-10", showEvent = false)
+        val applicationOnly = resolveCountdownLabel("지원 D-3", "-", showEvent = true)
+
+        assertEquals("행사 D-10", eventOnly.text)
+        assertEquals(false, eventOnly.canToggle)
+        assertEquals("지원 D-3", applicationOnly.text)
+        assertEquals(false, applicationOnly.canToggle)
+    }
 }

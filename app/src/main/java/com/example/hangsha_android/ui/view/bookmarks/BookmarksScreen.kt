@@ -30,6 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,7 @@ import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import kotlinx.coroutines.flow.collect
 
 private val BookmarkIconTint = Color(0xFF858585)
@@ -249,6 +252,13 @@ private fun BookmarkedEventCard(
     onClick: () -> Unit,
     onBookmarkClick: () -> Unit
 ) {
+    val showEventDDay = rememberSaveable(item.id) { mutableStateOf(false) }
+    val countdownLabel = resolveCountdownLabel(
+        applicationLabel = item.dDayLabel,
+        eventLabel = item.eventDDayLabel,
+        showEvent = showEventDDay.value
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,7 +295,13 @@ private fun BookmarkedEventCard(
                     )
                     Spacer(modifier = Modifier.size(11.dp))
                     Text(
-                        text = item.dDayLabel,
+                        text = countdownLabel.text,
+                        modifier = Modifier.clickable(
+                            enabled = countdownLabel.canToggle,
+                            onClickLabel = countdownLabel.toggleActionLabel
+                        ) {
+                            showEventDDay.value = !showEventDDay.value
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Ink100,
                         fontSize = 15.sp,

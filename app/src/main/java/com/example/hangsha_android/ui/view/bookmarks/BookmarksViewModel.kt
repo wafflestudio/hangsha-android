@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import com.example.hangsha_android.util.toHangshaDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -241,6 +242,8 @@ class BookmarksViewModel @Inject constructor(
 
 private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val applyEndDate = parseDate(applyEnd)
+    val eventStartDate = parseDate(eventStart)
+    val eventEndDate = parseDate(eventEnd)
     val dDayLabel = formatApplicationDeadlineLabel(applyEndDate)
 
     return BookmarkedEventItem(
@@ -250,6 +253,7 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
         eventTypeId = eventTypeId,
         statusId = statusId,
         dDayLabel = dDayLabel,
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         organization = organization,
         isBookmarked = true

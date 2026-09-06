@@ -15,6 +15,7 @@ import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.model.CategoryType
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -627,6 +628,7 @@ private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> {
 }
 
 private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
+    val eventStartDate = parseEventDate(eventStart)
     val eventEndDate = parseEventDate(eventEnd)
     val applyEndDate = parseEventDate(applyEnd)
     val dDayLabel = formatApplicationDeadlineLabel(applyEndDate)
@@ -642,6 +644,7 @@ private fun EventSummaryResponse.toDailyEventItem(): DailyEventItem {
         eventEndDisplay = eventEndDisplay,
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         dDayLabel = dDayLabel,
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         accentColor = eventTypeColor(eventTypeId),
         isBookmarked = isBookmarked == true,
         isInterested = isInterested == true,
