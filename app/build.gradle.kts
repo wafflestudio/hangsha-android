@@ -37,6 +37,14 @@ val naverClientSecret = readBuildConfigString("NAVER_CLIENT_SECRET")
 val naverClientName = readBuildConfigString("NAVER_CLIENT_NAME").ifBlank { "Hangsha" }
 val debugServerBaseUrl = readBuildConfigString("DEBUG_SERVER_BASE_URL")
     .ifBlank { "https://hangsha-api-dev.wafflestudio.com/" }
+val debugSnuttBaseUrl = readBuildConfigString("DEBUG_SNUTT_BASE_URL")
+    .ifBlank { "https://snutt.wafflestudio.com" }
+val debugTimetablePickerOrigin = readBuildConfigString("DEBUG_TIMETABLE_PICKER_ORIGIN")
+    .ifBlank { "https://hangsha.wafflestudio.com" }
+val releaseSnuttBaseUrl = readBuildConfigString("RELEASE_SNUTT_BASE_URL")
+    .ifBlank { "https://snutt.wafflestudio.com" }
+val releaseTimetablePickerOrigin = readBuildConfigString("RELEASE_TIMETABLE_PICKER_ORIGIN")
+    .ifBlank { "https://hangsha.wafflestudio.com" }
 
 android {
     namespace = "com.example.hangsha_android"
@@ -87,6 +95,16 @@ android {
             versionNameSuffix = "-debug"
             buildConfigField("String", "SERVER_BASE_URL", "\"${debugServerBaseUrl.escapeForBuildConfig()}\"")
             buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${debugKakaoNativeAppKey.escapeForBuildConfig()}\"")
+            buildConfigField(
+                "String",
+                "SNUTT_BASE_URL",
+                34.toChar().toString() + debugSnuttBaseUrl.escapeForBuildConfig() + 34.toChar()
+            )
+            buildConfigField(
+                "String",
+                "TIMETABLE_PICKER_ORIGIN",
+                34.toChar().toString() + debugTimetablePickerOrigin.escapeForBuildConfig() + 34.toChar()
+            )
             manifestPlaceholders["kakaoNativeAppKey"] = debugKakaoNativeAppKey
         }
 
@@ -98,6 +116,16 @@ android {
             )
             buildConfigField("String", "SERVER_BASE_URL", "\"https://hangsha-api.wafflestudio.com/\"")
             buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"${releaseKakaoNativeAppKey.escapeForBuildConfig()}\"")
+            buildConfigField(
+                "String",
+                "SNUTT_BASE_URL",
+                34.toChar().toString() + releaseSnuttBaseUrl.escapeForBuildConfig() + 34.toChar()
+            )
+            buildConfigField(
+                "String",
+                "TIMETABLE_PICKER_ORIGIN",
+                34.toChar().toString() + releaseTimetablePickerOrigin.escapeForBuildConfig() + 34.toChar()
+            )
             manifestPlaceholders["kakaoNativeAppKey"] = releaseKakaoNativeAppKey
         }
     }
@@ -128,6 +156,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.webkit)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)

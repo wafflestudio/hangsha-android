@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -94,6 +95,7 @@ private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinu
 private val GridLineColor = Color(0xFFE8E8E8)
 private val HalfHourLineColor = Color(0xFFF1F1F1)
 private val CourseMaskColor = Color(0xFFCFCFCF)
+private val SnuttButtonColor = Color(0xFF0BCE84)
 private val SnuttDisabledButtonColor = Color(0xFFCFCFCF)
 private val ChangeButtonColor = Color(0xFF72D3EC)
 private val AddButtonColor = Color(0xFFF08AA0)
@@ -134,6 +136,24 @@ private fun semesterForMonth(month: Int): TimetableSemesterOption {
         in 7..8 -> SemesterOptions[1]
         in 9..12 -> SemesterOptions[2]
         else -> SemesterOptions[3]
+    }
+}
+
+private fun snuttImportSuccessMessage(result: SnuttImportResult): String {
+    return buildString {
+        append("\u0053\u004E\u0055\u0054\u0054\uC5D0\uC11C ")
+        append(result.importedCourseCount)
+        append("\uAC1C \uC218\uC5C5\uC744 \uAC00\uC838\uC654\uC5B4\uC694.")
+        if (result.excludedCourseCount > 0) {
+            append(" \uC2DC\uAC04 \uC815\uBCF4\uAC00 \uC5C6\uB294 ")
+            append(result.excludedCourseCount)
+            append("\uAC1C \uC218\uC5C5\uC740 \uC81C\uC678\uD588\uC5B4\uC694.")
+        }
+        if (result.weekendCourseCount > 0) {
+            append(" \uC8FC\uB9D0 \uC218\uC5C5 ")
+            append(result.weekendCourseCount)
+            append("\uAC1C\uB294 \uC800\uC7A5\uD588\uC9C0\uB9CC \uD604\uC7AC \uC2DC\uAC04\uD45C \uD654\uBA74\uC5D0\uB294 \uD45C\uC2DC\uB418\uC9C0 \uC54A\uC544\uC694.")
+        }
     }
 }
 
@@ -182,6 +202,10 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     }
     var submitError by rememberSaveable { mutableStateOf<String?>(null) }
     var submitMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var isSnuttPickerOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingSnuttTimetableId by rememberSaveable { mutableStateOf<String?>(null) }
+    var snuttFeedbackTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var snuttFeedbackMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(isEventOverlayEnabled, weekStart) {
         if (isEventOverlayEnabled) {
@@ -190,7 +214,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     }
 
     LaunchedEffect(selectedYear, selectedSemester) {
-        selectedTimetableId = null
+        selectedTimetableId = pendingSnuttTimetableId
         timetables = emptyList()
         isTimetablePanelOpen = false
         isCreateTimetablePanelOpen = false
@@ -220,7 +244,16 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
         }
         if (loadedTimetables.isNotEmpty() || timetables.isNotEmpty()) {
             timetables = loadedTimetables
-            if (selectedTimetableId == null || loadedTimetables.none { timetable -> timetable.id == selectedTimetableId }) {
+            val importedTimetableId = pendingSnuttTimetableId
+            if (importedTimetableId != null &&
+                loadedTimetables.any { timetable -> timetable.id == importedTimetableId }
+            ) {
+                selectedTimetableId = importedTimetableId
+                pendingSnuttTimetableId = null
+            } else if (importedTimetableId == null &&
+                (selectedTimetableId == null ||
+                    loadedTimetables.none { timetable -> timetable.id == selectedTimetableId })
+            ) {
                 selectedTimetableId = loadedTimetables.firstOrNull()?.id
             }
         }
@@ -346,6 +379,27 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
         timetableViewModel.onCreatedCustomEnrollConsumed()
     }
 
+    LaunchedEffect(apiUiState.snuttImportResult) {
+        val result = apiUiState.snuttImportResult ?: return@LaunchedEffect
+        val importedTimetableId = result.timetable.id.toString()
+        pendingSnuttTimetableId = importedTimetableId
+        selectedTimetableId = importedTimetableId
+        selectedYear = result.timetable.year
+        selectedSemester = result.timetable.semester
+        isSnuttPickerOpen = false
+        snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC644\uB8CC"
+        snuttFeedbackMessage = snuttImportSuccessMessage(result)
+        timetableViewModel.onSnuttImportResultConsumed()
+    }
+
+    LaunchedEffect(apiUiState.snuttImportError) {
+        val message = apiUiState.snuttImportError ?: return@LaunchedEffect
+        isSnuttPickerOpen = false
+        snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC2E4\uD328"
+        snuttFeedbackMessage = message
+        timetableViewModel.onSnuttImportErrorConsumed()
+    }
+
     TimetableScreenContent(
         selectedYear = selectedYear,
         selectedSemester = selectedSemester,
@@ -384,6 +438,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
         submitError = apiUiState.createCustomEnrollError ?: submitError,
         submitMessage = submitMessage,
         isSubmitting = apiUiState.isCreatingCustomEnroll,
+        isImportingSnutt = apiUiState.isImportingSnutt,
         deletingCourseId = apiUiState.deletingEnrollId?.toString(),
         onYearSelected = { year -> selectedYear = year },
         onSemesterSelected = { semester -> selectedSemester = semester.apiValue },
@@ -405,6 +460,11 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
             isAddCoursePanelOpen = false
             isCreateTimetablePanelOpen = false
             isTimetablePanelOpen = true
+        },
+        onOpenSnuttPicker = {
+            closePanels()
+            isEventTimelineExpanded = false
+            isSnuttPickerOpen = true
         },
         onClosePanels = { closePanels() },
         onSelectTimetable = { timetableId ->
@@ -531,6 +591,42 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
             )
         }
     )
+
+    if (isSnuttPickerOpen) {
+        SnuttTimetablePickerDialog(
+            onClose = { isSnuttPickerOpen = false },
+            onTimetableSelected = { timetable ->
+                isSnuttPickerOpen = false
+                timetableViewModel.importSnuttTimetable(timetable)
+            },
+            onError = { message ->
+                isSnuttPickerOpen = false
+                snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC2E4\uD328"
+                snuttFeedbackMessage = message
+            }
+        )
+    }
+
+    if (snuttFeedbackTitle != null && snuttFeedbackMessage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                snuttFeedbackTitle = null
+                snuttFeedbackMessage = null
+            },
+            title = { Text(snuttFeedbackTitle.orEmpty()) },
+            text = { Text(snuttFeedbackMessage.orEmpty()) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        snuttFeedbackTitle = null
+                        snuttFeedbackMessage = null
+                    }
+                ) {
+                    Text("\uD655\uC778")
+                }
+            }
+        )
+    }
 }
 
 // 화면 전체 레이아웃: 그리드, 플로팅 버튼, 하단 패널들을 한 화면 안에서 겹쳐 배치한다.
@@ -573,6 +669,7 @@ private fun TimetableScreenContent(
     submitError: String?,
     submitMessage: String?,
     isSubmitting: Boolean,
+    isImportingSnutt: Boolean,
     deletingCourseId: String?,
     onYearSelected: (Int) -> Unit,
     onSemesterSelected: (TimetableSemesterOption) -> Unit,
@@ -583,6 +680,7 @@ private fun TimetableScreenContent(
     onRetryWeeklyEvents: () -> Unit,
     onEventClick: (Long) -> Unit,
     onOpenTimetablePanel: () -> Unit,
+    onOpenSnuttPicker: () -> Unit,
     onClosePanels: () -> Unit,
     onSelectTimetable: (String) -> Unit,
     onOpenEditTimetable: (String) -> Unit,
@@ -634,64 +732,85 @@ private fun TimetableScreenContent(
                 onSemesterSelected = onSemesterSelected
             )
             Spacer(modifier = Modifier.height(12.dp))
-            TimetableHeader(
-                name = selectedTimetable.name,
-                credits = selectedTimetable.totalCredits,
-                weekStart = weekStart,
-                isEventOverlayEnabled = isEventOverlayEnabled,
-                onPreviousWeek = onPreviousWeek,
-                onNextWeek = onNextWeek,
-                onEventOverlayChanged = onEventOverlayChanged
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            WeekdayHeader()
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
+            if (hasSelectedTimetable) {
+                TimetableHeader(
+                    name = selectedTimetable.name,
+                    credits = selectedTimetable.totalCredits,
+                    weekStart = weekStart,
+                    isEventOverlayEnabled = isEventOverlayEnabled,
+                    onPreviousWeek = onPreviousWeek,
+                    onNextWeek = onNextWeek,
+                    onEventOverlayChanged = onEventOverlayChanged
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                WeekdayHeader()
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(gridScrollState, enabled = !isEventTimelineExpanded)
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
-                    WeeklyTimetableGrid(
-                        courses = selectedTimetable.courses,
-                        events = events,
-                        showEvents = isEventOverlayEnabled,
-                        deletingCourseId = deletingCourseId,
-                        onDeleteCourse = onDeleteCourse,
-                        onEventClick = onEventClick,
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(GridContentHeight)
-                    )
+                            .fillMaxSize()
+                            .verticalScroll(gridScrollState, enabled = !isEventTimelineExpanded)
+                    ) {
+                        WeeklyTimetableGrid(
+                            courses = selectedTimetable.courses,
+                            events = events,
+                            showEvents = isEventOverlayEnabled,
+                            deletingCourseId = deletingCourseId,
+                            onDeleteCourse = onDeleteCourse,
+                            onEventClick = onEventClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(GridContentHeight)
+                        )
+                    }
+                    if (!isEventTimelineExpanded) {
+                        TimetableFloatingActions(
+                            hasSelectedTimetable = true,
+                            isImportingSnutt = isImportingSnutt,
+                            onSnuttClick = onOpenSnuttPicker,
+                            onChangeTimetableClick = onOpenTimetablePanel,
+                            onAddCourseClick = onOpenAddCourse,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(bottom = if (isEventOverlayEnabled) 48.dp else 16.dp)
+                        )
+                    }
                 }
-                if (!isLoadingTimetables && loadTimetablesError == null && !hasSelectedTimetable) {
-                    Text(
-                        text = "\uC2DC\uAC04\uD45C\uB97C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694",
-                        modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Ink60,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                if (!isEventTimelineExpanded) {
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (!isLoadingTimetables && loadTimetablesError == null) {
+                        Text(
+                            text = "\uC2DC\uAC04\uD45C\uB97C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694",
+                            modifier = Modifier.align(Alignment.Center),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Ink60,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     TimetableFloatingActions(
-                        hasSelectedTimetable = hasSelectedTimetable,
+                        hasSelectedTimetable = false,
+                        isImportingSnutt = isImportingSnutt,
+                        onSnuttClick = onOpenSnuttPicker,
                         onChangeTimetableClick = onOpenTimetablePanel,
                         onAddCourseClick = onOpenAddCourse,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = if (isEventOverlayEnabled) 48.dp else 16.dp)
+                            .padding(bottom = 16.dp)
                     )
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (isEventOverlayEnabled && !hasPanelOpen) {
+        if (hasSelectedTimetable && isEventOverlayEnabled && !hasPanelOpen) {
             TimetableEventTimelineSheet(
                 weekStart = weekStart,
                 periodEvents = periodEvents,
@@ -1228,9 +1347,26 @@ private fun TimetableBlockLabel(position: PositionedTimetableBlock, dayWidth: Dp
 }
 
 @Composable
-private fun TimetableFloatingActions(hasSelectedTimetable: Boolean, onChangeTimetableClick: () -> Unit, onAddCourseClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun TimetableFloatingActions(
+    hasSelectedTimetable: Boolean,
+    isImportingSnutt: Boolean,
+    onSnuttClick: () -> Unit,
+    onChangeTimetableClick: () -> Unit,
+    onAddCourseClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        TimetablePillButton("SNUTT 연동", SnuttDisabledButtonColor, false, {}, "SNUTT 연동, 비활성")
+        TimetablePillButton(
+            text = if (isImportingSnutt) "\uBD88\uB7EC\uC624\uB294 \uC911..." else "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9",
+            color = if (isImportingSnutt) SnuttDisabledButtonColor else SnuttButtonColor,
+            enabled = !isImportingSnutt,
+            onClick = onSnuttClick,
+            contentDescription = if (isImportingSnutt) {
+                "\u0053\u004E\u0055\u0054\u0054 \uC2DC\uAC04\uD45C \uBD88\uB7EC\uC624\uB294 \uC911"
+            } else {
+                "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9"
+            }
+        )
         TimetablePillButton("시간표 바꾸기", ChangeButtonColor, true, onChangeTimetableClick, "시간표 바꾸기")
         TimetablePillButton("수업 추가", AddButtonColor, hasSelectedTimetable, onAddCourseClick, "수업 추가") {
             Icon(imageVector = Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1264,18 +1400,6 @@ private fun TimetableSelectionPanel(
                     Icon(imageVector = Icons.Rounded.Add, contentDescription = null, tint = Ink60, modifier = Modifier.size(18.dp))
                 }
             }
-            Text(
-                text = "스누티티 연동하기",
-                style = MaterialTheme.typography.bodyMedium,
-                color = PanelHintColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics {
-                    contentDescription = "스누티티 연동하기, 비활성"
-                    stateDescription = "비활성"
-                }
-            )
-            Spacer(modifier = Modifier.height(14.dp))
             if (deleteErrorMessage != null) {
                 FieldErrorText(deleteErrorMessage)
                 Spacer(modifier = Modifier.height(8.dp))
