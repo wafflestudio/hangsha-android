@@ -34,6 +34,7 @@ class TimetableViewModel @Inject constructor(
     private var loadingTimetableKey: Pair<Int, String>? = null
     private var isEnrollLoadInFlight = false
     private var loadingEventsWeek: LocalDate? = null
+    private var isSnuttImportInFlight = false
 
     fun loadWeeklyEvents(weekStart: LocalDate) {
         val monday = weekStart.minusDays((weekStart.dayOfWeek.value - 1).toLong())
@@ -196,6 +197,103 @@ class TimetableViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    internal fun importSnuttTimetable(timetable: SnuttTimetable) {
+        if (isSnuttImportInFlight) return
+
+        isSnuttImportInFlight = true
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isImportingSnutt = true,
+                    snuttImportResult = null,
+                    snuttImportError = null
+                )
+            }
+
+            val importData = SnuttTimetableMapper.toImportData(timetable)
+            var createdTimetable: TimetableResponse? = null
+
+            try {
+                val timetableResponse = timetableRepository.createTimetable(
+                    name = importData.timetableName,
+                    year = importData.year,
+                    semester = importData.semester
+                )
+                if (!timetableResponse.isSuccessful) throw HttpException(timetableResponse)
+                createdTimetable = timetableResponse.body()
+                    ?: throw IllegalStateException("Timetable response was empty.")
+
+                importData.courses.forEach { course ->
+                    val enrollResponse = timetableRepository.createCustomEnroll(
+                        timetableId = createdTimetable.id,
+                        year = course.year,
+                        semester = course.semester,
+                        courseTitle = course.courseTitle,
+                        timeSlots = course.timeSlots,
+                        courseNumber = course.courseNumber,
+                        lectureNumber = course.lectureNumber,
+                        credit = course.credit,
+                        instructor = course.instructor
+                    )
+                    if (!enrollResponse.isSuccessful) throw HttpException(enrollResponse)
+                    enrollResponse.body()
+                        ?: throw IllegalStateException("Enroll response was empty.")
+                }
+
+                val enrollsResponse = timetableRepository.getEnrolls(createdTimetable.id)
+                if (!enrollsResponse.isSuccessful) throw HttpException(enrollsResponse)
+                val enrolls = enrollsResponse.body()?.items
+                    ?: throw IllegalStateException("Enroll list response was empty.")
+
+                _uiState.update {
+                    it.copy(
+                        isImportingSnutt = false,
+                        snuttImportResult = SnuttImportResult(
+                            timetable = createdTimetable,
+                            importedCourseCount = importData.courses.size,
+                            excludedCourseCount = importData.excludedCourseCount,
+                            weekendCourseCount = importData.weekendCourseCount
+                        ),
+                        snuttImportError = null,
+                        timetables = it.timetables.filterNot { current ->
+                            current.id == createdTimetable.id
+                        } + createdTimetable,
+                        loadedEnrollsTimetableId = createdTimetable.id,
+                        enrolls = enrolls
+                    )
+                }
+            } catch (error: Throwable) {
+                val rollbackSucceeded = createdTimetable?.let { created ->
+                    runCatching {
+                        timetableRepository.deleteTimetable(created.id).isSuccessful
+                    }.getOrDefault(false)
+                }
+
+                _uiState.update {
+                    it.copy(
+                        isImportingSnutt = false,
+                        snuttImportResult = null,
+                        snuttImportError = snuttImportErrorMessage(
+                            error = error,
+                            timetableWasCreated = createdTimetable != null,
+                            rollbackSucceeded = rollbackSucceeded
+                        )
+                    )
+                }
+            } finally {
+                isSnuttImportInFlight = false
+            }
+        }
+    }
+
+    fun onSnuttImportResultConsumed() {
+        _uiState.update { it.copy(snuttImportResult = null) }
+    }
+
+    fun onSnuttImportErrorConsumed() {
+        _uiState.update { it.copy(snuttImportError = null) }
     }
 
     fun updateTimetableName(
@@ -681,6 +779,25 @@ class TimetableViewModel @Inject constructor(
         }
     }
 
+    private fun snuttImportErrorMessage(
+        error: Throwable,
+        timetableWasCreated: Boolean,
+        rollbackSucceeded: Boolean?
+    ): String {
+        val reason = mapCreateErrorMessage(error)
+        return when {
+            !timetableWasCreated ->
+                "\u0053\u004E\u0055\u0054\u0054 \uC2DC\uAC04\uD45C\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC5B4\uC694. $reason"
+            rollbackSucceeded == true ->
+                "\u0053\u004E\u0055\u0054\u0054 \uC2DC\uAC04\uD45C\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uC5B4\uC694. " +
+                    "\uC77C\uBD80 \uC800\uC7A5\uB41C \uB0B4\uC6A9\uC740 \uC0AD\uC81C\uD588\uC5B4\uC694. $reason"
+            else ->
+                "\u0053\u004E\u0055\u0054\u0054 \uC2DC\uAC04\uD45C\uB97C \uAC00\uC838\uC624\uC9C0 \uBABB\uD588\uACE0 " +
+                    "\uC0DD\uC131\uB41C \uC2DC\uAC04\uD45C\uB3C4 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC5B4\uC694. " +
+                    "\uC2DC\uAC04\uD45C \uBAA9\uB85D\uC5D0\uC11C \uC9C1\uC811 \uD655\uC778\uD574 \uC8FC\uC138\uC694. $reason"
+        }
+    }
+
     private fun mapUpdateErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
@@ -778,6 +895,9 @@ data class TimetableApiUiState(
     val loadWeeklyEventsError: String? = null,
     val loadedEventsWeek: LocalDate? = null,
     val weeklyEventSummaries: List<EventSummaryResponse> = emptyList(),
+    val isImportingSnutt: Boolean = false,
+    val snuttImportResult: SnuttImportResult? = null,
+    val snuttImportError: String? = null,
     val isLoadingTimetables: Boolean = false,
     val loadTimetablesError: String? = null,
     val timetables: List<TimetableResponse> = emptyList(),
@@ -806,4 +926,11 @@ data class TimetableApiUiState(
     val deletingTimetableId: Long? = null,
     val deletedTimetableId: Long? = null,
     val deleteTimetableError: String? = null
+)
+
+data class SnuttImportResult(
+    val timetable: TimetableResponse,
+    val importedCourseCount: Int,
+    val excludedCourseCount: Int,
+    val weekendCourseCount: Int
 )
