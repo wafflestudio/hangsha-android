@@ -7,7 +7,6 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
@@ -102,8 +101,6 @@ private fun SnuttPickerWebView(
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
-            WebStorage.getInstance().deleteOrigin(config.snuttOrigin)
-
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
