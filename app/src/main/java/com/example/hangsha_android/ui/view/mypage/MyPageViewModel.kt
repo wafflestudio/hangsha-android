@@ -1,6 +1,5 @@
 package com.example.hangsha_android.ui.view.mypage
 
-import com.example.hangsha_android.util.currentHangshaDate
 import com.example.hangsha_android.util.toHangshaDate
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -17,6 +16,8 @@ import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.data.repository.UserRepository
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
+import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
+import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -633,14 +634,9 @@ private fun Char.isKorean(): Boolean {
 
 private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
     val applyEndDate = parseDate(applyEnd)
-    val dDayLabel = applyEndDate?.let { targetDate ->
-        val diff = targetDate.toEpochDay() - currentHangshaDate().toEpochDay()
-        when {
-            diff == 0L -> "D-day"
-            diff > 0L -> "D-$diff"
-            else -> "D$diff"
-        }
-    } ?: "-"
+    val eventStartDate = parseDate(eventStart)
+    val eventEndDate = parseDate(eventEnd)
+    val dDayLabel = formatApplicationDeadlineLabel(applyEndDate)
 
     return BookmarkedEventItem(
         id = id,
@@ -649,6 +645,7 @@ private fun EventSummaryResponse.toBookmarkedEventItem(): BookmarkedEventItem {
         eventTypeId = eventTypeId,
         statusId = statusId,
         dDayLabel = dDayLabel,
+        eventDDayLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         applyPeriodDisplay = formatPeriod(applyStart, applyEnd),
         organization = organization,
         isBookmarked = true

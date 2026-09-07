@@ -667,6 +667,16 @@ private fun TimetableScreenContent(
                             .height(GridContentHeight)
                     )
                 }
+                if (!isLoadingTimetables && loadTimetablesError == null && !hasSelectedTimetable) {
+                    Text(
+                        text = "\uC2DC\uAC04\uD45C\uB97C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink60,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (!isEventTimelineExpanded) {
                     TimetableFloatingActions(
                         hasSelectedTimetable = hasSelectedTimetable,

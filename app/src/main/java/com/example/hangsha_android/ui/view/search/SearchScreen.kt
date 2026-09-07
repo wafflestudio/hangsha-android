@@ -32,6 +32,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +49,7 @@ import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.view.event.eventTypeColor
+import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
 @Composable
 fun SearchScreen(
@@ -177,6 +180,13 @@ fun SearchScreen(
 
 @Composable
 private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
+    val showEventDDay = rememberSaveable(item.id) { mutableStateOf(false) }
+    val countdownLabel = resolveCountdownLabel(
+        applicationLabel = item.dDayLabel,
+        eventLabel = item.eventDDayLabel,
+        showEvent = showEventDDay.value
+    )
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -209,7 +219,16 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SearchChip(item.dDayLabel, MaterialTheme.colorScheme.surfaceVariant)
+                    SearchChip(
+                        text = countdownLabel.text,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.clickable(
+                            enabled = countdownLabel.canToggle,
+                            onClickLabel = countdownLabel.toggleActionLabel
+                        ) {
+                            showEventDDay.value = !showEventDDay.value
+                        }
+                    )
                     SearchChip(item.eventTypeLabel, eventTypeColor(item.eventTypeId))
                 }
                 Spacer(modifier = Modifier.height(6.dp))
@@ -244,8 +263,12 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SearchChip(text: String, color: androidx.compose.ui.graphics.Color) {
-    Surface(shape = RoundedCornerShape(8.dp), color = color) {
+private fun SearchChip(
+    text: String,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), color = color) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

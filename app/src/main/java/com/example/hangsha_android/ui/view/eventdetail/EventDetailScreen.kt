@@ -34,7 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +57,7 @@ import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
+import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
 @Composable
 fun EventDetailScreen(
@@ -141,6 +144,12 @@ private fun EventDetailContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+    val showEventDDay = rememberSaveable(item.id) { mutableStateOf(false) }
+    val countdownLabel = resolveCountdownLabel(
+        applicationLabel = item.dDayLabel,
+        eventLabel = item.eventDDayLabel,
+        showEvent = showEventDDay.value
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -252,7 +261,15 @@ private fun EventDetailContent(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlineBadge(text = item.dDayLabel)
+                OutlineBadge(
+                    text = countdownLabel.text,
+                    modifier = Modifier.clickable(
+                        enabled = countdownLabel.canToggle,
+                        onClickLabel = countdownLabel.toggleActionLabel
+                    ) {
+                        showEventDDay.value = !showEventDDay.value
+                    }
+                )
                 FilledBadge(
                     text = item.eventTypeLabel,
                     backgroundColor = item.eventTypeColor
@@ -445,8 +462,12 @@ private fun buildEventDetailHtml(bodyHtml: String): String {
 
 // D-day 라벨
 @Composable
-private fun OutlineBadge(text: String) {
+private fun OutlineBadge(
+    text: String,
+    modifier: Modifier = Modifier
+) {
     Surface(
+        modifier = modifier,
         shape = RoundedCornerShape(10.dp),
         color = PureWhite,
         border = androidx.compose.foundation.BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
