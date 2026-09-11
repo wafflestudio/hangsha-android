@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,13 +52,6 @@ private val OnboardingCameraButtonSize = 46.dp
 private val OnboardingFieldHeight = 37.dp
 private val OnboardingButtonHeight = 37.dp
 private val OnboardingRoundShape = CircleShape
-private val OnboardingBlack = Color(0xFF000000)
-private val OnboardingWhite = Color(0xFFFFFFFF)
-private val OnboardingBorder = Color(0xFFE0E0E0)
-private val OnboardingPlaceholder = Color(0xFF8F8F8F)
-private val OnboardingError = Color(0xFFFF4058)
-private val OnboardingAvatarBackground = Color(0xFFD9D9D9)
-private val OnboardingCameraIcon = Color(0xFF8F8F8F)
 
 @Composable
 fun OnboardingScreen(
@@ -79,7 +73,7 @@ fun OnboardingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OnboardingWhite),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -90,7 +84,7 @@ fun OnboardingScreen(
         ) {
             Text(
                 text = "프로필 설정",
-                color = OnboardingBlack,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp
@@ -98,7 +92,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "프로필 사진과 이름을 설정해주세요",
-                color = OnboardingBlack,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp,
@@ -122,7 +116,7 @@ fun OnboardingScreen(
                 Text(
                     text = message,
                     modifier = Modifier.fillMaxWidth(),
-                    color = OnboardingError,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
@@ -154,7 +148,7 @@ private fun OnboardingProfileImage(
                 .align(Alignment.Center)
                 .size(OnboardingAvatarImageSize)
                 .clip(CircleShape)
-                .background(OnboardingAvatarBackground),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
@@ -171,14 +165,14 @@ private fun OnboardingProfileImage(
                     .align(Alignment.TopStart)
                     .size(OnboardingDeleteButtonSize)
                     .clip(CircleShape)
-                    .background(OnboardingError)
+                    .background(MaterialTheme.colorScheme.error)
                     .clickable(onClick = onDeleteImageClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "프로필 이미지 삭제",
-                    tint = OnboardingWhite,
+                    tint = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.size(30.dp)
                 )
             }
@@ -189,15 +183,15 @@ private fun OnboardingProfileImage(
                 .align(Alignment.BottomEnd)
                 .size(OnboardingCameraButtonSize)
                 .clip(CircleShape)
-                .background(OnboardingWhite)
-                .border(2.dp, OnboardingBorder, CircleShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(2.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                 .clickable(onClick = onPickImageClick),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Rounded.PhotoCamera,
                 contentDescription = "프로필 이미지 선택",
-                tint = OnboardingCameraIcon,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -211,13 +205,13 @@ private fun OnboardingTextField(
     placeholder: String,
     isError: Boolean
 ) {
-    val borderColor = if (isError) OnboardingError else OnboardingBorder
+    val borderColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(OnboardingFieldHeight)
-            .background(OnboardingWhite, OnboardingRoundShape)
+            .background(MaterialTheme.colorScheme.surface, OnboardingRoundShape)
             .border(1.dp, borderColor, OnboardingRoundShape)
             .padding(horizontal = 15.dp),
         contentAlignment = Alignment.CenterStart
@@ -228,18 +222,18 @@ private fun OnboardingTextField(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             textStyle = TextStyle(
-                color = OnboardingBlack,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp
             ),
-            cursorBrush = SolidColor(OnboardingBlack),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             decorationBox = { innerTextField ->
                 if (value.isBlank()) {
                     Text(
                         text = placeholder,
-                        color = OnboardingPlaceholder,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.sp
@@ -264,8 +258,8 @@ private fun OnboardingSubmitButton(
             .height(OnboardingButtonHeight),
         enabled = enabled,
         shape = OnboardingRoundShape,
-        color = if (enabled) OnboardingBlack else Color(0xFFBDBDBD),
-        contentColor = OnboardingWhite
+        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -276,7 +270,7 @@ private fun OnboardingSubmitButton(
             } else {
                 Text(
                     text = "프로필 설정하기",
-                    color = OnboardingWhite,
+                    color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp
@@ -290,7 +284,7 @@ private fun OnboardingSubmitButton(
 private fun OnboardingProgressIndicator(size: Dp) {
     CircularProgressIndicator(
         modifier = Modifier.size(size),
-        color = OnboardingWhite,
+        color = MaterialTheme.colorScheme.onPrimary,
         strokeWidth = 2.dp
     )
 }

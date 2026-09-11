@@ -39,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,12 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.hangsha_android.R
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
-
-private val ProfileAvatarColor = Color(0xFF87959E)
-private val BorderColor = Color(0xFFCACACA)
-private val MutedIconColor = Color(0xFF9B9B9B)
 
 // 프로필 헤더 영역
 @Composable
@@ -104,12 +97,12 @@ internal fun ProfileHeader(
                     shape = RoundedCornerShape(5.dp),
                     isError = uiState.usernameErrorMessage != null,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderColor,
-                        unfocusedBorderColor = BorderColor,
-                        errorBorderColor = Color(0xFFFF4B4B),
-                        focusedContainerColor = PureWhite,
-                        unfocusedContainerColor = PureWhite,
-                        errorContainerColor = PureWhite
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        errorContainerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 )
                 if (uiState.usernameErrorMessage != null) {
@@ -117,7 +110,7 @@ internal fun ProfileHeader(
                     Text(
                         text = uiState.usernameErrorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -126,7 +119,7 @@ internal fun ProfileHeader(
                     Text(
                         text = uiState.profileSaveErrorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -134,7 +127,7 @@ internal fun ProfileHeader(
                 Text(
                     text = uiState.username.ifBlank { "사용자" },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -145,7 +138,7 @@ internal fun ProfileHeader(
             Text(
                 text = uiState.email.ifBlank { "이메일 정보 없음" },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -167,7 +160,7 @@ internal fun ProfileHeader(
             Icon(
                 imageVector = if (uiState.isEditingProfile) Icons.Rounded.Check else Icons.Rounded.Edit,
                 contentDescription = if (uiState.isEditingProfile) "프로필 저장" else "프로필 수정",
-                tint = if (uiState.isEditingProfile) Color(0xFF2E7D32) else MutedIconColor
+                tint = if (uiState.isEditingProfile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -184,7 +177,7 @@ internal fun ProfileHeader(
                         onDraftProfileImageDeleted()
                     }
                 ) {
-                    Text(text = "확인", color = Color(0xFFFF4B4B))
+                    Text(text = "확인", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -214,7 +207,7 @@ private fun EditableProfileAvatar(
                 .align(Alignment.Center)
                 .size(65.dp)
                 .clip(CircleShape)
-                .background(ProfileAvatarColor),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
@@ -231,14 +224,14 @@ private fun EditableProfileAvatar(
                     .align(Alignment.TopStart)
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFFF4B4B))
+                    .background(MaterialTheme.colorScheme.error)
                     .clickable(onClick = onDeleteImageClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "프로필 이미지 삭제",
-                    tint = PureWhite,
+                    tint = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -250,15 +243,15 @@ private fun EditableProfileAvatar(
                     .align(Alignment.BottomEnd)
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(PureWhite)
-                    .border(1.dp, BorderColor, CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                     .clickable(onClick = onPickImageClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PhotoCamera,
                     contentDescription = "프로필 이미지 선택",
-                    tint = MutedIconColor,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(15.dp)
                 )
             }

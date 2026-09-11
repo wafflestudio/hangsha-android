@@ -35,17 +35,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Coral60
-import com.example.hangsha_android.ui.theme.Cream5
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.Peach20
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
@@ -53,7 +46,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val DailyHeaderFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREA)
-private val DailyBookmarkTint = Color(0xFFB8BBC1)
 
 private data class DailyEventsHeaderState(
     val selectedDate: LocalDate,
@@ -195,7 +187,7 @@ private fun DailyEventsHeader(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                 contentDescription = "\uC774\uC804 \uB0A0\uC9DC",
-                tint = Ink60
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(modifier = Modifier.width(1.dp))
@@ -208,7 +200,7 @@ private fun DailyEventsHeader(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = "\uB2E4\uC74C \uB0A0\uC9DC",
-                tint = Ink60
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
@@ -257,7 +249,7 @@ private fun FilterButton(
         Surface(
             modifier = Modifier.size(28.dp),
             shape = RoundedCornerShape(9.dp),
-            color = PureWhite,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 2.dp
         ) {
             Box(
@@ -281,7 +273,7 @@ private fun FilterButton(
                     .padding(top = 4.dp, end = 4.dp)
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Coral60)
+                    .background(MaterialTheme.colorScheme.secondary)
             )
         }
     }
@@ -306,7 +298,7 @@ private fun DailyEventCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(PureWhite)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
@@ -335,7 +327,7 @@ private fun DailyEventCard(
                         showEventDDay.value = !showEventDDay.value
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 15.sp
                 )
             }
@@ -345,7 +337,7 @@ private fun DailyEventCard(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -353,7 +345,7 @@ private fun DailyEventCard(
             Text(
                 text = "${item.eventEndDisplay}   ${organizationLabel(item.orgId, organizationNames, item.organization)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -365,7 +357,7 @@ private fun DailyEventCard(
                     Icons.Rounded.BookmarkBorder
                 },
                 contentDescription = "\uBD81\uB9C8\uD06C",
-                tint = DailyBookmarkTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(top = 2.dp)
                     .size(32.dp)
@@ -383,7 +375,8 @@ private fun DailyEmptyState() {
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Cream5
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Text(
                 text = "해당 날짜에 표시할 행사가 없습니다.",
@@ -405,7 +398,8 @@ private fun DailyErrorState(
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Peach20.copy(alpha = 0.45f)
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),

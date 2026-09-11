@@ -58,15 +58,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 
-private val MyPageActionBorderColor = Color(0xFFCACACA)
-private val MyPageActionMutedIconColor = Color(0xFF9B9B9B)
 
 // 마이페이지 화면 배치
 @Composable
@@ -152,7 +146,7 @@ fun MyPageScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Edit,
                                     contentDescription = null,
-                                    tint = MyPageActionMutedIconColor,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             },
@@ -184,8 +178,8 @@ fun MyPageScreen(
                                     modifier = Modifier.size(13.dp)
                                 )
                             },
-                            buttonColor = Color(0xFF555555),
-                            contentColor = PureWhite,
+                            buttonColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                             onClick = onLogoutClick
                         )
                         Spacer(modifier = Modifier.height(18.dp))
@@ -202,9 +196,9 @@ fun MyPageScreen(
                                     modifier = Modifier.size(13.dp)
                                 )
                             },
-                            buttonColor = PureWhite,
-                            contentColor = Color(0xFFFF4B4B),
-                            borderColor = Color(0xFFFFA0A0),
+                            buttonColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.error,
+                            borderColor = MaterialTheme.colorScheme.error,
                             onClick = { showDeleteAccountDialog = true }
                         )
                     }
@@ -260,7 +254,7 @@ private fun DeleteAccountDialog(
                 Text(
                     text = "탈퇴하면 계정 정보가 삭제되며 복구할 수 없습니다.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -280,7 +274,7 @@ private fun DeleteAccountDialog(
                     Text(
                         text = "위 내용을 이해했습니다.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Ink100,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 13.sp
                     )
                 }
@@ -288,7 +282,7 @@ private fun DeleteAccountDialog(
                 Text(
                     text = "확인을 위해 이메일을 그대로 입력해 주세요.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
                 Spacer(modifier = Modifier.height(6.dp))
@@ -305,13 +299,13 @@ private fun DeleteAccountDialog(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
                     shape = RoundedCornerShape(5.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MyPageActionBorderColor,
-                        unfocusedBorderColor = MyPageActionBorderColor,
-                        errorBorderColor = Color(0xFFFF4B4B),
-                        focusedContainerColor = PureWhite,
-                        unfocusedContainerColor = PureWhite,
-                        disabledContainerColor = PureWhite,
-                        errorContainerColor = PureWhite
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        errorContainerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 )
                 if (emailConfirmation.isNotEmpty() && !isEmailMatched) {
@@ -319,7 +313,7 @@ private fun DeleteAccountDialog(
                     Text(
                         text = "이메일이 일치하지 않습니다.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -328,7 +322,7 @@ private fun DeleteAccountDialog(
                     Text(
                         text = errorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp
                     )
                 }
@@ -339,17 +333,17 @@ private fun DeleteAccountDialog(
                 onClick = onConfirmClick,
                 enabled = canConfirm,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF4B4B),
-                    contentColor = PureWhite,
-                    disabledContainerColor = Color(0xFFFFD6D6),
-                    disabledContentColor = PureWhite
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                    disabledContainerColor = MaterialTheme.colorScheme.errorContainer,
+                    disabledContentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {
                 if (isDeletingAccount) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = PureWhite
+                        color = MaterialTheme.colorScheme.onError
                     )
                 } else {
                     Text(text = "승인")
@@ -386,7 +380,7 @@ private fun AccountActionSection(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -394,7 +388,7 @@ private fun AccountActionSection(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp
             )
         }
@@ -442,7 +436,7 @@ private fun MyPageErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink90,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))

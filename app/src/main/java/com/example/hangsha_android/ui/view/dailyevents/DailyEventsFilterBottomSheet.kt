@@ -35,13 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.components.EventFilterFooter
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 
-private val FilterSheetBackground = Color(0xFFF8F8F6)
-private val FilterDivider = Color(0xFFE7E5E1)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyEventsFilterBottomSheet(
@@ -61,7 +58,7 @@ fun DailyEventsFilterBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = FilterSheetBackground
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -144,7 +141,7 @@ private fun FilterTabRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(PureWhite)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 20.dp)
     ) {
         DailyEventsFilterTab.entries.forEach { tab ->
@@ -175,7 +172,7 @@ private fun FilterTabRow(
                             color = if (isSelected) {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
-                                FilterDivider
+                                MaterialTheme.colorScheme.outlineVariant
                             }
                         )
                 )
@@ -283,7 +280,7 @@ private fun <T> FilterChecklistSection(
 
         HorizontalDivider(
             thickness = 1.dp,
-            color = FilterDivider.copy(alpha = 0.7f)
+            color = MaterialTheme.colorScheme.outlineVariant
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -325,9 +322,9 @@ private fun SelectionSquare(selected: Boolean) {
     Box(
         modifier = Modifier
             .size(14.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(2.dp))
+            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
             .background(
-                color = if (selected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
                 shape = RoundedCornerShape(2.dp)
             )
     )

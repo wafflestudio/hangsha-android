@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,12 +61,6 @@ private val SignUpContentWidth = 280.dp
 private val SignUpFieldHeight = 37.dp
 private val SignUpButtonHeight = 37.dp
 private val SignUpRoundShape = CircleShape
-private val SignUpBlack = Color(0xFF000000)
-private val SignUpWhite = Color(0xFFFFFFFF)
-private val SignUpBorder = Color(0xFFE0E0E0)
-private val SignUpPlaceholder = Color(0xFF8F8F8F)
-private val SignUpError = Color(0xFFFF4058)
-private val SignUpErrorContainer = Color(0xFFFFD8DE)
 
 @Composable
 fun SignUpScreen(
@@ -99,7 +94,7 @@ fun SignUpScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SignUpWhite),
+            .background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -110,7 +105,7 @@ fun SignUpScreen(
         ) {
             Text(
                 text = "계정 생성",
-                color = SignUpBlack,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp
@@ -118,7 +113,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "이메일과 비밀번호를 설정해주세요",
-                color = SignUpBlack,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp
@@ -210,11 +205,11 @@ private fun EmailVerificationContent(
     val remainingSeconds = ((expiryMillis - nowMillis).coerceAtLeast(0L) / 1_000L).toInt()
     val errorMessage = uiState.signUpMessage
 
-    Box(modifier = Modifier.fillMaxSize().background(SignUpWhite), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
         Column(modifier = Modifier.width(SignUpContentWidth).offset(y = (-5).dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "\uACC4\uC815 \uC0DD\uC131", color = SignUpBlack, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            Text(text = "\uACC4\uC815 \uC0DD\uC131", color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694", color = SignUpBlack, fontSize = 14.sp)
+            Text(text = "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(if (isCodeStep) 25.dp else 46.dp))
             SignUpTextField(value = uiState.email, onValueChange = onEmailChanged, placeholder = "email@snu.ac.kr", keyboardType = KeyboardType.Email, readOnly = isCodeStep, isError = errorMessage != null)
             if (!isCodeStep) {
@@ -223,11 +218,11 @@ private fun EmailVerificationContent(
                 errorMessage?.let { InlineVerificationError(it) }
             } else {
                 Spacer(modifier = Modifier.height(20.dp))
-                VerificationButton(text = if (resendSeconds > 0) "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30 (${resendSeconds}\uCD08)" else "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30", onClick = onSendVerificationCodeClick, enabled = resendSeconds == 0 && !uiState.isVerificationCodeSending, isLoading = uiState.isVerificationCodeSending, color = if (resendSeconds == 0) SignUpBlack else Color(0xFF777777))
+                VerificationButton(text = if (resendSeconds > 0) "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30 (${resendSeconds}\uCD08)" else "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30", onClick = onSendVerificationCodeClick, enabled = resendSeconds == 0 && !uiState.isVerificationCodeSending, isLoading = uiState.isVerificationCodeSending, color = if (resendSeconds == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
                 Spacer(modifier = Modifier.height(25.dp))
-                Text(text = "\uC774\uBA54\uC77C\uB85C \uC628 \uC778\uC99D\uBC88\uD638\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694!", color = SignUpBlack, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(text = "\uC774\uBA54\uC77C\uB85C \uC628 \uC778\uC99D\uBC88\uD638\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694!", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(text = "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60), color = SignUpError, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(text = "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60), color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(24.dp))
                 VerificationCodeBoxes(code = uiState.verificationCode, onCodeChanged = onVerificationCodeChanged, isError = errorMessage != null)
                 errorMessage?.let { InlineVerificationError(it) }
@@ -266,13 +261,13 @@ private fun VerificationCodeBoxes(code: String, onCodeChanged: (String) -> Unit,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(64.dp)
-                                .background(SignUpWhite, RoundedCornerShape(8.dp))
-                                .border(1.dp, if (isError) SignUpError else SignUpBorder, RoundedCornerShape(8.dp)),
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = code.getOrNull(index)?.toString().orEmpty(),
-                                color = SignUpBlack,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 22.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -285,8 +280,9 @@ private fun VerificationCodeBoxes(code: String, onCodeChanged: (String) -> Unit,
 }
 
 @Composable
-private fun VerificationButton(text: String, onClick: () -> Unit, enabled: Boolean = true, isLoading: Boolean = false, color: Color = SignUpBlack) {
-    Surface(onClick = onClick, enabled = enabled && !isLoading, modifier = Modifier.fillMaxWidth().height(SignUpButtonHeight), shape = SignUpRoundShape, color = color, contentColor = SignUpWhite) {
+private fun VerificationButton(text: String, onClick: () -> Unit, enabled: Boolean = true, isLoading: Boolean = false, color: Color? = null) {
+    val resolvedColor = color ?: MaterialTheme.colorScheme.primary
+    Surface(onClick = onClick, enabled = enabled && !isLoading, modifier = Modifier.fillMaxWidth().height(SignUpButtonHeight), shape = SignUpRoundShape, color = resolvedColor, contentColor = MaterialTheme.colorScheme.onPrimary) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { if (isLoading) SignUpProgressIndicator(16.dp) else Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
     }
 }
@@ -294,7 +290,7 @@ private fun VerificationButton(text: String, onClick: () -> Unit, enabled: Boole
 @Composable
 private fun InlineVerificationError(message: String) {
     Spacer(modifier = Modifier.height(10.dp))
-    Text(text = message, color = SignUpError, fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
+    Text(text = message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
@@ -308,12 +304,12 @@ private fun SignUpPrivacyPolicyAgreement(
             checked = isAgreed,
             onCheckedChange = onAgreementChanged,
             modifier = Modifier.size(24.dp),
-            colors = CheckboxDefaults.colors(checkedColor = SignUpBlack, uncheckedColor = SignUpPlaceholder, checkmarkColor = SignUpWhite)
+            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary, uncheckedColor = MaterialTheme.colorScheme.outline, checkmarkColor = MaterialTheme.colorScheme.onPrimary)
         )
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text = "개인정보 약관 동의(필수)", color = SignUpBlack, fontSize = 14.sp)
+        Text(text = "개인정보 약관 동의(필수)", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
         Spacer(modifier = Modifier.weight(1f))
-        Text(text = "상세 내용 보기", color = SignUpPlaceholder, fontSize = 13.sp, modifier = Modifier.clickable(onClick = onShowDetails))
+        Text(text = "상세 내용 보기", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.clickable(onClick = onShowDetails))
     }
 }
 
@@ -323,10 +319,10 @@ private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
         Surface(
             modifier = Modifier.fillMaxWidth().widthIn(max = 360.dp),
             shape = RoundedCornerShape(20.dp),
-            color = SignUpWhite
+            color = MaterialTheme.colorScheme.surface
         ) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp)) {
-                Text("개인정보 수집·이용 동의", color = SignUpBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("개인정보 수집·이용 동의", color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(20.dp))
                 PrivacyPolicySectionTitle("개인정보 수집 및 이용에 대한 동의")
                 Spacer(modifier = Modifier.height(8.dp))
@@ -357,7 +353,7 @@ private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 PrivacyPolicyBody("※ 귀하는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만, 필수 항목에 대한 동의를 거부하는 경우 회원가입 및 서비스 이용이 제한될 수 있습니다.")
                 Spacer(modifier = Modifier.height(20.dp))
-                Surface(onClick = onDismissRequest, modifier = Modifier.fillMaxWidth().height(40.dp), shape = SignUpRoundShape, color = SignUpBlack, contentColor = SignUpWhite) {
+                Surface(onClick = onDismissRequest, modifier = Modifier.fillMaxWidth().height(40.dp), shape = SignUpRoundShape, color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
                     Box(contentAlignment = Alignment.Center) { Text("확인", fontSize = 14.sp, fontWeight = FontWeight.Medium) }
                 }
             }
@@ -367,12 +363,12 @@ private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
 
 @Composable
 private fun PrivacyPolicySectionTitle(text: String) {
-    Text(text = text, color = SignUpBlack, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    Text(text = text, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
 }
 
 @Composable
 private fun PrivacyPolicyBody(text: String) {
-    Text(text = text, color = SignUpBlack, fontSize = 14.sp, lineHeight = 20.sp)
+    Text(text = text, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, lineHeight = 20.sp)
 }
 
 @Composable
@@ -383,7 +379,7 @@ private fun PrivacyPolicyBullet(text: String) {
 
 @Composable
 private fun PrivacyPolicyTableRow(item: String, purpose: String, retentionPeriod: String, isHeader: Boolean = false) {
-    val backgroundColor = if (isHeader) Color(0xFFF3F3F3) else SignUpWhite
+    val backgroundColor = if (isHeader) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surface
     val fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal
 
     Row(
@@ -404,10 +400,10 @@ private fun RowScope.PrivacyPolicyTableCell(text: String, weight: Float, fontWei
         modifier = Modifier
             .weight(weight)
             .fillMaxHeight()
-            .border(0.5.dp, SignUpBorder)
+            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
             .padding(horizontal = 6.dp, vertical = 8.dp)
     ) {
-        Text(text = text, color = SignUpBlack, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = fontWeight)
+        Text(text = text, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = fontWeight)
     }
 }
 @Composable
@@ -421,13 +417,13 @@ private fun SignUpTextField(
     isError: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
-    val borderColor = if (isError) SignUpError else SignUpBorder
+    val borderColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(SignUpFieldHeight)
-            .background(SignUpWhite, SignUpRoundShape)
+            .background(MaterialTheme.colorScheme.surface, SignUpRoundShape)
             .border(1.dp, borderColor, SignUpRoundShape)
             .padding(horizontal = 15.dp),
         contentAlignment = Alignment.CenterStart
@@ -439,19 +435,19 @@ private fun SignUpTextField(
             singleLine = true,
             readOnly = readOnly,
             textStyle = TextStyle(
-                color = SignUpBlack,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp
             ),
-            cursorBrush = SolidColor(SignUpBlack),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
             decorationBox = { innerTextField ->
                 if (value.isBlank()) {
                     Text(
                         text = placeholder,
-                        color = SignUpPlaceholder,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.sp
@@ -469,20 +465,20 @@ private fun SignUpErrorPill(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .height(37.dp)
-            .background(SignUpErrorContainer, SignUpRoundShape)
-            .border(1.dp, SignUpError, SignUpRoundShape)
+            .background(MaterialTheme.colorScheme.errorContainer, SignUpRoundShape)
+            .border(1.dp, MaterialTheme.colorScheme.error, SignUpRoundShape)
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(26.dp)
-                .border(2.dp, SignUpError, CircleShape),
+                .border(2.dp, MaterialTheme.colorScheme.error, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "!",
-                color = SignUpError,
+                color = MaterialTheme.colorScheme.error,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
@@ -492,7 +488,7 @@ private fun SignUpErrorPill(text: String) {
         Spacer(modifier = Modifier.width(11.dp))
         Text(
             text = text,
-            color = SignUpBlack,
+            color = MaterialTheme.colorScheme.onErrorContainer,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.sp
@@ -512,8 +508,8 @@ private fun SignUpSubmitButton(
             .height(SignUpButtonHeight),
         enabled = !isLoading,
         shape = SignUpRoundShape,
-        color = SignUpBlack,
-        contentColor = SignUpWhite
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -524,7 +520,7 @@ private fun SignUpSubmitButton(
             } else {
                 Text(
                     text = "계정 생성",
-                    color = SignUpWhite,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp
@@ -538,7 +534,7 @@ private fun SignUpSubmitButton(
 private fun SignUpProgressIndicator(size: Dp) {
     CircularProgressIndicator(
         modifier = Modifier.size(size),
-        color = SignUpWhite,
+        color = MaterialTheme.colorScheme.onPrimary,
         strokeWidth = 2.dp
     )
 }

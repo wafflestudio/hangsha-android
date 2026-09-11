@@ -9,11 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +27,7 @@ fun SplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -43,7 +43,7 @@ fun SplashScreen() {
             Spacer(modifier = Modifier.height(18.dp))
             Text(
                 text = "\uC11C\uC6B8\uB300 \uD589\uC0AC\uB294 \uD589\uC0E4",
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.sp,

@@ -36,22 +36,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import kotlinx.coroutines.flow.collect
 
-private val BookmarkIconTint = Color(0xFF858585)
-private val EmptyImageBackground = Color(0xFFE8F3EC)
 
 // 찜 목록 화면 구성
 @Composable
@@ -157,7 +151,7 @@ fun BookmarksScreen(
                                     text = uiState.errorMessage,
                                     modifier = Modifier.fillMaxWidth(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFFF4B4B),
+                                    color = MaterialTheme.colorScheme.error,
                                     fontSize = 11.sp
                                 )
                             }
@@ -217,7 +211,7 @@ private fun BookmarksHeader(
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
             contentDescription = "뒤로 가기",
-            tint = Color(0xFFB5B5B5),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .size(30.dp)
@@ -231,14 +225,14 @@ private fun BookmarksHeader(
             Text(
                 text = "내 찜 목록",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Icon(
                 imageVector = Icons.Rounded.Bookmark,
                 contentDescription = null,
-                tint = BookmarkIconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -269,7 +263,7 @@ private fun BookmarkedEventCard(
                 .fillMaxWidth()
                 .aspectRatio(1.78f)
                 .clip(RoundedCornerShape(7.dp))
-                .background(EmptyImageBackground)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             if (!item.imageUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -303,7 +297,7 @@ private fun BookmarkedEventCard(
                             showEventDDay.value = !showEventDDay.value
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Ink100,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -312,7 +306,7 @@ private fun BookmarkedEventCard(
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -327,7 +321,7 @@ private fun BookmarkedEventCard(
                     Text(
                         text = item.applyPeriodDisplay,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Ink60,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -335,7 +329,7 @@ private fun BookmarkedEventCard(
                     Text(
                         text = item.organization.orEmpty(),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Ink60,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -345,7 +339,7 @@ private fun BookmarkedEventCard(
             Icon(
                 imageVector = Icons.Rounded.Bookmark,
                 contentDescription = "북마크 해제",
-                tint = BookmarkIconTint,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(35.dp)
@@ -365,7 +359,7 @@ private fun BookmarksEmptyState() {
         Text(
             text = "아직 찜한 행사가 없습니다.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -385,7 +379,7 @@ private fun BookmarksErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(14.dp))
         Button(onClick = onRetryClick) {

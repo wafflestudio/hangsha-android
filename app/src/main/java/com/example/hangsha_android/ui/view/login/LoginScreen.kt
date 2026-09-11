@@ -45,16 +45,6 @@ private val AuthContentWidth = 252.dp
 private val AuthButtonHeight = 34.dp
 private val AuthFieldHeight = 34.dp
 private val AuthRoundShape = CircleShape
-private val AuthBlack = Color(0xFF000000)
-private val AuthWhite = Color(0xFFFFFFFF)
-private val AuthBorder = Color(0xFFE0E0E0)
-private val AuthPlaceholder = Color(0xFF8F8F8F)
-private val AuthError = Color(0xFFFF4058)
-private val AuthYellow = Color(0xFFFFD344)
-private val AuthMuted = Color(0xFF777777)
-private val KakaoYellow = Color(0xFFFFE812)
-private val NaverGreen = Color(0xFF03C75A)
-
 @Composable
 fun OpeningScreen(
     loginUiState: LoginUiState,
@@ -68,7 +58,7 @@ fun OpeningScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AuthWhite),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -145,7 +135,7 @@ fun OpeningScreen(
                     enabled = !loginUiState.isAnyLoginLoading,
                     onClick = onGuestContinueClick
                 ),
-                color = AuthMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.sp,
@@ -156,7 +146,7 @@ fun OpeningScreen(
                 Text(
                     text = message,
                     modifier = Modifier.fillMaxWidth(),
-                    color = AuthError,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
@@ -176,7 +166,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AuthWhite),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -187,7 +177,7 @@ fun LoginScreen(
         ) {
             Text(
                 text = "로그인",
-                color = AuthBlack,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 27.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp
@@ -214,7 +204,7 @@ fun LoginScreen(
                 Text(
                     text = message,
                     modifier = Modifier.fillMaxWidth(),
-                    color = AuthError,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
@@ -250,12 +240,15 @@ private fun OpeningButton(
     enabled: Boolean,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
-    containerColor: Color = AuthWhite,
-    contentColor: Color = AuthBlack,
-    borderColor: Color = AuthBorder,
+    containerColor: Color? = null,
+    contentColor: Color? = null,
+    borderColor: Color? = null,
     shadowElevation: Dp = 2.dp,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
+    val resolvedContainerColor = containerColor ?: MaterialTheme.colorScheme.surface
+    val resolvedContentColor = contentColor ?: MaterialTheme.colorScheme.onSurface
+    val resolvedBorderColor = borderColor ?: MaterialTheme.colorScheme.outlineVariant
     Surface(
         onClick = onClick,
         modifier = modifier
@@ -263,10 +256,10 @@ private fun OpeningButton(
             .height(AuthButtonHeight),
         enabled = enabled && !isLoading,
         shape = AuthRoundShape,
-        color = containerColor,
-        contentColor = contentColor,
+        color = resolvedContainerColor,
+        contentColor = resolvedContentColor,
         shadowElevation = shadowElevation,
-        border = BorderStroke(1.dp, borderColor)
+        border = BorderStroke(1.dp, resolvedBorderColor)
     ) {
         Box(
             modifier = Modifier
@@ -275,7 +268,7 @@ private fun OpeningButton(
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                LoginProgressIndicator(size = 16.dp, color = contentColor)
+                LoginProgressIndicator(size = 16.dp, color = resolvedContentColor)
             } else {
                 leadingIcon?.let {
                     Box(
@@ -287,7 +280,7 @@ private fun OpeningButton(
                 }
                 Text(
                     text = text,
-                    color = contentColor,
+                    color = resolvedContentColor,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp,
@@ -336,8 +329,8 @@ private fun AuthTextField(
         modifier = modifier
             .fillMaxWidth()
             .height(AuthFieldHeight)
-            .background(AuthWhite, AuthRoundShape)
-            .border(1.dp, AuthBorder, AuthRoundShape)
+            .background(MaterialTheme.colorScheme.surface, AuthRoundShape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, AuthRoundShape)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -348,19 +341,19 @@ private fun AuthTextField(
             enabled = enabled,
             singleLine = true,
             textStyle = TextStyle(
-                color = AuthBlack,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 0.sp
             ),
-            cursorBrush = SolidColor(AuthBlack),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
             decorationBox = { innerTextField ->
                 if (value.isBlank()) {
                     Text(
                         text = placeholder,
-                        color = AuthPlaceholder,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.sp
@@ -386,19 +379,19 @@ private fun SubmitButton(
             .height(AuthButtonHeight),
         enabled = enabled,
         shape = AuthRoundShape,
-        color = AuthBlack,
-        contentColor = AuthWhite
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                LoginProgressIndicator(size = 16.dp, color = AuthWhite)
+                LoginProgressIndicator(size = 16.dp, color = MaterialTheme.colorScheme.onPrimary)
             } else {
                 Text(
                     text = text,
-                    color = AuthWhite,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp

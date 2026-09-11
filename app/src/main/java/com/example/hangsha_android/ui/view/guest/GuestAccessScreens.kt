@@ -28,11 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 
-private val GuestButton = Color(0xFF222222)
 
 @Composable
 fun LoginRequiredScreen(
@@ -56,20 +52,20 @@ fun LoginRequiredScreen(
             Icon(
                 imageVector = Icons.Rounded.EventBusy,
                 contentDescription = null,
-                tint = Ink60,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(38.dp)
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 textAlign = TextAlign.Center
@@ -78,8 +74,8 @@ fun LoginRequiredScreen(
                 onClick = onLoginClick,
                 shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GuestButton,
-                    contentColor = PureWhite
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Icon(
@@ -95,11 +91,11 @@ fun LoginRequiredScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = null,
-                        tint = Ink60,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(4.dp))
-                    Text(text = "Back", color = Ink60)
+                    Text(text = "Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

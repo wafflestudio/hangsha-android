@@ -10,7 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
-import com.example.hangsha_android.ui.theme.Ink60
+import androidx.compose.material3.MaterialTheme
 import com.example.hangsha_android.ui.view.mypage.BugReportSection
 
 @Composable
@@ -22,11 +22,11 @@ internal fun EventBugReportButton(onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Rounded.BugReport,
             contentDescription = null,
-            tint = Ink60
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = "행사 정보 오류 제보하기",
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textDecoration = TextDecoration.Underline
         )
     }

@@ -2,6 +2,7 @@ package com.example.hangsha_android.ui.view.onboarding
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,13 +12,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -35,15 +36,17 @@ fun OnboardingWelcomeScreen(
     onMyPageClick: () -> Unit,
     onCalendarClick: () -> Unit
 ) {
+    val gradientColors = if (isSystemInDarkTheme()) {
+        listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background)
+    } else {
+        listOf(OnboardingWelcomeGradientStart, MaterialTheme.colorScheme.background)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFBFEFF8),
-                        Color(0xFFFFFFFF)
-                    )
+                    colors = gradientColors
                 )
             )
     ) {
@@ -57,7 +60,7 @@ fun OnboardingWelcomeScreen(
         ) {
             Text(
                 text = "환영합니다!",
-                color = Color(0xFF000000),
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 29.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp
@@ -112,8 +115,8 @@ private fun WelcomeActionButton(
             .width(width)
             .height(35.dp),
         shape = CircleShape,
-        color = Color(0xFFFFFFFF),
-        contentColor = Color(0xFF6B6B6B),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         shadowElevation = 5.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -137,7 +140,7 @@ private fun DrawScope.drawWelcomeStar(star: WelcomeStar) {
         innerRadius = innerRadius,
         rotationDegrees = star.rotationDegrees
     )
-    val color = Color.White.copy(alpha = star.alpha)
+    val color = OnboardingStarColor.copy(alpha = star.alpha)
 
     if (star.filled) {
         drawPath(path = path, color = color, style = Fill)

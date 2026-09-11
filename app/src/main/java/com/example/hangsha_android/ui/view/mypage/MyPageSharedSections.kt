@@ -50,23 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
-private val MyPageSectionDividerColor = Color(0xFFE7E7E7)
-private val MyPageSectionBorderColor = Color(0xFFCACACA)
-private val MyPageSectionMutedIconColor = Color(0xFF9B9B9B)
-private val MyPageSectionBookmarkPreviewImageBackground = Color(0xFFE8F3EC)
-private val MyPageSectionPriorityChipColors = listOf(
-    Color(0xFF88D6F8),
-    Color(0xFF83C9F4),
-    Color(0xFFEAD452),
-    Color(0xFFC6A4FF)
-)
-
 @Composable
 internal fun PrioritySection(
     interests: List<String>,
@@ -77,8 +64,8 @@ internal fun PrioritySection(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = PureWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MyPageSectionBorderColor)
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
@@ -87,7 +74,7 @@ internal fun PrioritySection(
                 Icon(
                     imageVector = Icons.Rounded.Star,
                     contentDescription = null,
-                    tint = MyPageSectionMutedIconColor,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -96,7 +83,7 @@ internal fun PrioritySection(
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Ink100
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(modifier = Modifier.height(7.dp))
@@ -107,13 +94,15 @@ internal fun PrioritySection(
                 interests.take(3).forEachIndexed { index, interest ->
                     PriorityChip(
                         text = "${index + 1}순위: $interest",
-                        color = MyPageSectionPriorityChipColors[index % MyPageSectionPriorityChipColors.size]
+                        color = MyPageSectionPriorityChipColors[index % MyPageSectionPriorityChipColors.size],
+                        contentColor = Ink100
                     )
                 }
                 if (interests.isEmpty()) {
                     PriorityChip(
                         text = "우선순위를 설정해보세요",
-                        color = Color(0xFFE8E8E8)
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -125,7 +114,8 @@ internal fun PrioritySection(
 @Composable
 private fun PriorityChip(
     text: String,
-    color: Color
+    color: Color,
+    contentColor: Color
 ) {
     Box(
         modifier = Modifier
@@ -138,7 +128,7 @@ private fun PriorityChip(
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = PureWhite,
+            color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -155,8 +145,8 @@ internal fun TimetableRegistrationRow(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = PureWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MyPageSectionBorderColor)
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -165,14 +155,14 @@ internal fun TimetableRegistrationRow(
             Icon(
                 imageVector = Icons.Rounded.AddCircleOutline,
                 contentDescription = null,
-                tint = MyPageSectionMutedIconColor,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "내 시간표 등록하기",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -198,7 +188,7 @@ internal fun BookmarksPreviewSection(
                 Icon(
                     imageVector = Icons.Rounded.Bookmark,
                     contentDescription = null,
-                    tint = MyPageSectionMutedIconColor,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             },
@@ -225,7 +215,7 @@ internal fun BookmarksPreviewSection(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     lineHeight = 13.sp,
                     textAlign = TextAlign.Center
@@ -239,7 +229,7 @@ internal fun BookmarksPreviewSection(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     lineHeight = 13.sp,
                     textAlign = TextAlign.Center
@@ -286,7 +276,7 @@ private fun ShortcutSectionHeader(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
@@ -296,7 +286,7 @@ private fun ShortcutSectionHeader(
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = "$title 이동",
-            tint = MyPageSectionMutedIconColor,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
     }
@@ -325,7 +315,7 @@ private fun BookmarkedEventPreviewCard(
                 .fillMaxWidth()
                 .aspectRatio(1.78f)
                 .clip(RoundedCornerShape(7.dp))
-                .background(MyPageSectionBookmarkPreviewImageBackground)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             if (!item.imageUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -354,7 +344,7 @@ private fun BookmarkedEventPreviewCard(
                     showEventDDay.value = !showEventDDay.value
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -365,7 +355,7 @@ private fun BookmarkedEventPreviewCard(
         Text(
             text = item.title,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
             lineHeight = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -381,7 +371,7 @@ private fun BookmarkedEventPreviewCard(
             Text(
                 text = item.applyPeriodDisplay,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -390,7 +380,7 @@ private fun BookmarkedEventPreviewCard(
             Text(
                 text = item.organization.orEmpty(),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -408,8 +398,8 @@ private fun MoreBookmarksPreviewCard(onClick: () -> Unit) {
             .height(202.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(7.dp),
-        color = Color(0xFFF7F7F7),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MyPageSectionDividerColor)
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 18.dp),
@@ -419,7 +409,7 @@ private fun MoreBookmarksPreviewCard(onClick: () -> Unit) {
             Text(
                 text = "더 자세한 내용은\n찜 목록 페이지에서\n확인해 주세요.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
                 textAlign = TextAlign.Center
@@ -428,7 +418,7 @@ private fun MoreBookmarksPreviewCard(onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = "찜 목록 이동",
-                tint = MyPageSectionMutedIconColor,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -472,7 +462,7 @@ internal fun MemosPreviewSection(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     lineHeight = 13.sp,
                     textAlign = TextAlign.Center
@@ -486,7 +476,7 @@ internal fun MemosPreviewSection(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     lineHeight = 13.sp,
                     textAlign = TextAlign.Center
@@ -525,7 +515,7 @@ private fun MemoPreviewCard(
         Text(
             text = item.content,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 13.sp,
             lineHeight = 17.sp,
             fontWeight = FontWeight.Bold,
@@ -536,7 +526,7 @@ private fun MemoPreviewCard(
         Text(
             text = item.eventTitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
             lineHeight = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -547,7 +537,7 @@ private fun MemoPreviewCard(
         Text(
             text = item.updatedDateDisplay,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp
         )
         if (item.tagNames.isNotEmpty()) {
@@ -570,13 +560,13 @@ private fun MemoPreviewTagChip(text: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xFFE8E8E8))
+            .background(MaterialTheme.colorScheme.outlineVariant)
             .padding(horizontal = 9.dp, vertical = 4.dp)
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -601,14 +591,14 @@ internal fun BugReportSection(
             Icon(
                 imageVector = Icons.Rounded.BugReport,
                 contentDescription = null,
-                tint = Ink100,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "버그 신고",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -617,7 +607,7 @@ internal fun BugReportSection(
         Text(
             text = "사용 중 불편한 문제를 알려주세요.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -642,10 +632,10 @@ internal fun BugReportSection(
                 enabled = canSubmit,
                 shape = RoundedCornerShape(5.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4A4A4A),
-                    contentColor = PureWhite,
-                    disabledContainerColor = Color(0xFFBDBDBD),
-                    disabledContentColor = PureWhite
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 15.dp,
@@ -674,7 +664,7 @@ private fun BugTextField(
 ) {
     val shape = RoundedCornerShape(5.dp)
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = Ink100,
+        color = MaterialTheme.colorScheme.onSurface,
         fontSize = 11.sp
     )
 
@@ -684,12 +674,12 @@ private fun BugTextField(
         modifier = Modifier
             .fillMaxWidth()
             .height(if (minLines == 1) 34.dp else 86.dp)
-            .background(PureWhite, shape)
-            .border(1.dp, MyPageSectionBorderColor, shape),
+            .background(MaterialTheme.colorScheme.surface, shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape),
         minLines = minLines,
         maxLines = if (minLines == 1) 1 else Int.MAX_VALUE,
         textStyle = textStyle,
-        cursorBrush = SolidColor(Ink100),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
         decorationBox = { innerTextField ->
             Box(
                 modifier = Modifier
@@ -700,7 +690,7 @@ private fun BugTextField(
                     Text(
                         text = placeholder,
                         style = textStyle,
-                        color = Color(0xFF9D9D9D)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 innerTextField()
@@ -716,6 +706,6 @@ internal fun Divider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(MyPageSectionDividerColor)
+            .background(MaterialTheme.colorScheme.outlineVariant)
     )
 }

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,8 +34,6 @@ import androidx.core.net.toUri
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.example.hangsha_android.BuildConfig
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 
 @Composable
 internal fun SnuttTimetablePickerDialog(
@@ -73,14 +72,14 @@ internal fun SnuttTimetablePickerDialog(
                     .align(Alignment.TopEnd)
                     .padding(12.dp),
                 shape = CircleShape,
-                color = PureWhite.copy(alpha = 0.92f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
                 shadowElevation = 4.dp
             ) {
                 IconButton(onClick = currentOnClose) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = "\uB2EB\uAE30",
-                        tint = Ink100
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
