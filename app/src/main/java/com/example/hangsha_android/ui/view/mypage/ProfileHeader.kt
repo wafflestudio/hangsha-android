@@ -39,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,8 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.hangsha_android.R
-
-private val ProfileAvatarColor = Color(0xFF87959E)
 
 // 프로필 헤더 영역
 @Composable
@@ -102,7 +99,7 @@ internal fun ProfileHeader(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.outline,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        errorBorderColor = Color(0xFFFF4B4B),
+                        errorBorderColor = MaterialTheme.colorScheme.error,
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                         errorContainerColor = MaterialTheme.colorScheme.errorContainer
@@ -113,7 +110,7 @@ internal fun ProfileHeader(
                     Text(
                         text = uiState.usernameErrorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -122,7 +119,7 @@ internal fun ProfileHeader(
                     Text(
                         text = uiState.profileSaveErrorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -180,7 +177,7 @@ internal fun ProfileHeader(
                         onDraftProfileImageDeleted()
                     }
                 ) {
-                    Text(text = "확인", color = Color(0xFFFF4B4B))
+                    Text(text = "확인", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -210,7 +207,7 @@ private fun EditableProfileAvatar(
                 .align(Alignment.Center)
                 .size(65.dp)
                 .clip(CircleShape)
-                .background(ProfileAvatarColor),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
@@ -227,7 +224,7 @@ private fun EditableProfileAvatar(
                     .align(Alignment.TopStart)
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFFF4B4B))
+                    .background(MaterialTheme.colorScheme.error)
                     .clickable(onClick = onDeleteImageClick),
                 contentAlignment = Alignment.Center
             ) {

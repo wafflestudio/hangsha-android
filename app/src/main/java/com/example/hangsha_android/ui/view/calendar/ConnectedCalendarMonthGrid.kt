@@ -57,9 +57,6 @@ private val EventLaneGap = 2.dp
 private val EventHorizontalInset = 3.dp
 private val EventOverflowHeight = 11.dp
 
-private val DayCardShadow = Color(0x16000000)
-private val DayRed = Color(0xFFFF2D55)
-
 @Composable
 internal fun ConnectedCalendarMonthGrid(
     visibleDates: List<LocalDate>,
@@ -201,7 +198,7 @@ private fun ConnectedCalendarDayCell(
     }
     val dayTextColor = when {
         !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant
-        date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
+        date.dayOfWeek == DayOfWeek.SUNDAY -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -216,7 +213,7 @@ private fun ConnectedCalendarDayCell(
                 drawIntoCanvas { canvas ->
                     val paint = Paint()
                     paint.asFrameworkPaint().apply {
-                        color = DayCardShadow.toArgb()
+                        color = CalendarDayCardShadow.toArgb()
                         maskFilter = BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
                     }
                     canvas.drawRoundRect(

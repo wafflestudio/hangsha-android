@@ -38,9 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.data.repository.model.CategoryKey
-import com.example.hangsha_android.ui.theme.PureWhite
-
-private val SelectedCategoryChipColor = Color(0xFF9E9E9E)
+import com.example.hangsha_android.ui.theme.Ink100
 
 // 관심사 설정 화면 구성
 @Composable
@@ -118,7 +116,7 @@ fun InterestPriorityScreen(
                         text = uiState.saveErrorMessage,
                         modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center
                     )
@@ -156,9 +154,9 @@ fun InterestPriorityScreen(
                             categories = group.categories,
                             selectedIds = uiState.selectedCategoryIds,
                             chipColor = if (isProgramType) {
-                                Color(0xFF73C9E3)
+                                ProgramCategoryChipColor
                             } else {
-                                Color(0xFF6CD39A)
+                                GeneralCategoryChipColor
                             },
                             onCategoryClick = onCategoryClick
                         )
@@ -277,7 +275,7 @@ private fun InterestCategorySection(
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF44BBD8)
+            color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(10.dp))
         FlowRow(
@@ -305,10 +303,15 @@ private fun InterestCategoryChip(
     color: Color,
     onClick: () -> Unit
 ) {
+    val contentColor = if (selectedOrder == null) {
+        Ink100
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(if (selectedOrder == null) color else SelectedCategoryChipColor)
+            .background(if (selectedOrder == null) color else MaterialTheme.colorScheme.primary)
             .then(
                 if (selectedOrder != null) {
                     Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(100.dp))
@@ -326,7 +329,7 @@ private fun InterestCategoryChip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = PureWhite
+                color = contentColor
             )
             Spacer(modifier = Modifier.width(4.dp))
         }
@@ -335,7 +338,7 @@ private fun InterestCategoryChip(
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = PureWhite,
+            color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

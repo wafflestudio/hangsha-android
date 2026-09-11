@@ -45,12 +45,6 @@ private val AuthContentWidth = 252.dp
 private val AuthButtonHeight = 34.dp
 private val AuthFieldHeight = 34.dp
 private val AuthRoundShape = CircleShape
-private val AuthBlack = Color(0xFF000000)
-private val AuthWhite = Color(0xFFFFFFFF)
-private val AuthYellow = Color(0xFFFFD344)
-private val KakaoYellow = Color(0xFFFFE812)
-private val NaverGreen = Color(0xFF03C75A)
-
 @Composable
 fun OpeningScreen(
     loginUiState: LoginUiState,

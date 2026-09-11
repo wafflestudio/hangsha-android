@@ -301,7 +301,7 @@ private fun DeleteAccountDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.outline,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        errorBorderColor = Color(0xFFFF4B4B),
+                        errorBorderColor = MaterialTheme.colorScheme.error,
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -313,7 +313,7 @@ private fun DeleteAccountDialog(
                     Text(
                         text = "이메일이 일치하지 않습니다.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 10.sp
                     )
                 }
@@ -322,7 +322,7 @@ private fun DeleteAccountDialog(
                     Text(
                         text = errorMessage,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFFF4B4B),
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp
                     )
                 }
@@ -333,9 +333,9 @@ private fun DeleteAccountDialog(
                 onClick = onConfirmClick,
                 enabled = canConfirm,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF4B4B),
+                    containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
-                    disabledContainerColor = Color(0xFFFFD6D6),
+                    disabledContainerColor = MaterialTheme.colorScheme.errorContainer,
                     disabledContentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) {

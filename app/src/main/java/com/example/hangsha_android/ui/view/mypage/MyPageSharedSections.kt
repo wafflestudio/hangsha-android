@@ -51,17 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
-private val MyPageSectionPriorityChipColors = listOf(
-    Color(0xFF88D6F8),
-    Color(0xFF83C9F4),
-    Color(0xFFEAD452),
-    Color(0xFFC6A4FF)
-)
-
 @Composable
 internal fun PrioritySection(
     interests: List<String>,
@@ -640,10 +632,10 @@ internal fun BugReportSection(
                 enabled = canSubmit,
                 shape = RoundedCornerShape(5.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4A4A4A),
-                    contentColor = PureWhite,
-                    disabledContainerColor = Color(0xFFBDBDBD),
-                    disabledContentColor = PureWhite
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 15.dp,

@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -40,7 +39,7 @@ fun OnboardingWelcomeScreen(
     val gradientColors = if (isSystemInDarkTheme()) {
         listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background)
     } else {
-        listOf(Color(0xFFBFEFF8), MaterialTheme.colorScheme.background)
+        listOf(OnboardingWelcomeGradientStart, MaterialTheme.colorScheme.background)
     }
     Box(
         modifier = Modifier
@@ -141,7 +140,7 @@ private fun DrawScope.drawWelcomeStar(star: WelcomeStar) {
         innerRadius = innerRadius,
         rotationDegrees = star.rotationDegrees
     )
-    val color = Color.White.copy(alpha = star.alpha)
+    val color = OnboardingStarColor.copy(alpha = star.alpha)
 
     if (star.filled) {
         drawPath(path = path, color = color, style = Fill)

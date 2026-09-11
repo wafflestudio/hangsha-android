@@ -90,11 +90,6 @@ private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridHourHeight = 56.dp
 private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinute) / 60f)
-private val SnuttButtonColor = Color(0xFF0BCE84)
-private val ChangeButtonColor = Color(0xFF72D3EC)
-private val AddButtonColor = Color(0xFFF08AA0)
-private val EditButtonColor = Color(0xFF72D3EC)
-private val DeleteButtonColor = Color(0xFFF08AA0)
 private val YearOptions = buildYearOptions()
 private val SemesterOptions = listOf(
     TimetableSemesterOption("SPRING", "1\uD559\uAE30"),
@@ -105,14 +100,6 @@ private val SemesterOptions = listOf(
 private val DefaultYear = currentHangshaDate().year
 private val DefaultSemester = semesterForMonth(currentHangshaDate().monthValue).apiValue
 private val WeekdayLabels = listOf("월", "화", "수", "목", "금")
-private val CourseColors = listOf(
-    Color(0xFF55B9DC),
-    Color(0xFFEAC94D),
-    Color(0xFF2D82EA),
-    Color(0xFFE94061),
-    Color(0xFF54C987),
-    Color(0xFF8F56EC)
-)
 private data class TimetableSemesterOption(
     val apiValue: String,
     val label: String
@@ -1653,7 +1640,7 @@ private fun TimetablePillButton(text: String, color: Color, enabled: Boolean, on
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = PureWhite, disabledContainerColor = color, disabledContentColor = Color(0xFFFAFAFA).copy(alpha = 0.72f)),
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = PureWhite, disabledContainerColor = color, disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f)),
         contentPadding = PaddingValues(horizontal = 12.dp),
         modifier = Modifier.height(32.dp).semantics { this.contentDescription = contentDescription }
     ) {
@@ -1667,7 +1654,7 @@ private fun TimetablePillButton(text: String, color: Color, enabled: Boolean, on
 
 @Composable
 private fun FieldErrorText(message: String) {
-    Text(message, color = DeleteButtonColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    Text(message, color = MaterialTheme.colorScheme.error, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 }
 
 private fun blockModifier(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp): Modifier {

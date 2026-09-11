@@ -52,17 +52,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Coral60
-import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-private val DayCardShadow = Color(0x16000000)
-private val DayRed = Color(0xFFFF2D55)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
 private val WeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
@@ -323,7 +318,7 @@ private fun FilterButton(
                     .padding(top = 4.dp, end = 4.dp)
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Coral60)
+                    .background(MaterialTheme.colorScheme.secondary)
             )
         }
     }
@@ -425,7 +420,7 @@ private fun WeekdayHeader() {
                 else -> 0.3f // 나머지: 투명도 70%
             }
 
-            val baseColor = if (isSunday) DayRed else MaterialTheme.colorScheme.onSurface
+            val baseColor = if (isSunday) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
 
             Box(
                 modifier = Modifier.weight(1f),
@@ -504,7 +499,7 @@ private fun CalendarDayCell(
                     val frameworkPaint = paint.asFrameworkPaint()
 
                     // 그림자 색상 설정
-                    frameworkPaint.color = DayCardShadow.toArgb()
+                    frameworkPaint.color = CalendarDayCardShadow.toArgb()
 
                     // 블러 필터 적용
                     frameworkPaint.maskFilter = BlurMaskFilter(
@@ -588,7 +583,7 @@ private fun buildCalendarDayUiModel(
     }
     val dayTextColor = when {
         !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant
-        date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
+        date.dayOfWeek == DayOfWeek.SUNDAY -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.onSurface
     }
     val visibleEvents = events.take(MaxVisibleEventsPerDay)
@@ -680,7 +675,8 @@ private fun ErrorState(
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Peach20.copy(alpha = 0.45f)
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
         ) {
             // 데이터를 못 불러올 때 달력 대신 중앙에 뜨는 에러 카드
             Column(

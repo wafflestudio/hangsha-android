@@ -36,7 +36,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -152,7 +151,7 @@ fun BookmarksScreen(
                                     text = uiState.errorMessage,
                                     modifier = Modifier.fillMaxWidth(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFFF4B4B),
+                                    color = MaterialTheme.colorScheme.error,
                                     fontSize = 11.sp
                                 )
                             }

@@ -35,14 +35,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Coral60
-import com.example.hangsha_android.ui.theme.Cream5
-import com.example.hangsha_android.ui.theme.Peach20
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
@@ -277,7 +273,7 @@ private fun FilterButton(
                     .padding(top = 4.dp, end = 4.dp)
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Coral60)
+                    .background(MaterialTheme.colorScheme.secondary)
             )
         }
     }
@@ -379,7 +375,8 @@ private fun DailyEmptyState() {
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Cream5
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Text(
                 text = "해당 날짜에 표시할 행사가 없습니다.",
@@ -401,7 +398,8 @@ private fun DailyErrorState(
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Peach20.copy(alpha = 0.45f)
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),

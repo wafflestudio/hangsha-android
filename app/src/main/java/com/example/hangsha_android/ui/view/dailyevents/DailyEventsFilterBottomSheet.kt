@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.components.EventFilterFooter
-import com.example.hangsha_android.ui.theme.Ink90
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
@@ -228,7 +227,7 @@ private fun EventTypeSection(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink90
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
