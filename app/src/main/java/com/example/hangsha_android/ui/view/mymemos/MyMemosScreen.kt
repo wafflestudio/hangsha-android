@@ -46,15 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 
-private val MemoCardBorderColor = Color(0xFFE8E8E8)
 private val MemoCardShadowColor = Color(0x11000000)
-private val MemoTagBackground = Color(0xFFE8E8E8)
-private val MemoIconColor = Color(0xFF777777)
 
 @Composable
 fun MyMemosScreen(
@@ -110,7 +103,7 @@ fun MyMemosScreen(
                         Text(
                             text = "아직 작성한 메모가 없습니다.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Ink60,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )
                     }
@@ -133,7 +126,7 @@ fun MyMemosScreen(
                                     Text(
                                         text = group.dateDisplay,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Ink60,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 15.sp
                                     )
                                     group.memos.forEach { memo ->
@@ -218,7 +211,7 @@ private fun MyMemosTopBar(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = "\uB4A4\uB85C \uAC00\uAE30",
-                tint = Color(0xFFB0B0B0),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 24.dp)
@@ -233,14 +226,14 @@ private fun MyMemosTopBar(
             Text(
                 text = "내 메모 목록",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
             Icon(
                 imageVector = Icons.Rounded.Edit,
                 contentDescription = null,
-                tint = Color(0xFFB0B0B0),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -278,8 +271,8 @@ private fun MyMemoCard(
                 }
             ),
         shape = RoundedCornerShape(14.dp),
-        color = PureWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MemoCardBorderColor),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 2.dp,
         tonalElevation = 0.dp
     ) {
@@ -295,7 +288,7 @@ private fun MyMemoCard(
                 Text(
                     text = memo.content,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp,
                     lineHeight = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -307,7 +300,7 @@ private fun MyMemoCard(
             Text(
                 text = memo.eventTitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
                 lineHeight = 17.sp,
                 fontWeight = FontWeight.Bold,
@@ -346,7 +339,7 @@ private fun MyMemoCard(
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = "메모 저장",
-                        tint = MemoIconColor,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .size(28.dp)
                             .clickable(enabled = !isSaving, onClick = onSaveEditClick)
@@ -375,7 +368,7 @@ private fun MyMemoCard(
                         Icon(
                             imageVector = Icons.Rounded.Delete,
                             contentDescription = "메모 삭제",
-                            tint = MemoIconColor,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .size(24.dp)
                                 .clickable(enabled = !isDeleting, onClick = onDeleteClick)
@@ -383,7 +376,7 @@ private fun MyMemoCard(
                         Icon(
                             imageVector = Icons.Rounded.Edit,
                             contentDescription = "메모 수정",
-                            tint = MemoIconColor,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .size(24.dp)
                                 .clickable(onClick = onEditClick)
@@ -405,19 +398,19 @@ private fun MemoEditTextField(
             .fillMaxWidth()
             .height(58.dp),
         shape = RoundedCornerShape(7.dp),
-        color = PureWhite,
-        border = BorderStroke(1.dp, Color(0xFFC9C9C9))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 lineHeight = 20.sp,
                 fontWeight = FontWeight.Bold
             ),
-            cursorBrush = SolidColor(Ink100),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 10.dp, vertical = 9.dp)
@@ -432,7 +425,7 @@ private fun MyMemoTagChip(
 ) {
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = MemoTagBackground
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -442,7 +435,7 @@ private fun MyMemoTagChip(
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -452,7 +445,7 @@ private fun MyMemoTagChip(
                     text = "x",
                     modifier = Modifier.clickable(onClick = onRemoveClick),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
             }
@@ -465,12 +458,12 @@ private fun MemoAddTagChip(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(100.dp),
-        color = MemoTagBackground
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Icon(
             imageVector = Icons.Rounded.Add,
             contentDescription = "태그 추가",
-            tint = MemoIconColor,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .padding(5.dp)
                 .size(17.dp)
@@ -486,7 +479,7 @@ private fun MemoTagInputChip(
 ) {
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = MemoTagBackground
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -498,16 +491,16 @@ private fun MemoTagInputChip(
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp
                 ),
-                cursorBrush = SolidColor(Ink100),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.size(width = 58.dp, height = 18.dp)
             )
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = "태그 추가 완료",
-                tint = MemoIconColor,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(15.dp)
                     .clickable(onClick = onConfirmClick)
@@ -531,7 +524,7 @@ private fun MyMemosErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink90,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))

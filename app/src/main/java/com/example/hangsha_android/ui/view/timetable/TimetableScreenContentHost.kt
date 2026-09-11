@@ -80,8 +80,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
 import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 
@@ -92,16 +90,11 @@ private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridHourHeight = 56.dp
 private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinute) / 60f)
-private val GridLineColor = Color(0xFFE8E8E8)
-private val HalfHourLineColor = Color(0xFFF1F1F1)
-private val CourseMaskColor = Color(0xFFCFCFCF)
 private val SnuttButtonColor = Color(0xFF0BCE84)
-private val SnuttDisabledButtonColor = Color(0xFFCFCFCF)
 private val ChangeButtonColor = Color(0xFF72D3EC)
 private val AddButtonColor = Color(0xFFF08AA0)
 private val EditButtonColor = Color(0xFF72D3EC)
 private val DeleteButtonColor = Color(0xFFF08AA0)
-private val PanelHintColor = Color(0xFFB4B4B4)
 private val YearOptions = buildYearOptions()
 private val SemesterOptions = listOf(
     TimetableSemesterOption("SPRING", "1\uD559\uAE30"),
@@ -790,7 +783,7 @@ private fun TimetableScreenContent(
                             text = "\uC2DC\uAC04\uD45C\uB97C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694",
                             modifier = Modifier.align(Alignment.Center),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Ink60,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -910,7 +903,7 @@ private fun TimetableTermSelector(
         Text(
             text = "\uB098\uC758 \uC2DC\uAC04\uD45C",
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
@@ -957,7 +950,7 @@ private fun <T> TimetableDropdown(
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -965,7 +958,7 @@ private fun <T> TimetableDropdown(
             Icon(
                 imageVector = Icons.Rounded.KeyboardArrowDown,
                 contentDescription = null,
-                tint = Ink60,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -1011,7 +1004,7 @@ private fun TimetableHeader(
         Text(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 17.sp,
             modifier = Modifier.widthIn(max = 78.dp),
             fontWeight = FontWeight.Bold,
@@ -1022,7 +1015,7 @@ private fun TimetableHeader(
         Text(
             text = "(${credits}학점)",
             style = MaterialTheme.typography.bodyMedium,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -1040,7 +1033,7 @@ private fun TimetableHeader(
                 checkedThumbColor = PureWhite,
                 checkedTrackColor = ChangeButtonColor,
                 uncheckedThumbColor = PureWhite,
-                uncheckedTrackColor = Color(0xFFD0D0D0),
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 uncheckedBorderColor = Color.Transparent,
                 checkedBorderColor = Color.Transparent
             )
@@ -1074,7 +1067,7 @@ private fun TimetableWeekNavigator(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                 contentDescription = null,
-                tint = Ink60,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -1085,7 +1078,7 @@ private fun TimetableWeekNavigator(
                 .semantics {
                     contentDescription = "${weekStart.year}년 ${weekStart.monthValue}월 ${weekStart.dayOfMonth}일부터 ${weekEnd.monthValue}월 ${weekEnd.dayOfMonth}일까지"
                 },
-            color = Ink100,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1100,7 +1093,7 @@ private fun TimetableWeekNavigator(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Ink60,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -1129,7 +1122,7 @@ private fun WeekdayHeader() {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1191,7 +1184,7 @@ private fun WeeklyTimetableGrid(
         if (showEvents) {
             courseBlocks.forEach { block ->
                 val position = coursePositions[block.id] ?: return@forEach
-                TimetableBlockBackground(position, dayWidth, gridHeight, CourseMaskColor, 0.72f)
+                TimetableBlockBackground(position, dayWidth, gridHeight, MaterialTheme.colorScheme.surfaceContainerHighest, 0.72f)
             }
             courseBlocks.forEach { block ->
                 val position = coursePositions[block.id] ?: return@forEach
@@ -1240,12 +1233,14 @@ private fun WeeklyTimetableGrid(
 // 그리드 배경: 30분 단위 가로선을 그리고 시간 라벨 영역은 비워둔다.
 @Composable
 private fun GridLines() {
+    val hourLineColor = MaterialTheme.colorScheme.outlineVariant
+    val halfHourLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     Canvas(modifier = Modifier.fillMaxSize()) {
         val labelWidthPx = TimeLabelWidth.toPx()
         val minuteHeight = size.height / (GridEndMinute - GridStartMinute)
         for (minute in GridStartMinute..GridEndMinute step 30) {
             val y = (minute - GridStartMinute) * minuteHeight
-            val color = if (minute % 60 == 0) GridLineColor else HalfHourLineColor
+            val color = if (minute % 60 == 0) hourLineColor else halfHourLineColor
             drawLine(color = color, start = Offset(labelWidthPx, y), end = Offset(size.width, y), strokeWidth = 1.dp.toPx())
         }
     }
@@ -1261,7 +1256,7 @@ private fun HourLabels(gridHeight: Dp) {
             text = hourLabel(minute),
             modifier = Modifier.offset(x = 0.dp, y = top - 8.dp).width(TimeLabelWidth),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF8D8D8D),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             textAlign = TextAlign.Start
         )
@@ -1358,7 +1353,7 @@ private fun TimetableFloatingActions(
     Column(modifier = modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(7.dp)) {
         TimetablePillButton(
             text = if (isImportingSnutt) "\uBD88\uB7EC\uC624\uB294 \uC911..." else "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9",
-            color = if (isImportingSnutt) SnuttDisabledButtonColor else SnuttButtonColor,
+            color = if (isImportingSnutt) MaterialTheme.colorScheme.surfaceContainerHighest else SnuttButtonColor,
             enabled = !isImportingSnutt,
             onClick = onSnuttClick,
             contentDescription = if (isImportingSnutt) {
@@ -1389,15 +1384,15 @@ private fun TimetableSelectionPanel(
     onDeleteTimetableClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier.fillMaxWidth().heightIn(min = 250.dp, max = 292.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = PureWhite, shadowElevation = 8.dp) {
+    Surface(modifier = modifier.fillMaxWidth().heightIn(min = 250.dp, max = 292.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp)) {
             IconButton(onClick = onClose, modifier = Modifier.size(30.dp).semantics { contentDescription = "시간표 변경 패널 닫기" }) {
-                Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = PanelHintColor)
+                Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("나의 시간표", style = MaterialTheme.typography.bodyMedium, color = Ink100, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("나의 시간표", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 IconButton(onClick = onAddTimetableClick, modifier = Modifier.size(32.dp).semantics { contentDescription = "시간표 추가" }) {
-                    Icon(imageVector = Icons.Rounded.Add, contentDescription = null, tint = Ink60, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
             }
             if (deleteErrorMessage != null) {
@@ -1430,7 +1425,7 @@ private fun TimetableSelectionPanel(
 
 @Composable
 private fun CreateTimetablePanel(title: String = "시간표 만들기", submitText: String = "만들기", name: String, errorMessage: String?, isCreating: Boolean, onNameChange: (String) -> Unit, onClose: () -> Unit, onSubmit: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = PureWhite, shadowElevation = 8.dp) {
+    Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 16.dp)) {
             PanelHeader(title = title, onClose = onClose)
             Spacer(modifier = Modifier.height(12.dp))
@@ -1465,7 +1460,7 @@ private fun AddCoursePanel(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier.fillMaxWidth().heightIn(max = 560.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = PureWhite, shadowElevation = 8.dp) {
+    Surface(modifier = modifier.fillMaxWidth().heightIn(max = 560.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp), contentPadding = PaddingValues(top = 14.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { PanelHeader(title = "수업 추가", onClose = onClose) }
             item {
@@ -1479,7 +1474,7 @@ private fun AddCoursePanel(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("수업 시간", style = MaterialTheme.typography.bodyMedium, color = Ink100, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("수업 시간", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(onClick = onAddTimeSlot) { Text("+ 시간 추가") }
                 }
@@ -1524,7 +1519,7 @@ private fun TimeSlotEditorRow(
     onChangeStart: (Int) -> Unit,
     onChangeEnd: (Int) -> Unit
 ) {
-    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF8F8F8)) {
+    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TimetableDayOfWeek.values().take(5).forEach { day ->
@@ -1533,7 +1528,7 @@ private fun TimeSlotEditorRow(
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRemove, enabled = canRemove, modifier = Modifier.size(28.dp)) {
-                    Icon(imageVector = Icons.Rounded.Close, contentDescription = "시간 삭제", tint = if (canRemove) Ink60 else PanelHintColor)
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = "시간 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (canRemove) 1f else 0.38f))
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1547,7 +1542,7 @@ private fun TimeSlotEditorRow(
 
 @Composable
 private fun DayChip(day: TimetableDayOfWeek, selected: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = if (selected) ChangeButtonColor else Color(0xFFE9E9E9), contentColor = if (selected) PureWhite else Ink60), contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(28.dp)) {
+    Button(onClick = onClick, shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = if (selected) ChangeButtonColor else MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = if (selected) PureWhite else MaterialTheme.colorScheme.onSurfaceVariant), contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.height(28.dp)) {
         Text(day.label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -1583,7 +1578,7 @@ private fun DirectTimePicker(
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = label,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -1593,7 +1588,7 @@ private fun DirectTimePicker(
             ) {
                 Text(
                     text = formatMinute(safeMinute),
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1601,7 +1596,7 @@ private fun DirectTimePicker(
                 Icon(
                     imageVector = Icons.Rounded.AccessTime,
                     contentDescription = "$label \uC2DC\uAC04 \uC120\uD0DD",
-                    tint = Ink60,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1612,10 +1607,10 @@ private fun DirectTimePicker(
 @Composable
 private fun PanelHeader(title: String, onClose: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.bodyMedium, color = Ink100, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
-            Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = "닫기", tint = PanelHintColor)
+            Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = "닫기", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -1629,8 +1624,8 @@ private fun TransparentDismissLayer(onDismiss: () -> Unit) {
 private fun TimetableSelectionRow(timetable: TimetableUiModel, isSelected: Boolean, isDeleting: Boolean, onSelect: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect).semantics { contentDescription = "${timetable.name} 선택" }, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(timetable.name, style = MaterialTheme.typography.bodyMedium, color = Ink100, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${timetable.totalCredits}학점", style = MaterialTheme.typography.bodyMedium, color = Ink60, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(timetable.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${timetable.totalCredits}학점", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
         SmallPanelButton(text = "수정", color = EditButtonColor, onClick = onEdit)
         Spacer(modifier = Modifier.width(8.dp))
@@ -1641,7 +1636,7 @@ private fun TimetableSelectionRow(timetable: TimetableUiModel, isSelected: Boole
 @Composable
 private fun EmptyTimetablePanelState(modifier: Modifier = Modifier) {
     Box(modifier = modifier.height(88.dp), contentAlignment = Alignment.CenterStart) {
-        Text("등록된 시간표가 없습니다.", style = MaterialTheme.typography.bodyMedium, color = Ink60, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("등록된 시간표가 없습니다.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -1774,7 +1769,7 @@ private fun formatMinute(minute: Int): String {
 @Composable
 private fun LoadingTimetablePanelState(modifier: Modifier = Modifier) {
     Box(modifier = modifier.height(88.dp), contentAlignment = Alignment.CenterStart) {
-        Text("시간표 목록을 불러오는 중입니다.", style = MaterialTheme.typography.bodyMedium, color = Ink60, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("시간표 목록을 불러오는 중입니다.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 

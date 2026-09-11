@@ -30,11 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Cream10
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 
 @Composable
 fun EventDetailMemoSection(
@@ -74,8 +69,8 @@ fun EventDetailMemoSection(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = PureWhite,
-        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -89,7 +84,7 @@ fun EventDetailMemoSection(
                 Icon(
                     imageVector = Icons.Rounded.Edit,
                     contentDescription = null,
-                    tint = Ink60,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
@@ -97,7 +92,7 @@ fun EventDetailMemoSection(
                     modifier = Modifier
                         .clickable(enabled = !isSaving, onClick = onSaveClick)
                         .padding(horizontal = 4.dp, vertical = 2.dp),
-                    color = Ink90,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -137,12 +132,12 @@ fun EventDetailMemoSection(
                     enabled = tagInput.isNotBlank() && !isSaving,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PureWhite,
-                        contentColor = Ink90,
-                        disabledContainerColor = PureWhite,
-                        disabledContentColor = Ink60.copy(alpha = 0.45f)
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                     ),
-                    border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Text(text = "추가")
                 }
@@ -160,14 +155,14 @@ private fun MemoSectionHeader() {
         Icon(
             imageVector = Icons.Rounded.Edit,
             contentDescription = null,
-            tint = Ink60,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp)
         )
         Text(
             text = "메모하기",
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 14.sp,
-            color = Ink90
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -176,8 +171,8 @@ private fun MemoSectionHeader() {
 private fun MemoPlaceholder() {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = PureWhite,
-        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Text(
             text = "메모를 입력하세요",
@@ -186,7 +181,7 @@ private fun MemoPlaceholder() {
                 .padding(horizontal = 18.dp, vertical = 15.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 14.sp,
-            color = Ink60.copy(alpha = 0.55f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
         )
     }
 }
@@ -201,8 +196,8 @@ private fun MemoDisplay(
     ) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = PureWhite,
-            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Text(
                 text = content,
@@ -211,7 +206,7 @@ private fun MemoDisplay(
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 14.sp,
-                color = Ink100
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
         if (tagNames.isNotEmpty()) {
@@ -251,8 +246,8 @@ private fun MemoTextInput(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = PureWhite,
-        border = BorderStroke(1.dp, Ink60.copy(alpha = 0.28f))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         BasicTextField(
             value = value,
@@ -261,7 +256,7 @@ private fun MemoTextInput(
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = 14.sp,
                 lineHeight = 22.sp,
-                color = Ink100
+                color = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier
                 .fillMaxSize()
@@ -273,7 +268,7 @@ private fun MemoTextInput(
                             text = placeholder,
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = 14.sp,
-                            color = Ink60.copy(alpha = 0.55f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                         )
                     }
                     innerTextField()
@@ -298,14 +293,14 @@ private fun MemoTagChip(
                 text = "#$text",
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 13.sp,
-                color = Ink90
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (onClick != null) {
                 Text(
                     text = "x",
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 13.sp,
-                    color = Ink60
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -314,16 +309,16 @@ private fun MemoTagChip(
     if (onClick == null) {
         Surface(
             shape = RoundedCornerShape(10.dp),
-            color = Cream10,
-            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f)),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             content = content
         )
     } else {
         Surface(
             onClick = onClick,
             shape = RoundedCornerShape(10.dp),
-            color = Cream10,
-            border = BorderStroke(1.dp, Ink60.copy(alpha = 0.18f)),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             content = content
         )
     }

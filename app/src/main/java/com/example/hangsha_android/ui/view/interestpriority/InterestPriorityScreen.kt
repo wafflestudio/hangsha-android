@@ -38,9 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.data.repository.model.CategoryKey
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.theme.PureWhite
 
 private val SelectedCategoryChipColor = Color(0xFF9E9E9E)
@@ -61,7 +58,7 @@ fun InterestPriorityScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F7F7))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -86,7 +83,7 @@ fun InterestPriorityScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "뒤로 가기",
-                            tint = Ink100
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -97,7 +94,7 @@ fun InterestPriorityScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(6.dp))
@@ -107,7 +104,7 @@ fun InterestPriorityScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(14.dp))
@@ -140,7 +137,7 @@ fun InterestPriorityScreen(
                         Text(
                             text = uiState.errorMessage,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Ink90,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center
                         )
@@ -184,7 +181,7 @@ fun InterestPriorityScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            color = PureWhite,
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 2.dp
         ) {
             Button(
@@ -196,17 +193,17 @@ fun InterestPriorityScreen(
                     .height(44.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF555555),
-                    contentColor = PureWhite,
-                    disabledContainerColor = Color(0xFFBDBDBD),
-                    disabledContentColor = PureWhite
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 if (uiState.isSaving) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = PureWhite
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Text(
@@ -249,8 +246,8 @@ private fun SelectedPriorityChip(text: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(100.dp))
-            .background(PureWhite)
-            .border(1.dp, Color(0xFFE1E1E1), RoundedCornerShape(100.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(100.dp))
             .padding(horizontal = 13.dp, vertical = 5.dp)
     ) {
         Text(
@@ -258,7 +255,7 @@ private fun SelectedPriorityChip(text: String) {
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -314,7 +311,7 @@ private fun InterestCategoryChip(
             .background(if (selectedOrder == null) color else SelectedCategoryChipColor)
             .then(
                 if (selectedOrder != null) {
-                    Modifier.border(1.dp, Color(0xFF8A8A8A), RoundedCornerShape(100.dp))
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(100.dp))
                 } else {
                     Modifier
                 }

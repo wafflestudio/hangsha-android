@@ -53,9 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.ui.theme.Coral60
-import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.Peach20
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -64,8 +62,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val DayCardShadow = Color(0x16000000)
-private val DayCellBorder = Color(0xFFE6E8EB)
-private val OutOfMonthText = Color(0xFFC9CDD3)
 private val DayRed = Color(0xFFFF2D55)
 
 private val KoreanMonthFormatter = DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
@@ -263,7 +259,7 @@ private fun CalendarHeader(
             Icon(
                 imageVector = Icons.Rounded.Search,
                 contentDescription = "\uD589\uC0AC \uAC80\uC0C9",
-                tint = Ink60
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -283,7 +279,7 @@ private fun HeaderNavigationButtons(
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
             contentDescription = "\uC774\uC804 \uB2EC",
-            tint = Ink60
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     Spacer(modifier = Modifier.width(1.dp))
@@ -296,7 +292,7 @@ private fun HeaderNavigationButtons(
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = "\uB2E4\uC74C \uB2EC",
-            tint = Ink60
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -377,7 +373,7 @@ private fun HeaderCircleButton(
         Surface(
             modifier = Modifier.size(28.dp),
             shape = RoundedCornerShape(9.dp),
-            color = PureWhite,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 2.dp // Apply shadow
         ) {
             Box(
@@ -529,12 +525,12 @@ private fun CalendarDayCell(
                 }
             }
             .background(
-                color = PureWhite,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(DayCellCornerRadius)
             )
             .border( // 선
                 width = 0.dp, // 일단 피그마에는 선이 없음...
-                color = DayCellBorder,
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(DayCellCornerRadius)
             )
             .padding(horizontal = 3.dp, vertical = 3.dp) // 내부 여백
@@ -591,7 +587,7 @@ private fun buildCalendarDayUiModel(
         else -> 0.3f                             // 나머지 평일 날짜: 투명도 70%
     }
     val dayTextColor = when {
-        !isCurrentMonth -> OutOfMonthText
+        !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant
         date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
         else -> MaterialTheme.colorScheme.onSurface
     }

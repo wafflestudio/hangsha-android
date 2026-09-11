@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.util.currentHangshaDate
 import java.time.DayOfWeek
@@ -59,10 +58,7 @@ private val EventHorizontalInset = 3.dp
 private val EventOverflowHeight = 11.dp
 
 private val DayCardShadow = Color(0x16000000)
-private val DayCellBorder = Color(0xFFE6E8EB)
-private val OutOfMonthText = Color(0xFFC9CDD3)
 private val DayRed = Color(0xFFFF2D55)
-private val EventTitleText = Color(0xFF1F2937)
 
 @Composable
 internal fun ConnectedCalendarMonthGrid(
@@ -176,7 +172,7 @@ private fun ConnectedCalendarWeek(
                     ) {
                         Text(
                             text = "+$overflowCount",
-                            color = EventTitleText.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 8.sp,
                             lineHeight = 9.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -204,7 +200,7 @@ private fun ConnectedCalendarDayCell(
         else -> 0.3f
     }
     val dayTextColor = when {
-        !isCurrentMonth -> OutOfMonthText
+        !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant
         date.dayOfWeek == DayOfWeek.SUNDAY -> DayRed
         else -> MaterialTheme.colorScheme.onSurface
     }
@@ -234,8 +230,8 @@ private fun ConnectedCalendarDayCell(
                     )
                 }
             }
-            .background(PureWhite, RoundedCornerShape(DayCellCornerRadius))
-            .border(0.dp, DayCellBorder, RoundedCornerShape(DayCellCornerRadius))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(DayCellCornerRadius))
+            .border(0.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(DayCellCornerRadius))
             .padding(horizontal = 3.dp, vertical = 3.dp)
     ) {
         Box(
@@ -292,7 +288,7 @@ private fun BlockEventBand(
     ) {
         Text(
             text = title,
-            color = EventTitleText,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 8.sp,
             lineHeight = 9.sp,
             fontWeight = FontWeight.Medium,
@@ -318,7 +314,7 @@ private fun PeriodEventBand(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 5.dp),
-            color = EventTitleText,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 8.sp,
             lineHeight = 9.sp,
             fontWeight = FontWeight.SemiBold,

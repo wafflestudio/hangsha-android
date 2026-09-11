@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.theme.Ink60
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -61,8 +61,6 @@ private val TimelinePeekHeight = 34.dp
 private val TimelineAxisLeadingWidth = 26.dp
 private val PeriodLaneHeight = 36.dp
 private val AllDayLaneHeight = 30.dp
-private val TimelineGridColor = Color(0xFFECECEC)
-private val TimelineHandleColor = Color(0xFFB8B8B8)
 
 @Composable
 internal fun TimetableEventTimelineSheet(
@@ -105,7 +103,7 @@ internal fun TimetableEventTimelineSheet(
                 .height(expandedHeight)
                 .offset { IntOffset(x = 0, y = displayedOffset.roundToInt()) },
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
-            color = PureWhite.copy(alpha = 0.96f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
             shadowElevation = 10.dp
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -202,7 +200,7 @@ private fun TimelineDragHandle(
                 .width(42.dp)
                 .height(5.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(TimelineHandleColor)
+                .background(MaterialTheme.colorScheme.outline)
         )
     }
 }
@@ -221,7 +219,7 @@ private fun TimelineDateHeader(weekStart: LocalDate) {
             Text(
                 text = "${date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.KOREAN)}\n${date.dayOfMonth}",
                 modifier = Modifier.weight(1f),
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
                 lineHeight = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -294,13 +292,14 @@ private fun TimelineSection(
 
 @Composable
 private fun TimelineVerticalGrid() {
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
     Canvas(modifier = Modifier.fillMaxSize()) {
         val leading = TimelineAxisLeadingWidth.toPx()
         val dayWidth = (size.width - leading) / TimelineDayCount
         repeat(TimelineDayCount + 1) { index ->
             val x = leading + dayWidth * index
             drawLine(
-                color = TimelineGridColor,
+                color = gridColor,
                 start = Offset(x, 0f),
                 end = Offset(x, size.height),
                 strokeWidth = 1.dp.toPx()
@@ -340,7 +339,7 @@ private fun PeriodArrow(
         Text(
             text = event.title,
             modifier = Modifier
-                .background(PureWhite.copy(alpha = 0.96f))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
                 .padding(horizontal = 4.dp, vertical = 1.dp),
             color = event.categoryColor.copy(alpha = 1f),
             fontSize = 10.sp,
@@ -401,7 +400,7 @@ private fun TimelineErrorState(message: String, onRetry: () -> Unit) {
     ) {
         Text(
             text = message,
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
@@ -421,7 +420,7 @@ private fun TimelineEmptyState() {
     ) {
         Text(
             text = "이번 주에 표시할 행사가 없습니다.",
-            color = Ink60,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             textAlign = TextAlign.Center
         )

@@ -44,10 +44,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Cream10
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
@@ -78,13 +74,13 @@ fun SearchScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "뒤로 가기",
-                    tint = Ink60
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(
                 text = if (uiState.submittedQuery.isBlank()) "검색" else "'${uiState.submittedQuery}' 검색 결과",
                 style = MaterialTheme.typography.titleMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -137,7 +133,7 @@ fun SearchScreen(
                     item {
                         Text(
                             text = "총 ${uiState.total}개 결과",
-                            color = Ink60,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )
                     }
@@ -199,7 +195,7 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -208,7 +204,7 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = it,
-                        color = Ink60,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -234,7 +230,7 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "${item.eventDateDisplay} · ${item.organization.orEmpty()}",
-                    color = Ink60,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -255,7 +251,7 @@ private fun SearchResultCard(item: SearchEventItem, onClick: () -> Unit) {
                     modifier = Modifier
                         .size(82.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Cream10)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                 )
             }
         }
@@ -272,7 +268,7 @@ private fun SearchChip(
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            color = Ink90,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -287,7 +283,7 @@ private fun SearchMessage(
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = message, color = Ink60)
+            Text(text = message, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (actionText != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(onClick = onAction) { Text(actionText) }

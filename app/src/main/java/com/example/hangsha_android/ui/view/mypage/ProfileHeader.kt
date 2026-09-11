@@ -47,12 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.hangsha_android.R
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 
 private val ProfileAvatarColor = Color(0xFF87959E)
-private val BorderColor = Color(0xFFCACACA)
-private val MutedIconColor = Color(0xFF9B9B9B)
 
 // 프로필 헤더 영역
 @Composable
@@ -104,12 +100,12 @@ internal fun ProfileHeader(
                     shape = RoundedCornerShape(5.dp),
                     isError = uiState.usernameErrorMessage != null,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderColor,
-                        unfocusedBorderColor = BorderColor,
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         errorBorderColor = Color(0xFFFF4B4B),
-                        focusedContainerColor = PureWhite,
-                        unfocusedContainerColor = PureWhite,
-                        errorContainerColor = PureWhite
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        errorContainerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 )
                 if (uiState.usernameErrorMessage != null) {
@@ -134,7 +130,7 @@ internal fun ProfileHeader(
                 Text(
                     text = uiState.username.ifBlank { "사용자" },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -145,7 +141,7 @@ internal fun ProfileHeader(
             Text(
                 text = uiState.email.ifBlank { "이메일 정보 없음" },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink100,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -167,7 +163,7 @@ internal fun ProfileHeader(
             Icon(
                 imageVector = if (uiState.isEditingProfile) Icons.Rounded.Check else Icons.Rounded.Edit,
                 contentDescription = if (uiState.isEditingProfile) "프로필 저장" else "프로필 수정",
-                tint = if (uiState.isEditingProfile) Color(0xFF2E7D32) else MutedIconColor
+                tint = if (uiState.isEditingProfile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -238,7 +234,7 @@ private fun EditableProfileAvatar(
                 Icon(
                     imageVector = Icons.Rounded.Close,
                     contentDescription = "프로필 이미지 삭제",
-                    tint = PureWhite,
+                    tint = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -250,15 +246,15 @@ private fun EditableProfileAvatar(
                     .align(Alignment.BottomEnd)
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(PureWhite)
-                    .border(1.dp, BorderColor, CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                     .clickable(onClick = onPickImageClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.PhotoCamera,
                     contentDescription = "프로필 이미지 선택",
-                    tint = MutedIconColor,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(15.dp)
                 )
             }

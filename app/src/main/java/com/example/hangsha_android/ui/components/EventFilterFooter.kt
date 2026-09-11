@@ -20,11 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.hangsha_android.ui.theme.PureWhite
-
-private val FilterActionGray = Color(0xFFE1E1DF)
 
 @Composable
 fun EventFilterFooter(
@@ -36,7 +32,7 @@ fun EventFilterFooter(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = PureWhite,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp
     ) {
         Row(
@@ -49,7 +45,7 @@ fun EventFilterFooter(
             Button(
                 onClick = onClear,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = FilterActionGray,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 shape = RoundedCornerShape(18.dp)
@@ -69,16 +65,16 @@ fun EventFilterFooter(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContainerColor = PureWhite,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 if (isCountLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(6.dp))

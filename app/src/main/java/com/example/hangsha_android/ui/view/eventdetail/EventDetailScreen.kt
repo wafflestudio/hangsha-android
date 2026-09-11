@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -52,11 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
-import com.example.hangsha_android.ui.theme.Cream10
-import com.example.hangsha_android.ui.theme.Ink60
-import com.example.hangsha_android.ui.theme.Ink90
-import com.example.hangsha_android.ui.theme.Ink100
-import com.example.hangsha_android.ui.theme.PureWhite
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
 @Composable
@@ -165,7 +161,7 @@ private fun EventDetailContent(
             Surface(
                 onClick = onNavigateBack,
                 shape = RoundedCornerShape(14.dp),
-                color = PureWhite,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
             ) {
                 Box(
@@ -175,7 +171,7 @@ private fun EventDetailContent(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = Ink60
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -197,13 +193,13 @@ private fun EventDetailContent(
                     modifier = Modifier
                         .size(370.dp, 241.dp)
                         .clip(RoundedCornerShape(18.dp))
-                        .background(Cream10),
+                        .background(MaterialTheme.colorScheme.surfaceContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "No image",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Ink60
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -219,7 +215,7 @@ private fun EventDetailContent(
                         Icons.Rounded.BookmarkBorder
                     },
                     contentDescription = "Bookmark",
-                    tint = Ink60,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(32.dp)
                         .clickable(onClick = onBookmarkClick)
@@ -241,7 +237,7 @@ private fun EventDetailContent(
                     fontSize = 20.sp,
                     lineHeight = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Ink100,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -250,7 +246,7 @@ private fun EventDetailContent(
                     text = item.eventPeriodDisplay,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
-                    color = Ink90
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -284,7 +280,7 @@ private fun EventDetailContent(
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Ink90
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -294,7 +290,7 @@ private fun EventDetailContent(
             Text(
                 text = "지원 링크로 이동하기",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Ink60,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier.then(
                     if (!applyLink.isNullOrBlank()) {
@@ -358,14 +354,22 @@ private fun EventDetailHtmlContent(
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 15.sp,
             lineHeight = 24.sp,
-            color = Ink90
+            color = MaterialTheme.colorScheme.onSurface
         )
         return
     }
 
     var webViewHeightPx by remember(html) { mutableIntStateOf(1) }
     val density = LocalDensity.current
-    val wrappedHtml = remember(html) { buildEventDetailHtml(html) }
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb().toCssColor()
+    val linkColor = MaterialTheme.colorScheme.primary.toArgb().toCssColor()
+    val wrappedHtml = remember(html, textColor, linkColor) {
+        buildEventDetailHtml(
+            bodyHtml = html,
+            textColor = textColor,
+            linkColor = linkColor
+        )
+    }
 
     AndroidView(
         factory = { androidContext ->
@@ -424,7 +428,11 @@ private fun EventDetailHtmlContent(
 }
 
 // 웹뷰로 설명문을 감싸기
-private fun buildEventDetailHtml(bodyHtml: String): String {
+private fun buildEventDetailHtml(
+    bodyHtml: String,
+    textColor: String,
+    linkColor: String
+): String {
     return """
         <html>
         <head>
@@ -434,15 +442,15 @@ private fun buildEventDetailHtml(bodyHtml: String): String {
                     margin: 0;
                     padding: 0;
                     background: transparent;
-                    color: #1A1D1A;
+                    color: $textColor;
                     font-family: sans-serif;
                     font-size: 15px;
                     line-height: 1.6;
                     word-break: break-word;
                     overflow-wrap: break-word;
                 }
-                p, div, span {
-                    color: #1A1D1A;
+                body, body * {
+                    color: $textColor !important;
                     line-height: 1.6;
                 }
                 img {
@@ -450,7 +458,7 @@ private fun buildEventDetailHtml(bodyHtml: String): String {
                     height: auto;
                 }
                 a {
-                    color: #5E615B;
+                    color: $linkColor !important;
                     text-decoration: underline;
                 }
             </style>
@@ -459,6 +467,8 @@ private fun buildEventDetailHtml(bodyHtml: String): String {
         </html>
     """.trimIndent()
 }
+
+private fun Int.toCssColor(): String = "#%06X".format(this and 0xFFFFFF)
 
 // D-day 라벨
 @Composable
@@ -469,15 +479,15 @@ private fun OutlineBadge(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = PureWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Ink60.copy(alpha = 0.24f))
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Ink90
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -497,7 +507,7 @@ private fun FilledBadge(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Ink100
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -518,7 +528,7 @@ private fun EventDetailErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = Ink90
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
