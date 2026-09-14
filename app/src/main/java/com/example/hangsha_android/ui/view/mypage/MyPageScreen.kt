@@ -58,6 +58,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.hangsha_android.ui.components.HangshaConstrainedContent
+import com.example.hangsha_android.ui.components.HangshaContentWidth
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 
@@ -91,17 +93,18 @@ fun MyPageScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 29.dp,
-                end = 29.dp,
-                top = 17.dp,
-                bottom = 28.dp
-            )
-        ) {
-            item {
-                when {
+        HangshaConstrainedContent(contentWidth = HangshaContentWidth.Reading) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 29.dp,
+                    end = 29.dp,
+                    top = 17.dp,
+                    bottom = 28.dp
+                )
+            ) {
+                item {
+                    when {
                     uiState.errorMessage != null -> {
                         MyPageErrorState(
                             message = uiState.errorMessage,
@@ -202,6 +205,7 @@ fun MyPageScreen(
                             onClick = { showDeleteAccountDialog = true }
                         )
                     }
+                }
                 }
             }
         }

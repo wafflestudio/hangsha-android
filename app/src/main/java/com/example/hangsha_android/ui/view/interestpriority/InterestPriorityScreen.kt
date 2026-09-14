@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.data.repository.model.CategoryKey
+import com.example.hangsha_android.ui.components.HangshaConstrainedContent
+import com.example.hangsha_android.ui.components.HangshaContentWidth
 import com.example.hangsha_android.ui.theme.Ink100
 
 // 관심사 설정 화면 구성
@@ -58,7 +60,8 @@ fun InterestPriorityScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        LazyColumn(
+        HangshaConstrainedContent(contentWidth = HangshaContentWidth.Form) {
+            LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 22.dp,
@@ -210,6 +213,7 @@ fun InterestPriorityScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
             }
         }
     }
