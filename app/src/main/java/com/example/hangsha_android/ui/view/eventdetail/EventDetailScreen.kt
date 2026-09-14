@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
+import com.example.hangsha_android.ui.components.HangshaConstrainedContent
+import com.example.hangsha_android.ui.components.HangshaContentWidth
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
 @Composable
@@ -79,7 +81,8 @@ fun EventDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        when {
+        HangshaConstrainedContent(contentWidth = HangshaContentWidth.Reading) {
+            when {
             uiState.isLoading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
@@ -108,6 +111,7 @@ fun EventDetailScreen(
                     onSaveMemoClick = onSaveMemoClick,
                     onBugReportClick = onOpenBugReport
                 )
+            }
             }
         }
     }

@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.hangsha_android.ui.components.HangshaConstrainedContent
+import com.example.hangsha_android.ui.components.HangshaContentWidth
+import com.example.hangsha_android.ui.components.HangshaWindowWidthSizeClass
+import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import kotlinx.coroutines.flow.collect
@@ -58,17 +64,19 @@ fun BookmarksScreen(
     onLoadNextPage: () -> Unit,
     onScrollPositionChanged: (Int, Int, Long?) -> Unit
 ) {
-    val listState = rememberLazyListState(
+    val useTwoColumns =
+        LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
+    val gridState = rememberLazyGridState(
         initialFirstVisibleItemIndex = uiState.savedScrollIndex,
         initialFirstVisibleItemScrollOffset = uiState.savedScrollOffset
     )
 
-    LaunchedEffect(listState, uiState.items) {
+    LaunchedEffect(gridState, uiState.items) {
         snapshotFlow {
             Triple(
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset,
-                uiState.items.getOrNull(listState.firstVisibleItemIndex)?.id
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset,
+                uiState.items.getOrNull(gridState.firstVisibleItemIndex)?.id
             )
         }.collect { (index, offset, itemId) ->
             onScrollPositionChanged(index, offset, itemId)
@@ -77,7 +85,7 @@ fun BookmarksScreen(
 
     LaunchedEffect(uiState.items) {
         restoreScrollPosition(
-            listState = listState,
+            gridState = gridState,
             items = uiState.items,
             savedIndex = uiState.savedScrollIndex,
             savedOffset = uiState.savedScrollOffset,
@@ -90,14 +98,15 @@ fun BookmarksScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 28.dp)
-        ) {
-            BookmarksHeader(onNavigateBack = onNavigateBack)
+        HangshaConstrainedContent(contentWidth = HangshaContentWidth.Reading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 28.dp)
+            ) {
+                BookmarksHeader(onNavigateBack = onNavigateBack)
 
-            when {
+                when {
                 uiState.items.isEmpty() && uiState.isInitialLoading -> Unit
                 uiState.items.isEmpty() && uiState.errorMessage != null -> {
                     BookmarksErrorState(
@@ -109,11 +118,15 @@ fun BookmarksScreen(
                     BookmarksEmptyState()
                 }
                 else -> {
-                    LazyColumn(
-                        state = listState,
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (useTwoColumns) 2 else 1),
+                        state = gridState,
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(top = 34.dp, bottom = 30.dp),
-                        verticalArrangement = Arrangement.spacedBy(26.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(
+                            if (useTwoColumns) 16.dp else 26.dp
+                        )
                     ) {
                         itemsIndexed(
                             items = uiState.items,
@@ -127,13 +140,14 @@ fun BookmarksScreen(
 
                             BookmarkedEventCard(
                                 item = item,
+                                useCompactLayout = useTwoColumns,
                                 onClick = { onEventClick(item.id) },
                                 onBookmarkClick = { onBookmarkClick(item.id) }
                             )
                         }
 
                         if (uiState.isLoadingNextPage) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -146,7 +160,7 @@ fun BookmarksScreen(
                         }
 
                         if (uiState.errorMessage != null && !uiState.isLoadingNextPage) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Text(
                                     text = uiState.errorMessage,
                                     modifier = Modifier.fillMaxWidth(),
@@ -157,6 +171,7 @@ fun BookmarksScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -173,7 +188,7 @@ fun BookmarksScreen(
 }
 
 private suspend fun restoreScrollPosition(
-    listState: LazyListState,
+    gridState: LazyGridState,
     items: List<BookmarkedEventItem>,
     savedIndex: Int,
     savedOffset: Int,
@@ -188,10 +203,10 @@ private suspend fun restoreScrollPosition(
     } ?: savedIndex.coerceIn(0, items.lastIndex)
 
     if (
-        listState.firstVisibleItemIndex != anchorIndex ||
-        listState.firstVisibleItemScrollOffset != savedOffset
+        gridState.firstVisibleItemIndex != anchorIndex ||
+        gridState.firstVisibleItemScrollOffset != savedOffset
     ) {
-        listState.scrollToItem(
+        gridState.scrollToItem(
             index = anchorIndex,
             scrollOffset = savedOffset
         )
@@ -243,6 +258,7 @@ private fun BookmarksHeader(
 @Composable
 private fun BookmarkedEventCard(
     item: BookmarkedEventItem,
+    useCompactLayout: Boolean,
     onClick: () -> Unit,
     onBookmarkClick: () -> Unit
 ) {
@@ -259,9 +275,15 @@ private fun BookmarkedEventCard(
             .clickable(onClick = onClick)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.78f)
+            modifier = (if (useCompactLayout) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.78f)
+            })
                 .clip(RoundedCornerShape(7.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
@@ -274,7 +296,7 @@ private fun BookmarkedEventCard(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(if (useCompactLayout) 12.dp else 18.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top

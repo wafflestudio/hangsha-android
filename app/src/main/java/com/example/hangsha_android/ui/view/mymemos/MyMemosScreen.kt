@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.components.HangshaConstrainedContent
+import com.example.hangsha_android.ui.components.HangshaContentWidth
 
 @Composable
 fun MyMemosScreen(
@@ -68,14 +70,15 @@ fun MyMemosScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp)
-        ) {
-            MyMemosTopBar(onNavigateBack = onNavigateBack)
+        HangshaConstrainedContent(contentWidth = HangshaContentWidth.Reading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp)
+            ) {
+                MyMemosTopBar(onNavigateBack = onNavigateBack)
 
-            when {
+                when {
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -152,6 +155,7 @@ fun MyMemosScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }

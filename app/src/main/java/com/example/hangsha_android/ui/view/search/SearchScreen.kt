@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +46,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.hangsha_android.ui.components.HangshaWindowWidthSizeClass
+import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 
@@ -58,6 +62,9 @@ fun SearchScreen(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit
 ) {
+    val useTwoColumns =
+        LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -126,11 +133,13 @@ fun SearchScreen(
             !uiState.hasSearched -> SearchMessage("검색어를 입력해 보세요!")
             uiState.items.isEmpty() -> SearchMessage("검색 결과가 없습니다.")
             else -> {
-                LazyColumn(
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(if (useTwoColumns) 2 else 1),
                     modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    item {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             text = "총 ${uiState.total}개 결과",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -141,7 +150,7 @@ fun SearchScreen(
                         SearchResultCard(item = item, onClick = { onEventClick(item.id) })
                     }
                     if (uiState.errorMessage != null) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Text(
                                 text = uiState.errorMessage,
                                 color = MaterialTheme.colorScheme.error,
@@ -150,7 +159,7 @@ fun SearchScreen(
                         }
                     }
                     if (uiState.canLoadMore || uiState.isLoadingMore) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             TextButton(
                                 onClick = onLoadMore,
                                 enabled = !uiState.isLoadingMore,
@@ -167,7 +176,9 @@ fun SearchScreen(
                             }
                         }
                     }
-                    item { Spacer(modifier = Modifier.height(20.dp)) }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
                 }
             }
         }

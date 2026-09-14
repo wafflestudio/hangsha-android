@@ -13,8 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.components.HangshaWindowWidthSizeClass
+import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
 import com.example.hangsha_android.ui.view.event.resolveCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
@@ -74,6 +77,9 @@ fun DailyEventsScreen(
     onBookmarkClick: (Long) -> Unit,
     showBookmarkAction: Boolean
 ) {
+    val useTwoColumns =
+        LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
+
     if (uiState.isFilterSheetVisible) {
         DailyEventsFilterBottomSheet(
             uiState = uiState,
@@ -127,8 +133,10 @@ fun DailyEventsScreen(
                 }
 
                 else -> {
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (useTwoColumns) 2 else 1),
                         modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
