@@ -13,15 +13,15 @@ import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 
 internal object TimetableEventMapper {
-    private const val VisibleDayCount = 5
     private const val FullDayThresholdMinutes = 23 * 60 + 59L
 
     fun map(
         events: List<EventSummaryResponse>,
-        weekStart: LocalDate
+        weekStart: LocalDate,
+        dayCount: Int
     ): TimetableWeekEvents {
-        val monday = weekStart.minusDays((weekStart.dayOfWeek.value - 1).toLong())
-        val friday = monday.plusDays(VisibleDayCount - 1L)
+        if (dayCount <= 0) return TimetableWeekEvents(emptyList(), emptyList(), emptyList())
+        val weekEnd = weekStart.plusDays(dayCount - 1L)
         val timed = mutableListOf<TimetableEventItem>()
         val period = mutableListOf<TimetableTimelineEventItem>()
         val allDay = mutableListOf<TimetableTimelineEventItem>()
@@ -34,23 +34,23 @@ internal object TimetableEventMapper {
                 event.isPeriodEvent -> timelineItem(
                     event = event,
                     range = range,
-                    weekStart = monday,
-                    weekEnd = friday,
+                    weekStart = weekStart,
+                    weekEnd = weekEnd,
                     kind = TimetableTimelineEventKind.PERIOD
                 )?.let(period::add)
 
                 range.isAllDay() -> timelineItem(
                     event = event,
                     range = range,
-                    weekStart = monday,
-                    weekEnd = friday,
+                    weekStart = weekStart,
+                    weekEnd = weekEnd,
                     kind = TimetableTimelineEventKind.ALL_DAY
                 )?.let(allDay::add)
 
                 else -> {
                     val eventDate = range.start.dateTime.toLocalDate()
-                    val weekday = ChronoUnit.DAYS.between(monday, eventDate).toInt()
-                    if (weekday !in 0 until VisibleDayCount || range.end.dateTime.toLocalDate() != eventDate) {
+                    val weekday = ChronoUnit.DAYS.between(weekStart, eventDate).toInt()
+                    if (weekday !in 0 until dayCount || range.end.dateTime.toLocalDate() != eventDate) {
                         return@forEach
                     }
                     val startMinute = range.start.dateTime.toMinuteOfDay()

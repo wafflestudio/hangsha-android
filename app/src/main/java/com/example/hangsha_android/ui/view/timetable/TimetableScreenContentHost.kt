@@ -80,12 +80,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hangsha_android.data.network.model.CreateCustomTimetableEnrollTimeSlotRequest
 import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
+import com.example.hangsha_android.ui.components.HangshaContentWidth
+import com.example.hangsha_android.ui.components.HangshaWindowWidthSizeClass
+import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 
 private const val GridStartMinute = 7 * 60
 private const val GridEndMinute = 24 * 60
-private const val DayCount = 5
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridHourHeight = 56.dp
@@ -99,7 +101,6 @@ private val SemesterOptions = listOf(
 )
 private val DefaultYear = currentHangshaDate().year
 private val DefaultSemester = semesterForMonth(currentHangshaDate().monthValue).apiValue
-private val WeekdayLabels = listOf("월", "화", "수", "목", "금")
 private data class TimetableSemesterOption(
     val apiValue: String,
     val label: String
@@ -132,7 +133,7 @@ private fun snuttImportSuccessMessage(result: SnuttImportResult): String {
         if (result.weekendCourseCount > 0) {
             append(" \uC8FC\uB9D0 \uC218\uC5C5 ")
             append(result.weekendCourseCount)
-            append("\uAC1C\uB294 \uC800\uC7A5\uD588\uC9C0\uB9CC \uD604\uC7AC \uC2DC\uAC04\uD45C \uD654\uBA74\uC5D0\uB294 \uD45C\uC2DC\uB418\uC9C0 \uC54A\uC544\uC694.")
+            append("\uAC1C\uB3C4 \uD568\uAED8 \uC800\uC7A5\uD588\uC5B4\uC694.")
         }
     }
 }
@@ -151,14 +152,24 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     val timetableViewModel: TimetableViewModel = hiltViewModel()
     val apiUiState by timetableViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val currentWeekStart = remember {
-        val today = currentHangshaDate()
-        today.minusDays((today.dayOfWeek.value - 1).toLong())
+    val weekViewConfig = if (
+        LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
+    ) {
+        timetableSevenDayViewConfig
+    } else {
+        timetableFiveDayViewConfig
+    }
+    val currentWeekStart = remember(weekViewConfig) {
+        weekViewConfig.startOfWeek(currentHangshaDate())
     }
     var selectedWeekOffset by rememberSaveable { mutableStateOf(0) }
     val weekStart = remember(currentWeekStart, selectedWeekOffset) { currentWeekStart.plusWeeks(selectedWeekOffset.toLong()) }
-    val weekEvents = remember(apiUiState.weeklyEventSummaries, weekStart) {
-        TimetableEventMapper.map(apiUiState.weeklyEventSummaries, weekStart)
+    val weekEvents = remember(apiUiState.weeklyEventSummaries, weekStart, weekViewConfig) {
+        TimetableEventMapper.map(
+            events = apiUiState.weeklyEventSummaries,
+            weekStart = weekStart,
+            dayCount = weekViewConfig.dayCount
+        )
     }
     var timetables by remember { mutableStateOf(emptyList<TimetableUiModel>()) }
     var selectedYear by rememberSaveable { mutableStateOf(DefaultYear) }
@@ -388,6 +399,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
         selectedTimetable = selectedTimetable,
         timetables = timetables,
         weekStart = weekStart,
+        weekViewConfig = weekViewConfig,
         events = weekEvents.timed,
         periodEvents = weekEvents.period,
         allDayEvents = weekEvents.allDay,
@@ -619,6 +631,7 @@ private fun TimetableScreenContent(
     selectedTimetable: TimetableUiModel,
     timetables: List<TimetableUiModel>,
     weekStart: LocalDate,
+    weekViewConfig: TimetableWeekViewConfig,
     events: List<TimetableEventItem>,
     periodEvents: List<TimetableTimelineEventItem>,
     allDayEvents: List<TimetableTimelineEventItem>,
@@ -717,13 +730,14 @@ private fun TimetableScreenContent(
                     name = selectedTimetable.name,
                     credits = selectedTimetable.totalCredits,
                     weekStart = weekStart,
+                    weekViewConfig = weekViewConfig,
                     isEventOverlayEnabled = isEventOverlayEnabled,
                     onPreviousWeek = onPreviousWeek,
                     onNextWeek = onNextWeek,
                     onEventOverlayChanged = onEventOverlayChanged
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                WeekdayHeader()
+                WeekdayHeader(weekViewConfig = weekViewConfig)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -735,6 +749,7 @@ private fun TimetableScreenContent(
                             .verticalScroll(gridScrollState, enabled = !isEventTimelineExpanded)
                     ) {
                         WeeklyTimetableGrid(
+                            weekViewConfig = weekViewConfig,
                             courses = selectedTimetable.courses,
                             events = events,
                             showEvents = isEventOverlayEnabled,
@@ -793,6 +808,7 @@ private fun TimetableScreenContent(
         if (hasSelectedTimetable && isEventOverlayEnabled && !hasPanelOpen) {
             TimetableEventTimelineSheet(
                 weekStart = weekStart,
+                dayCount = weekViewConfig.dayCount,
                 periodEvents = periodEvents,
                 allDayEvents = allDayEvents,
                 expanded = isEventTimelineExpanded,
@@ -852,6 +868,7 @@ private fun TimetableScreenContent(
         if (isAddCoursePanelOpen) {
             TransparentDismissLayer(onDismiss = onClosePanels)
             AddCoursePanel(
+                weekViewConfig = weekViewConfig,
                 courseTitle = courseTitle,
                 instructor = instructor,
                 creditText = creditText,
@@ -977,6 +994,7 @@ private fun TimetableHeader(
     name: String,
     credits: Int,
     weekStart: LocalDate,
+    weekViewConfig: TimetableWeekViewConfig,
     isEventOverlayEnabled: Boolean,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
@@ -1028,6 +1046,7 @@ private fun TimetableHeader(
         Spacer(modifier = Modifier.weight(1f))
         TimetableWeekNavigator(
             weekStart = weekStart,
+            dayCount = weekViewConfig.dayCount,
             onPreviousWeek = onPreviousWeek,
             onNextWeek = onNextWeek
         )
@@ -1037,10 +1056,11 @@ private fun TimetableHeader(
 @Composable
 private fun TimetableWeekNavigator(
     weekStart: LocalDate,
+    dayCount: Int,
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit
 ) {
-    val weekEnd = weekStart.plusDays(7)
+    val weekEnd = weekStart.plusDays(dayCount - 1L)
     Row(
         modifier = Modifier.height(32.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1091,9 +1111,9 @@ private fun formatWeekRange(start: LocalDate, end: LocalDate): String {
     return "${start.monthValue}/${start.dayOfMonth}~${end.monthValue}/${end.dayOfMonth}"
 }
 
-// 요일 헤더: 시간 라벨 영역을 제외한 월~금 열 제목을 그린다.
+// 요일 헤더: 시간 라벨 영역을 제외한 현재 화면 정책의 요일 열 제목을 그린다.
 @Composable
-private fun WeekdayHeader() {
+private fun WeekdayHeader(weekViewConfig: TimetableWeekViewConfig) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1101,13 +1121,13 @@ private fun WeekdayHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(modifier = Modifier.width(TimeLabelWidth))
-        WeekdayLabels.forEach { label ->
+        weekViewConfig.visibleDays.forEach { day ->
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = label,
+                    text = day.label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 11.sp,
@@ -1121,6 +1141,7 @@ private fun WeekdayHeader() {
 // 주간 그리드: 시간 좌표 계산 결과에 따라 수업/행사 레이어를 순서대로 올린다.
 @Composable
 private fun WeeklyTimetableGrid(
+    weekViewConfig: TimetableWeekViewConfig,
     courses: List<CourseUiModel>,
     events: List<TimetableEventItem>,
     showEvents: Boolean,
@@ -1130,21 +1151,22 @@ private fun WeeklyTimetableGrid(
     modifier: Modifier = Modifier
 ) {
     val courseBlocks = remember(courses) { courses.toCourseBlocks() }
-    val coursePositions = remember(courseBlocks) {
+    val coursePositions = remember(courseBlocks, weekViewConfig) {
         TimetableLayoutCalculator.positionBlocks(
             blocks = courseBlocks.map { block ->
                 TimetableBlock(
                     id = block.id,
-                    weekday = block.weekday,
+                    weekday = weekViewConfig.columnForCourseWeekday(block.weekday),
                     startMinute = block.startMinute,
                     endMinute = block.endMinute
                 )
             },
             gridStartMinute = GridStartMinute,
-            gridEndMinute = GridEndMinute
+            gridEndMinute = GridEndMinute,
+            dayCount = weekViewConfig.dayCount
         ).associateBy { it.id }
     }
-    val eventPositions = remember(events) {
+    val eventPositions = remember(events, weekViewConfig) {
         TimetableLayoutCalculator.positionBlocks(
             blocks = events.map { event ->
                 TimetableBlock(
@@ -1156,13 +1178,14 @@ private fun WeeklyTimetableGrid(
             },
             gridStartMinute = GridStartMinute,
             gridEndMinute = GridEndMinute,
+            dayCount = weekViewConfig.dayCount,
             splitOverlaps = true
         ).associateBy { it.id }
     }
 
     BoxWithConstraints(modifier = modifier) {
         val gridWidth = maxWidth - TimeLabelWidth
-        val dayWidth = gridWidth / DayCount
+        val dayWidth = gridWidth / weekViewConfig.dayCount
         val gridHeight = maxHeight
 
         GridLines()
@@ -1371,7 +1394,15 @@ private fun TimetableSelectionPanel(
     onDeleteTimetableClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier.fillMaxWidth().heightIn(min = 250.dp, max = 292.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
+    Surface(
+        modifier = modifier
+            .widthIn(max = HangshaContentWidth.Form.maxWidth)
+            .fillMaxWidth()
+            .heightIn(min = 250.dp, max = 292.dp),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp)) {
             IconButton(onClick = onClose, modifier = Modifier.size(30.dp).semantics { contentDescription = "시간표 변경 패널 닫기" }) {
                 Icon(imageVector = Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1412,7 +1443,14 @@ private fun TimetableSelectionPanel(
 
 @Composable
 private fun CreateTimetablePanel(title: String = "시간표 만들기", submitText: String = "만들기", name: String, errorMessage: String?, isCreating: Boolean, onNameChange: (String) -> Unit, onClose: () -> Unit, onSubmit: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
+    Surface(
+        modifier = modifier
+            .widthIn(max = HangshaContentWidth.Form.maxWidth)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 16.dp)) {
             PanelHeader(title = title, onClose = onClose)
             Spacer(modifier = Modifier.height(12.dp))
@@ -1427,6 +1465,7 @@ private fun CreateTimetablePanel(title: String = "시간표 만들기", submitTe
 
 @Composable
 private fun AddCoursePanel(
+    weekViewConfig: TimetableWeekViewConfig,
     courseTitle: String,
     instructor: String,
     creditText: String,
@@ -1447,7 +1486,15 @@ private fun AddCoursePanel(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(modifier = modifier.fillMaxWidth().heightIn(max = 560.dp), shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
+    Surface(
+        modifier = modifier
+            .widthIn(max = HangshaContentWidth.Form.maxWidth)
+            .fillMaxWidth()
+            .heightIn(max = 560.dp),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
+    ) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp), contentPadding = PaddingValues(top = 14.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { PanelHeader(title = "수업 추가", onClose = onClose) }
             item {
@@ -1468,6 +1515,7 @@ private fun AddCoursePanel(
             }
             items(items = timeSlots, key = { it.localId }) { slot ->
                 TimeSlotEditorRow(
+                    visibleDays = weekViewConfig.visibleDays,
                     slot = slot,
                     canRemove = timeSlots.size > 1,
                     errors = validation.timeSlotErrors.filter { it.localId == slot.localId }.map { it.message },
@@ -1498,6 +1546,7 @@ private fun AddCoursePanel(
 
 @Composable
 private fun TimeSlotEditorRow(
+    visibleDays: List<TimetableDayOfWeek>,
     slot: EditableTimeSlot,
     canRemove: Boolean,
     errors: List<String>,
@@ -1509,7 +1558,7 @@ private fun TimeSlotEditorRow(
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TimetableDayOfWeek.values().take(5).forEach { day ->
+                visibleDays.forEach { day ->
                     DayChip(day = day, selected = slot.dayOfWeek == day, onClick = { onChangeDay(day) })
                     Spacer(modifier = Modifier.width(4.dp))
                 }

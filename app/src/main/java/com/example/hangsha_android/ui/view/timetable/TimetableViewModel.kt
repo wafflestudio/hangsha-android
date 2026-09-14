@@ -37,10 +37,9 @@ class TimetableViewModel @Inject constructor(
     private var isSnuttImportInFlight = false
 
     fun loadWeeklyEvents(weekStart: LocalDate) {
-        val monday = weekStart.minusDays((weekStart.dayOfWeek.value - 1).toLong())
-        if (loadingEventsWeek == monday) return
+        if (loadingEventsWeek == weekStart) return
 
-        loadingEventsWeek = monday
+        loadingEventsWeek = weekStart
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -52,8 +51,8 @@ class TimetableViewModel @Inject constructor(
             runCatching {
                 val response = eventRepository.getEvents(
                     range = EventDateRange(
-                        from = monday,
-                        to = monday.plusDays(6)
+                        from = weekStart,
+                        to = weekStart.plusDays(6)
                     )
                 )
                 if (!response.isSuccessful) throw HttpException(response)
@@ -64,19 +63,19 @@ class TimetableViewModel @Inject constructor(
                     ?: throw IllegalStateException("Weekly events response was empty.")
             }.fold(
                 onSuccess = { events ->
-                    if (loadingEventsWeek == monday) {
+                    if (loadingEventsWeek == weekStart) {
                         _uiState.update {
                             it.copy(
                                 isLoadingWeeklyEvents = false,
                                 loadWeeklyEventsError = null,
-                                loadedEventsWeek = monday,
+                                loadedEventsWeek = weekStart,
                                 weeklyEventSummaries = events
                             )
                         }
                     }
                 },
                 onFailure = { error ->
-                    if (loadingEventsWeek == monday) {
+                    if (loadingEventsWeek == weekStart) {
                         _uiState.update {
                             it.copy(
                                 isLoadingWeeklyEvents = false,
@@ -86,7 +85,7 @@ class TimetableViewModel @Inject constructor(
                     }
                 }
             )
-            if (loadingEventsWeek == monday) loadingEventsWeek = null
+            if (loadingEventsWeek == weekStart) loadingEventsWeek = null
         }
     }
 
