@@ -56,7 +56,6 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private const val TimelineDayCount = 5
 private val TimelinePeekHeight = 34.dp
 private val TimelineAxisLeadingWidth = 26.dp
 private val PeriodLaneHeight = 36.dp
@@ -65,6 +64,7 @@ private val AllDayLaneHeight = 30.dp
 @Composable
 internal fun TimetableEventTimelineSheet(
     weekStart: LocalDate,
+    dayCount: Int,
     periodEvents: List<TimetableTimelineEventItem>,
     allDayEvents: List<TimetableTimelineEventItem>,
     expanded: Boolean,
@@ -132,7 +132,7 @@ internal fun TimetableEventTimelineSheet(
                         .verticalScroll(rememberScrollState())
                         .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
                 ) {
-                    TimelineDateHeader(weekStart = weekStart)
+                    TimelineDateHeader(weekStart = weekStart, dayCount = dayCount)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     when {
@@ -147,6 +147,7 @@ internal fun TimetableEventTimelineSheet(
                                 TimelineSection(
                                     events = periodEvents,
                                     weekStart = weekStart,
+                                    dayCount = dayCount,
                                     isPeriod = true,
                                     onEventClick = onEventClick
                                 )
@@ -158,6 +159,7 @@ internal fun TimetableEventTimelineSheet(
                                 TimelineSection(
                                     events = allDayEvents,
                                     weekStart = weekStart,
+                                    dayCount = dayCount,
                                     isPeriod = false,
                                     onEventClick = onEventClick
                                 )
@@ -206,7 +208,7 @@ private fun TimelineDragHandle(
 }
 
 @Composable
-private fun TimelineDateHeader(weekStart: LocalDate) {
+private fun TimelineDateHeader(weekStart: LocalDate, dayCount: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,7 +216,7 @@ private fun TimelineDateHeader(weekStart: LocalDate) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Spacer(modifier = Modifier.width(TimelineAxisLeadingWidth))
-        repeat(TimelineDayCount) { dayIndex ->
+        repeat(dayCount) { dayIndex ->
             val date = weekStart.plusDays(dayIndex.toLong())
             Text(
                 text = "${date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.KOREAN)}\n${date.dayOfMonth}",
@@ -233,6 +235,7 @@ private fun TimelineDateHeader(weekStart: LocalDate) {
 private fun TimelineSection(
     events: List<TimetableTimelineEventItem>,
     weekStart: LocalDate,
+    dayCount: Int,
     isPeriod: Boolean,
     onEventClick: (Long) -> Unit
 ) {
@@ -246,7 +249,7 @@ private fun TimelineSection(
                 )
             },
             weekStart = weekStart,
-            dayCount = TimelineDayCount
+            dayCount = dayCount
         )
     }
     val positionById = remember(positions) { positions.associateBy { it.id } }
@@ -258,8 +261,8 @@ private fun TimelineSection(
             .fillMaxWidth()
             .height(laneHeight * laneCount + 4.dp)
     ) {
-        val dayWidth = (maxWidth - TimelineAxisLeadingWidth) / TimelineDayCount
-        TimelineVerticalGrid()
+        val dayWidth = (maxWidth - TimelineAxisLeadingWidth) / dayCount
+        TimelineVerticalGrid(dayCount = dayCount)
         events.forEach { event ->
             val position = positionById[event.id] ?: return@forEach
             val x = TimelineAxisLeadingWidth + dayWidth * position.startDay + 2.dp
@@ -291,12 +294,12 @@ private fun TimelineSection(
 }
 
 @Composable
-private fun TimelineVerticalGrid() {
+private fun TimelineVerticalGrid(dayCount: Int) {
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     Canvas(modifier = Modifier.fillMaxSize()) {
         val leading = TimelineAxisLeadingWidth.toPx()
-        val dayWidth = (size.width - leading) / TimelineDayCount
-        repeat(TimelineDayCount + 1) { index ->
+        val dayWidth = (size.width - leading) / dayCount
+        repeat(dayCount + 1) { index ->
             val x = leading + dayWidth * index
             drawLine(
                 color = gridColor,

@@ -58,6 +58,21 @@ class TimetableLayoutCalculatorTest {
     }
 
     @Test
+    fun positionBlocks_includesWeekendWhenSevenDaysAreVisible() {
+        val result = TimetableLayoutCalculator.positionBlocks(
+            blocks = listOf(
+                TimetableBlock("sunday", 0, 10 * 60, 11 * 60),
+                TimetableBlock("saturday", 6, 10 * 60, 11 * 60)
+            ),
+            gridStartMinute = 9 * 60,
+            gridEndMinute = 18 * 60,
+            dayCount = 7
+        )
+
+        assertEquals(listOf(0, 6), result.map { block -> block.weekday })
+    }
+
+    @Test
     fun positionBlocks_splitsOverlappingBlocksIntoLanes() {
         val result = TimetableLayoutCalculator.positionBlocks(
             blocks = listOf(

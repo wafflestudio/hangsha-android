@@ -22,7 +22,8 @@ class TimetableEventMapperTest {
                     eventEnd = "2026-08-17T11:00:00+09:00"
                 )
             ),
-            weekStart = weekStart
+            weekStart = weekStart,
+            dayCount = 5
         )
 
         assertTrue(result.timed.isEmpty())
@@ -42,7 +43,8 @@ class TimetableEventMapperTest {
                     eventEnd = "2026-08-19T02:30:00Z"
                 )
             ),
-            weekStart = weekStart
+            weekStart = weekStart,
+            dayCount = 5
         )
 
         val timed = result.timed.single()
@@ -62,7 +64,8 @@ class TimetableEventMapperTest {
                     eventEnd = "2026-08-21T00:00:00+09:00"
                 )
             ),
-            weekStart = weekStart
+            weekStart = weekStart,
+            dayCount = 5
         )
 
         assertTrue(result.timed.isEmpty())
@@ -81,7 +84,8 @@ class TimetableEventMapperTest {
 
         val result = TimetableEventMapper.map(
             events = listOf(duplicate, duplicate),
-            weekStart = weekStart
+            weekStart = weekStart,
+            dayCount = 5
         )
 
         assertEquals(1, result.timed.size)
@@ -98,10 +102,34 @@ class TimetableEventMapperTest {
                     eventEnd = "2026-08-22T11:00:00+09:00"
                 )
             ),
-            weekStart = weekStart
+            weekStart = weekStart,
+            dayCount = 5
         )
 
         assertEquals(TimetableWeekEvents(), result)
+    }
+
+    @Test
+    fun map_sevenDayView_placesSundayFirstAndIncludesSaturday() {
+        val sunday = LocalDate.of(2026, 8, 16)
+        val result = TimetableEventMapper.map(
+            events = listOf(
+                event(
+                    id = 7,
+                    eventStart = "2026-08-16T10:00:00+09:00",
+                    eventEnd = "2026-08-16T11:00:00+09:00"
+                ),
+                event(
+                    id = 8,
+                    eventStart = "2026-08-22T10:00:00+09:00",
+                    eventEnd = "2026-08-22T11:00:00+09:00"
+                )
+            ),
+            weekStart = sunday,
+            dayCount = 7
+        )
+
+        assertEquals(listOf(0, 6), result.timed.map { event -> event.weekday })
     }
 
     private fun event(

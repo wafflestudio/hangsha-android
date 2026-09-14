@@ -76,4 +76,19 @@ class TimetableTimelineLayoutCalculatorTest {
 
         assertTrue(result.isEmpty())
     }
+
+    @Test
+    fun positionBlocks_includesFullSundayThroughSaturdayRange() {
+        val sunday = monday.minusDays(1)
+        val result = TimetableTimelineLayoutCalculator.positionBlocks(
+            blocks = listOf(
+                TimetableTimelineBlock("week", sunday, sunday.plusDays(6))
+            ),
+            weekStart = sunday,
+            dayCount = 7
+        )
+
+        assertEquals(0, result.single().startDay)
+        assertEquals(6, result.single().endDay)
+    }
 }
