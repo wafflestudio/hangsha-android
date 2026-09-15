@@ -14,8 +14,32 @@ internal fun buildSnuttCompatibilityScript(snuttOrigin: String): String {
 
           const applyAndroidCompatibility = () => {
             // Google OAuth rejects embedded user agents. Remove the unsupported
-            // action from the SNUTT login UI; native URL policy blocks it as well.
+            // action and explain the limitation below the remaining login options.
             document.querySelector('[data-testid="google-login"]')?.remove();
+
+            const kakaoLoginButton = document.querySelector(
+              '[data-testid="kakao-login"]'
+            );
+            const existingPolicyNotice = document.querySelector(
+              '[data-hangsha-google-policy-notice]'
+            );
+            if (kakaoLoginButton && !existingPolicyNotice) {
+              const policyNotice = document.createElement('p');
+              policyNotice.textContent =
+                'Google 정책에 따라 앱 내에서는 Google 로그인을 이용할 수 없습니다. ';
+              policyNotice.setAttribute('data-hangsha-google-policy-notice', '');
+              policyNotice.setAttribute('role', 'note');
+              Object.assign(policyNotice.style, {
+                margin: '0',
+                color: 'rgba(0, 0, 0, 0.60)',
+                fontFamily: 'inherit',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                textAlign: 'center',
+                wordBreak: 'keep-all'
+              });
+              kakaoLoginButton.insertAdjacentElement('afterend', policyNotice);
+            }
 
             const idInput = document.querySelector('[data-testid="id-input"]');
             if (idInput) {
