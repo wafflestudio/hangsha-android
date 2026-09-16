@@ -62,8 +62,8 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.1.1"
+        versionCode = 13
+        versionName = "1.1.3"
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",
@@ -164,12 +164,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.compose.ui.text)
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.google.dagger:hilt-android:2.56.2")
     ksp("com.google.dagger:hilt-android-compiler:2.56.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
