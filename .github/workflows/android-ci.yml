@@ -1,12 +1,13 @@
 name: Android CI
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
     branches:
-      - master
+      - deploy
+      - develop
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   workflow_dispatch:
 
 concurrency:
