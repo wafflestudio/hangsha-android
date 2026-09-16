@@ -6,12 +6,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -44,7 +50,33 @@ fun HangshaApp() {
             HangshaDestinations.InterestPriority.sourceOnboarding
     val isMainGraphDestination =
         currentDestination?.hierarchy?.any { it.route == HangshaDestinations.Main.route } == true
-    val showMainNavigation = isMainGraphDestination && !isOnboardingInterestPriority
+    var hasSettledInMainGraph by remember { mutableStateOf(false) }
+
+    DisposableEffect(navBackStackEntry, isMainGraphDestination) {
+        if (!isMainGraphDestination) {
+            hasSettledInMainGraph = false
+            onDispose { }
+        } else {
+            val lifecycle = navBackStackEntry?.lifecycle
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    hasSettledInMainGraph = true
+                }
+            }
+
+            if (lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                hasSettledInMainGraph = true
+            }
+            lifecycle?.addObserver(observer)
+
+            onDispose {
+                lifecycle?.removeObserver(observer)
+            }
+        }
+    }
+
+    val showMainNavigation =
+        isMainGraphDestination && hasSettledInMainGraph && !isOnboardingInterestPriority
     val onNavigateToDestination: (BottomTab) -> Unit = { tab ->
         navController.navigate(tab.route) {
             popUpTo(HangshaDestinations.Main.route) {
