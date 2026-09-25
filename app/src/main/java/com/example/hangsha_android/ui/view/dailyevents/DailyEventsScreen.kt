@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,8 +33,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,8 +54,12 @@ import com.example.hangsha_android.ui.view.org.organizationLabel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 private val DailyHeaderFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREA)
+private const val DailyPagerPageCount = 200_001
+private const val DailyPagerInitialPage = DailyPagerPageCount / 2
 
 private data class DailyEventsHeaderState(
     val selectedDate: LocalDate,
@@ -59,8 +70,7 @@ private data class DailyEventsHeaderState(
 @Composable
 fun DailyEventsScreen(
     uiState: DailyEventsUiState,
-    onPreviousDayClick: () -> Unit,
-    onNextDayClick: () -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
     onOpenFilterClick: () -> Unit,
     onDismissFilterSheet: () -> Unit,
     onSelectFilterTab: (DailyEventsFilterTab) -> Unit,
@@ -79,6 +89,31 @@ fun DailyEventsScreen(
 ) {
     val useTwoColumns =
         LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
+    val initialDateEpochDay = rememberSaveable { uiState.selectedDate.toEpochDay() }
+    val pagerState = rememberPagerState(
+        initialPage = DailyPagerInitialPage,
+        pageCount = { DailyPagerPageCount }
+    )
+    val coroutineScope = rememberCoroutineScope()
+    val currentSelectedDate by rememberUpdatedState(uiState.selectedDate)
+    val currentOnDateSelected by rememberUpdatedState(onDateSelected)
+
+    fun dateForPage(page: Int): LocalDate {
+        return LocalDate.ofEpochDay(
+            initialDateEpochDay + (page - DailyPagerInitialPage).toLong()
+        )
+    }
+
+    LaunchedEffect(pagerState, initialDateEpochDay) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                val settledDate = dateForPage(page)
+                if (settledDate != currentSelectedDate) {
+                    currentOnDateSelected(settledDate)
+                }
+            }
+    }
 
     if (uiState.isFilterSheetVisible) {
         DailyEventsFilterBottomSheet(
@@ -96,11 +131,16 @@ fun DailyEventsScreen(
         )
     }
 
-    Box(
+    HorizontalPager(
+        state = pagerState,
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+            .background(MaterialTheme.colorScheme.background),
+        key = { page -> dateForPage(page).toEpochDay() }
+    ) { page ->
+        val pageDate = dateForPage(page)
+        val isSelectedPage = pageDate == uiState.selectedDate
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -110,17 +150,33 @@ fun DailyEventsScreen(
             // "2026년 n월 n일", 좌우 화살표, 필터 버튼
             DailyEventsHeader(
                 state = DailyEventsHeaderState(
-                    selectedDate = uiState.selectedDate,
+                    selectedDate = pageDate,
                     hasActiveFilters = uiState.hasActiveFilters,
-                    isLoading = uiState.isLoading
+                    isLoading = uiState.isLoading || !isSelectedPage
                 ),
-                onPreviousDayClick = onPreviousDayClick,
-                onNextDayClick = onNextDayClick,
+                onPreviousDayClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(
+                            (pagerState.settledPage - 1).coerceAtLeast(0)
+                        )
+                    }
+                },
+                onNextDayClick = {
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(
+                            (pagerState.settledPage + 1).coerceAtMost(DailyPagerPageCount - 1)
+                        )
+                    }
+                },
                 onOpenFilterClick = onOpenFilterClick
             )
             Spacer(modifier = Modifier.height(15.dp))
 
             when {
+                !isSelectedPage || uiState.isLoading -> {
+                    DailyLoadingState()
+                }
+
                 uiState.errorMessage != null -> {
                     DailyErrorState(
                         message = uiState.errorMessage,
@@ -155,14 +211,23 @@ fun DailyEventsScreen(
                 }
             }
         }
+    }
+}
 
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+@Composable
+private fun DailyLoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "행사를 불러오는 중입니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -189,7 +254,7 @@ private fun DailyEventsHeader(
 
         // 이전 버튼
         HeaderArrowButton(
-            enabled = !state.isLoading,
+            enabled = true,
             onClick = onPreviousDayClick
         ) {
             Icon(
@@ -202,7 +267,7 @@ private fun DailyEventsHeader(
 
         // 다음 버튼
         HeaderArrowButton(
-            enabled = !state.isLoading,
+            enabled = true,
             onClick = onNextDayClick
         ) {
             Icon(

@@ -524,8 +524,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             DailyEventsScreen(
                 uiState = dailyEventsUiState,
                 showBookmarkAction = isLoggedIn,
-                onPreviousDayClick = { dailyEventsViewModel.showPreviousDay() },
-                onNextDayClick = { dailyEventsViewModel.showNextDay() },
+                onDateSelected = { date -> dailyEventsViewModel.showDate(date) },
                 onOpenFilterClick = { dailyEventsViewModel.openFilterSheet() },
                 onDismissFilterSheet = { dailyEventsViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { dailyEventsViewModel.selectFilterTab(it) },
