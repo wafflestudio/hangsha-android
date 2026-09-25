@@ -46,13 +46,16 @@ class DailyEventsViewModel @Inject constructor(
     private val bookmarkRepository: BookmarkRepository,
     private val categoryRepository: CategoryRepository,
     private val excludedKeywordsRepository: ExcludedKeywordsRepository,
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var hasInitialized = false
 
     private val _uiState = MutableStateFlow(
         DailyEventsUiState(
-            selectedDate = savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
+            selectedDate = (
+                savedStateHandle.get<String>(CURRENT_DATE_KEY)
+                    ?: savedStateHandle.get<String>(HangshaDestinations.DailyEvents.dateArg)
+                )
                 ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
                 ?: currentHangshaDate()
         )
@@ -61,6 +64,7 @@ class DailyEventsViewModel @Inject constructor(
 
     private var loadJob: Job? = null
     private var filterCountJob: Job? = null
+    private var loadRequestId = 0L
 
     init {
         viewModelScope.launch {
@@ -119,12 +123,9 @@ class DailyEventsViewModel @Inject constructor(
         }
     }
 
-    fun showPreviousDay() {
-        loadDate(_uiState.value.selectedDate.minusDays(1))
-    }
-
-    fun showNextDay() {
-        loadDate(_uiState.value.selectedDate.plusDays(1))
+    fun showDate(date: LocalDate) {
+        if (date == _uiState.value.selectedDate) return
+        loadDate(date)
     }
 
     fun retry() {
@@ -392,9 +393,13 @@ class DailyEventsViewModel @Inject constructor(
         preserveFilterSheetState: Boolean = false
     ) {
         loadJob?.cancel()
+        val requestId = ++loadRequestId
+        savedStateHandle[CURRENT_DATE_KEY] = date.toString()
         _uiState.update {
             it.copy(
                 selectedDate = date,
+                filterSourceItems = emptyList(),
+                items = emptyList(),
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
                 isLoading = true,
@@ -408,7 +413,7 @@ class DailyEventsViewModel @Inject constructor(
 
         loadJob = viewModelScope.launch {
             val sourceUserId = bookmarkRepository.currentUserId()
-            runCatching {
+            try {
                 val response = eventRepository.getDayEvents(date, filters)
                 val visibleItems = response.items
                     .orEmpty()
@@ -416,18 +421,24 @@ class DailyEventsViewModel @Inject constructor(
                     .toDailyEventItems()
                 val filterOptions = buildFilterOptions()
 
-                DailyEventsLoadResult(
+                val result = DailyEventsLoadResult(
                     filterSourceItems = visibleItems,
                     visibleItems = visibleItems,
                     filterOptions = filterOptions
                 )
-            }.fold(
-                onSuccess = { result ->
-                    _uiState.update {
+
+                _uiState.update { current ->
+                    if (
+                        requestId != loadRequestId ||
+                        current.selectedDate != date ||
+                        current.appliedFilters != filters
+                    ) {
+                        current
+                    } else {
                         val bookmarkIds = bookmarkRepository.currentBookmarkedEventIds()
                         val filterSourceItems = result.filterSourceItems.withBookmarkState(bookmarkIds)
                         val visibleItems = result.visibleItems.withBookmarkState(bookmarkIds)
-                        it.copy(
+                        current.copy(
                             filterSourceItems = filterSourceItems,
                             items = visibleItems.applyFilters(
                                 filters = filters
@@ -437,10 +448,19 @@ class DailyEventsViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                _uiState.update { current ->
+                    if (
+                        requestId != loadRequestId ||
+                        current.selectedDate != date ||
+                        current.appliedFilters != filters
+                    ) {
+                        current
+                    } else {
+                        current.copy(
                             filterSourceItems = emptyList(),
                             items = emptyList(),
                             availableFilterOptions = DailyEventsFilterOptions(),
@@ -449,7 +469,7 @@ class DailyEventsViewModel @Inject constructor(
                         )
                     }
                 }
-            )
+            }
         }
     }
 
@@ -768,3 +788,4 @@ private fun DailyEventsUiState.withUpdatedBookmark(
 
 private const val FILTER_COUNT_DEBOUNCE_MS = 300L
 private const val FILTER_COUNT_TIMEOUT_MS = 3_000L
+private const val CURRENT_DATE_KEY = "daily_events_current_date"
