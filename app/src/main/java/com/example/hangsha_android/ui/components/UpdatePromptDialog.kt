@@ -42,7 +42,6 @@ private val UpdateActionBlue = Color(0xFF4F80E8)
 /** 업데이트 가능 여부와 설치 실행은 호출하는 쪽에서 결정한다. */
 @Composable
 fun UpdatePromptDialog(
-    latestVersion: String,
     isRequired: Boolean,
     onUpdateClick: () -> Unit,
     onDismissRequest: () -> Unit,
@@ -56,7 +55,6 @@ fun UpdatePromptDialog(
         )
     ) {
         UpdatePromptCard(
-            latestVersion = latestVersion,
             isRequired = isRequired,
             onUpdateClick = onUpdateClick,
             onDismissRequest = onDismissRequest,
@@ -67,7 +65,6 @@ fun UpdatePromptDialog(
 
 @Composable
 private fun UpdatePromptCard(
-    latestVersion: String,
     isRequired: Boolean,
     onUpdateClick: () -> Unit,
     onDismissRequest: () -> Unit,
@@ -92,9 +89,9 @@ private fun UpdatePromptCard(
             Spacer(modifier = Modifier.height(15.dp))
             Text(
                 text = if (isRequired) {
-                    "계속 이용하려면 최신 버전(v$latestVersion)으로 업데이트해 주세요."
+                    "계속 이용하려면 최신 버전으로 업데이트해 주세요."
                 } else {
-                    "새 버전(v$latestVersion)을 사용할 수 있어요. 지금 업데이트해 보세요."
+                    "새 버전을 사용할 수 있어요. 지금 업데이트해 보세요."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 21.sp,
@@ -154,7 +151,6 @@ private fun RequiredUpdatePromptPreview() {
 private fun UpdatePromptPreviewContent(isRequired: Boolean) {
     PreviewScrim {
         UpdatePromptCard(
-            latestVersion = "1.2.0",
             isRequired = isRequired,
             onUpdateClick = {},
             onDismissRequest = {},

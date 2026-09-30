@@ -172,6 +172,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
+    implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.kakao.sdk:v2-user:2.24.0")
     implementation("com.navercorp.nid:oauth:5.11.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
