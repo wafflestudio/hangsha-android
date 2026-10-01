@@ -1,11 +1,12 @@
 package com.example.hangsha_android.ui
 
-import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -24,6 +27,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.hangsha_android.ui.components.HangshaAdaptiveLayout
 import com.example.hangsha_android.ui.components.HangshaBottomBar
 import com.example.hangsha_android.ui.components.HangshaNavigationRail
+import com.example.hangsha_android.ui.components.HangshaToastState
+import com.example.hangsha_android.ui.components.HangshaToastType
+import com.example.hangsha_android.ui.components.LocalHangshaToastState
 import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
 import com.example.hangsha_android.ui.components.PlayUpdatePromptHost
 import com.example.hangsha_android.ui.navigation.BottomTab
@@ -34,10 +40,10 @@ import com.example.hangsha_android.ui.navigation.HangshaNavHost
 fun HangshaApp() {
     val bootstrapViewModel = hiltViewModel<AppBootstrapViewModel>()
     val catalogErrorMessage by bootstrapViewModel.catalogErrorMessage.collectAsState()
-    val context = LocalContext.current
+    val toastState = remember { HangshaToastState() }
     LaunchedEffect(catalogErrorMessage) {
         catalogErrorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            toastState.show(message, HangshaToastType.Error)
             bootstrapViewModel.consumeCatalogError()
         }
     }
@@ -88,36 +94,50 @@ fun HangshaApp() {
         }
     }
 
-    HangshaAdaptiveLayout(modifier = Modifier.fillMaxSize()) {
-        val useNavigationRail = LocalHangshaWindowInfo.current.usesNavigationRail
+    CompositionLocalProvider(LocalHangshaToastState provides toastState) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            HangshaAdaptiveLayout(modifier = Modifier.fillMaxSize()) {
+                val useNavigationRail = LocalHangshaWindowInfo.current.usesNavigationRail
+                val density = LocalDensity.current
+                var bottomBarHeight by remember { mutableStateOf(0.dp) }
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (showMainNavigation && useNavigationRail) {
-                HangshaNavigationRail(
-                    currentDestination = currentDestination,
-                    onNavigateToDestination = onNavigateToDestination
-                )
-            }
-
-            Scaffold(
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.background,
-                bottomBar = {
-                    if (showMainNavigation && !useNavigationRail) {
-                        HangshaBottomBar(
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (showMainNavigation && useNavigationRail) {
+                        HangshaNavigationRail(
                             currentDestination = currentDestination,
                             onNavigateToDestination = onNavigateToDestination
                         )
                     }
+
+                    Scaffold(
+                        modifier = Modifier.weight(1f),
+                        containerColor = MaterialTheme.colorScheme.background,
+                        bottomBar = {
+                            if (showMainNavigation && !useNavigationRail) {
+                                Box(modifier = Modifier.onSizeChanged { size ->
+                                    bottomBarHeight = with(density) { size.height.toDp() }
+                                }) {
+                                    HangshaBottomBar(
+                                        currentDestination = currentDestination,
+                                        onNavigateToDestination = onNavigateToDestination
+                                    )
+                                }
+                            }
+                        }
+                    ) { innerPadding ->
+                        HangshaNavHost(
+                            navController = navController,
+                            innerPadding = innerPadding
+                        )
+                    }
                 }
-            ) { innerPadding ->
-                HangshaNavHost(
-                    navController = navController,
-                    innerPadding = innerPadding
+
+                toastState.Host(
+                    bottomBarHeight = if (showMainNavigation && !useNavigationRail) bottomBarHeight else null
                 )
             }
+
+            PlayUpdatePromptHost(enabled = showMainNavigation)
         }
     }
-
-    PlayUpdatePromptHost(enabled = showMainNavigation)
 }

@@ -1,17 +1,16 @@
 package com.example.hangsha_android.ui.navigation
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
+import com.example.hangsha_android.ui.components.LocalHangshaToastState
 import com.example.hangsha_android.ui.view.mymemos.MyMemosScreen
 import com.example.hangsha_android.ui.view.mymemos.MyMemosViewModel
 
@@ -22,12 +21,12 @@ internal fun MyMemosRoute(
 ) {
     val viewModel: MyMemosViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    val toastState = LocalHangshaToastState.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(uiState.toastMessage) {
         val message = uiState.toastMessage ?: return@LaunchedEffect
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        toastState.show(message, uiState.toastType)
         viewModel.onToastMessageConsumed()
     }
 

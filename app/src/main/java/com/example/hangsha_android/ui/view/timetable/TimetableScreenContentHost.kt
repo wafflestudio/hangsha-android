@@ -2,7 +2,6 @@ package com.example.hangsha_android.ui.view.timetable
 
 import com.example.hangsha_android.util.currentHangshaDate
 import android.app.TimePickerDialog
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -86,6 +85,8 @@ import com.example.hangsha_android.data.network.model.TimetableEnrollResponse
 import com.example.hangsha_android.ui.components.HangshaContentWidth
 import com.example.hangsha_android.ui.components.HangshaWindowWidthSizeClass
 import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
+import com.example.hangsha_android.ui.components.LocalHangshaToastState
+import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
 
@@ -98,10 +99,10 @@ private val GridHourHeight = 56.dp
 private val GridContentHeight = GridHourHeight * ((GridEndMinute - GridStartMinute) / 60f)
 private val YearOptions = buildYearOptions()
 private val SemesterOptions = listOf(
-    TimetableSemesterOption("SPRING", "1\uD559\uAE30"),
-    TimetableSemesterOption("SUMMER", "\uC5EC\uB984\uD559\uAE30"),
-    TimetableSemesterOption("FALL", "2\uD559\uAE30"),
-    TimetableSemesterOption("WINTER", "\uACA8\uC6B8\uD559\uAE30")
+    TimetableSemesterOption("SPRING", "1학기"),
+    TimetableSemesterOption("SUMMER", "여름학기"),
+    TimetableSemesterOption("FALL", "2학기"),
+    TimetableSemesterOption("WINTER", "겨울학기")
 )
 private val DefaultYear = currentHangshaDate().year
 private val DefaultSemester = semesterForMonth(currentHangshaDate().monthValue).apiValue
@@ -155,7 +156,7 @@ private val EmptyTimetable = TimetableUiModel(
 internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     val timetableViewModel: TimetableViewModel = hiltViewModel()
     val apiUiState by timetableViewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    val toastState = LocalHangshaToastState.current
     val weekViewConfig = if (
         LocalHangshaWindowInfo.current.widthSizeClass == HangshaWindowWidthSizeClass.Expanded
     ) {
@@ -324,23 +325,19 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
 
     LaunchedEffect(apiUiState.loadEnrollsError) {
         val message = apiUiState.loadEnrollsError ?: return@LaunchedEffect
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        toastState.show(message, HangshaToastType.Error)
         timetableViewModel.clearLoadEnrollsError()
     }
 
     LaunchedEffect(apiUiState.deletedEnrollId) {
         apiUiState.deletedEnrollId ?: return@LaunchedEffect
-        Toast.makeText(
-            context,
-            "\uC218\uC5C5\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.",
-            Toast.LENGTH_SHORT
-        ).show()
+        toastState.show("수업을 삭제했습니다.", HangshaToastType.Success)
         timetableViewModel.onDeletedEnrollConsumed()
     }
 
     LaunchedEffect(apiUiState.deleteEnrollError) {
         val message = apiUiState.deleteEnrollError ?: return@LaunchedEffect
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        toastState.show(message, HangshaToastType.Error)
         timetableViewModel.clearDeleteEnrollError()
     }
     val validation = TimetableAddCourseValidator.validate(
@@ -370,7 +367,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
 
     LaunchedEffect(apiUiState.createdCustomEnroll) {
         apiUiState.createdCustomEnroll ?: return@LaunchedEffect
-        resetAddCourseForm(message = "\uC218\uC5C5\uC744 \uCD94\uAC00\uD588\uC2B5\uB2C8\uB2E4.")
+        resetAddCourseForm(message = "수업을 추가했습니다.")
         timetableViewModel.onCreatedCustomEnrollConsumed()
     }
 
@@ -382,7 +379,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
         selectedYear = result.timetable.year
         selectedSemester = result.timetable.semester
         isSnuttPickerOpen = false
-        snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC644\uB8CC"
+        snuttFeedbackTitle = "SNUTT 연동 완료"
         snuttFeedbackMessage = snuttImportSuccessMessage(result)
         timetableViewModel.onSnuttImportResultConsumed()
     }
@@ -390,7 +387,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     LaunchedEffect(apiUiState.snuttImportError) {
         val message = apiUiState.snuttImportError ?: return@LaunchedEffect
         isSnuttPickerOpen = false
-        snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC2E4\uD328"
+        snuttFeedbackTitle = "SNUTT 연동 실패"
         snuttFeedbackMessage = message
         timetableViewModel.onSnuttImportErrorConsumed()
     }
@@ -597,7 +594,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
             },
             onError = { message ->
                 isSnuttPickerOpen = false
-                snuttFeedbackTitle = "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9 \uC2E4\uD328"
+                snuttFeedbackTitle = "SNUTT 연동 실패"
                 snuttFeedbackMessage = message
             }
         )
@@ -681,7 +678,7 @@ private fun TimetableScreenContent(
     onClosePanels: () -> Unit,
     onSelectTimetable: (String) -> Unit,
     onOpenEditTimetable: (String) -> Unit,
-        onDeleteTimetable: (String) -> Unit,
+    onDeleteTimetable: (String) -> Unit,
     onOpenCreateTimetable: () -> Unit,
     onCreateTimetableNameChange: (String) -> Unit,
     onEditTimetableNameChange: (String) -> Unit,
@@ -787,7 +784,7 @@ private fun TimetableScreenContent(
                 ) {
                     if (!isLoadingTimetables && loadTimetablesError == null) {
                         Text(
-                            text = "\uC2DC\uAC04\uD45C\uB97C \uB9CC\uB4E4\uC5B4 \uC8FC\uC138\uC694",
+                            text = "시간표를 만들어 주세요",
                             modifier = Modifier.align(Alignment.Center),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -910,7 +907,7 @@ private fun TimetableTermSelector(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "\uB098\uC758 \uC2DC\uAC04\uD45C",
+            text = "나의 시간표",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 20.sp,
@@ -923,15 +920,15 @@ private fun TimetableTermSelector(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TimetableDropdown(
-                text = "${selectedYear}\uD559\uB144\uB3C4",
-                contentDescription = "\uD559\uB144\uB3C4 \uC120\uD0DD",
+                text = "${selectedYear}학년도",
+                contentDescription = "학년도 선택",
                 options = yearOptions,
-                optionText = { year -> "${year}\uD559\uB144\uB3C4" },
+                optionText = { year -> "${year}학년도" },
                 onOptionSelected = onYearSelected
             )
             TimetableDropdown(
                 text = semesterOptions.firstOrNull { option -> option.apiValue == selectedSemester }?.label.orEmpty(),
-                contentDescription = "\uD559\uAE30 \uC120\uD0DD",
+                contentDescription = "학기 선택",
                 options = semesterOptions,
                 optionText = { semester -> semester.label },
                 onOptionSelected = onSemesterSelected
@@ -1393,7 +1390,7 @@ private fun CourseBlock(
             } else {
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = "$title \uC218\uC5C5 \uC0AD\uC81C",
+                    contentDescription = "$title 수업 삭제",
                     tint = DeleteButtonColor,
                     modifier = Modifier.size(14.dp)
                 )
@@ -1452,14 +1449,14 @@ private fun TimetableFloatingActions(
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(7.dp)) {
         TimetablePillButton(
-            text = if (isImportingSnutt) "\uBD88\uB7EC\uC624\uB294 \uC911..." else "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9",
+            text = if (isImportingSnutt) "불러오는 중..." else "SNUTT 연동",
             color = if (isImportingSnutt) MaterialTheme.colorScheme.surfaceContainerHighest else SnuttButtonColor,
             enabled = !isImportingSnutt,
             onClick = onSnuttClick,
             contentDescription = if (isImportingSnutt) {
-                "\u0053\u004E\u0055\u0054\u0054 \uC2DC\uAC04\uD45C \uBD88\uB7EC\uC624\uB294 \uC911"
+                "SNUTT 시간표 불러오는 중"
             } else {
-                "\u0053\u004E\u0055\u0054\u0054 \uC5F0\uB3D9"
+                "SNUTT 연동"
             }
         )
         TimetablePillButton("시간표 바꾸기", ChangeButtonColor, true, onChangeTimetableClick, "시간표 바꾸기")
@@ -1694,7 +1691,7 @@ private fun DirectTimePicker(
                 safeMinute % 60,
                 true
             ).apply {
-                setTitle("$label \uC2DC\uAC04 \uC120\uD0DD")
+                setTitle("$label 시간 선택")
             }.show()
         },
         modifier = modifier.height(58.dp),
@@ -1721,7 +1718,7 @@ private fun DirectTimePicker(
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     imageVector = Icons.Rounded.AccessTime,
-                    contentDescription = "$label \uC2DC\uAC04 \uC120\uD0DD",
+                    contentDescription = "$label 시간 선택",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )

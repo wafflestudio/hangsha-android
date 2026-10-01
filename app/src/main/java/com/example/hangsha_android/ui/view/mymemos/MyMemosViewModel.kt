@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.MemoResponse
 import com.example.hangsha_android.data.repository.MemoRepository
+import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.util.toHangshaDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -99,7 +100,8 @@ class MyMemosViewModel @Inject constructor(
                         it.copy(
                             deletingMemoId = null,
                             groupedMemos = it.groupedMemos.removeMemo(memoId),
-                            toastMessage = "메모가 삭제되었습니다."
+                            toastMessage = "메모가 삭제되었습니다.",
+                            toastType = HangshaToastType.Success
                         )
                     }
                 },
@@ -107,7 +109,8 @@ class MyMemosViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             deletingMemoId = null,
-                            toastMessage = mapDeleteErrorMessage(error)
+                            toastMessage = mapDeleteErrorMessage(error),
+                            toastType = HangshaToastType.Error
                         )
                     }
                 }
@@ -223,7 +226,8 @@ class MyMemosViewModel @Inject constructor(
                                 "메모가 삭제되었습니다."
                             } else {
                                 "메모가 수정되었습니다."
-                            }
+                            },
+                            toastType = HangshaToastType.Success
                         )
                     }
                 },
@@ -231,7 +235,8 @@ class MyMemosViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             savingMemoId = null,
-                            toastMessage = mapSaveErrorMessage(error)
+                            toastMessage = mapSaveErrorMessage(error),
+                            toastType = HangshaToastType.Error
                         )
                     }
                 }
