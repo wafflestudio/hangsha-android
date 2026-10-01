@@ -1,7 +1,6 @@
 package com.example.hangsha_android.ui.navigation
 
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +25,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.hangsha_android.BuildConfig
+import com.example.hangsha_android.ui.components.HangshaToastType
+import com.example.hangsha_android.ui.components.LocalHangshaToastState
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksScreen
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
@@ -358,11 +359,10 @@ fun NavGraphBuilder.onboardingGraph(navController: NavHostController) {
     composable(HangshaDestinations.Onboarding.route) {
         val onboardingViewModel: OnboardingViewModel = hiltViewModel()
         val onboardingUiState by onboardingViewModel.uiState.collectAsState()
-        val context = LocalContext.current
-
+        val toastState = LocalHangshaToastState.current
         LaunchedEffect(onboardingUiState.onboardingMessage) {
             val message = onboardingUiState.onboardingMessage ?: return@LaunchedEffect
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            toastState.show(message, HangshaToastType.Error)
             onboardingViewModel.onOnboardingMessageConsumed()
         }
 
@@ -565,16 +565,16 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val eventDetailUiState by eventDetailViewModel.uiState.collectAsState()
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
-            val context = LocalContext.current
+            val toastState = LocalHangshaToastState.current
 
             LaunchedEffect(eventDetailUiState.memoSaveMessage) {
                 val message = eventDetailUiState.memoSaveMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                toastState.show(message, eventDetailUiState.memoSaveToastType)
                 eventDetailViewModel.onMemoSaveMessageConsumed()
             }
             LaunchedEffect(eventDetailUiState.bugReportMessage) {
                 val message = eventDetailUiState.bugReportMessage ?: return@LaunchedEffect
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                toastState.show(message, eventDetailUiState.bugReportToastType)
                 eventDetailViewModel.onBugReportMessageConsumed()
             }
 
@@ -818,7 +818,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             } else {
                 val myPageViewModel: MyPageViewModel = hiltViewModel()
                 val myPageUiState by myPageViewModel.uiState.collectAsState()
-                val context = LocalContext.current
+                val toastState = LocalHangshaToastState.current
                 val myPageSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
                 val interestPriorityUpdated = myPageSavedStateHandle
                     ?.get<Boolean>(InterestPriorityNavigationKeys.updatedKey)
@@ -826,7 +826,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
                 LaunchedEffect(myPageUiState.profileSaveToastMessage) {
                     val message = myPageUiState.profileSaveToastMessage ?: return@LaunchedEffect
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    toastState.show(message, HangshaToastType.Error)
                     myPageViewModel.onProfileSaveToastConsumed()
                 }
 
@@ -841,7 +841,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
                 LaunchedEffect(myPageUiState.bugReportToastMessage) {
                     val message = myPageUiState.bugReportToastMessage ?: return@LaunchedEffect
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    toastState.show(message, myPageUiState.bugReportToastType)
                     myPageViewModel.onBugReportToastConsumed()
                 }
 

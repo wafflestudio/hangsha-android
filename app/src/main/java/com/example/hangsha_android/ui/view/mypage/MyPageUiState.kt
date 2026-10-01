@@ -1,6 +1,7 @@
 package com.example.hangsha_android.ui.view.mypage
 
 import android.net.Uri
+import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 
 data class MyPageUiState(
@@ -25,6 +26,7 @@ data class MyPageUiState(
     val bugReportContent: String = "",
     val isSubmittingBugReport: Boolean = false,
     val bugReportToastMessage: String? = null,
+    val bugReportToastType: HangshaToastType = HangshaToastType.Info,
     val accountDeletionErrorMessage: String? = null,
     val isLoggedOut: Boolean = false,
     val bookmarkedEvents: List<BookmarkedEventItem> = emptyList(),

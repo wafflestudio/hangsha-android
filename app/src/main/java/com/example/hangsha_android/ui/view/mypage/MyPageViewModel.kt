@@ -15,6 +15,7 @@ import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.BugReportRepository
 import com.example.hangsha_android.data.repository.MemoRepository
 import com.example.hangsha_android.data.repository.UserRepository
+import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.ui.view.bookmarks.BookmarkedEventItem
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
 import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
@@ -379,7 +380,10 @@ class MyPageViewModel @Inject constructor(
         }
         if (title.isBlank() || content.isBlank()) {
             _uiState.update {
-                it.copy(bugReportToastMessage = "\uC81C\uBAA9\uACFC \uB0B4\uC6A9\uC744 \uBAA8\uB450 \uC785\uB825\uD574 \uC8FC\uC138\uC694.")
+                it.copy(
+                    bugReportToastMessage = "제목과 내용을 모두 입력해 주세요.",
+                    bugReportToastType = HangshaToastType.Warning
+                )
             }
             return
         }
@@ -407,7 +411,8 @@ class MyPageViewModel @Inject constructor(
                             bugReportTitle = "",
                             bugReportContent = "",
                             isSubmittingBugReport = false,
-                            bugReportToastMessage = "\uC624\uB958 \uC81C\uBCF4\uAC00 \uC811\uC218\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+                            bugReportToastMessage = "오류 제보가 접수되었습니다.",
+                            bugReportToastType = HangshaToastType.Success
                         )
                     }
                 },
@@ -415,7 +420,8 @@ class MyPageViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmittingBugReport = false,
-                            bugReportToastMessage = mapBugReportErrorMessage(error)
+                            bugReportToastMessage = mapBugReportErrorMessage(error),
+                            bugReportToastType = HangshaToastType.Error
                         )
                     }
                 }
@@ -528,7 +534,7 @@ class MyPageViewModel @Inject constructor(
     private fun validateDraftUsername(username: String): String? {
         val trimmedUsername = username.trim()
         if (trimmedUsername.isBlank()) {
-            return "\uB2C9\uB124\uC784\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694."
+            return "닉네임을 입력해 주세요."
         }
 
         val maxLength = if (trimmedUsername.any { char -> char.isKorean() }) {
@@ -537,7 +543,7 @@ class MyPageViewModel @Inject constructor(
             ENGLISH_USERNAME_MAX_LENGTH
         }
         return if (trimmedUsername.length > maxLength) {
-            "\uB2C9\uB124\uC784\uC740 ${maxLength}\uC790 \uC774\uD558\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694."
+            "닉네임은 ${maxLength}자 이하로 입력해 주세요."
         } else {
             null
         }
@@ -554,74 +560,74 @@ class MyPageViewModel @Inject constructor(
     private fun mapAccountDeletionErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                403 -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                401 -> "로그인이 필요합니다."
+                403 -> "계정을 삭제할 권한이 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "계정을 삭제하지 못했습니다. (${error.code()})"
             }
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            else -> "\uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "계정을 삭제하지 못했습니다."
         }
     }
 
     private fun mapBugReportErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                400 -> "\uC624\uB958 \uC81C\uBCF4 \uB0B4\uC6A9\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                400 -> "오류 제보 내용을 확인해 주세요."
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "오류 제보를 제출하지 못했습니다. (${error.code()})"
             }
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            else -> "\uC624\uB958 \uC81C\uBCF4\uB97C \uC81C\uCD9C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "오류 제보를 제출하지 못했습니다."
         }
     }
 
     private fun mapBookmarksPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uBD81\uB9C8\uD06C\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "북마크를 불러오지 못했습니다. (${error.code()})"
             }
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            else -> "\uBD81\uB9C8\uD06C\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "북마크를 불러오지 못했습니다."
         }
     }
 
     private fun mapMemosPreviewErrorMessage(error: Throwable): String {
         return when (error) {
             is HttpException -> when (error.code()) {
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uBA54\uBAA8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                401 -> "로그인이 필요합니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "메모를 불러오지 못했습니다. (${error.code()})"
             }
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            else -> "\uBA54\uBAA8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "메모를 불러오지 못했습니다."
         }
     }
 
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
             is HttpException -> when (error.code()) {
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                403 -> "\uD504\uB85C\uD544\uC744 \uBCFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
-                404 -> "\uD504\uB85C\uD544 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uD504\uB85C\uD544\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                401 -> "로그인이 필요합니다."
+                403 -> "프로필을 볼 권한이 없습니다."
+                404 -> "프로필 정보를 찾을 수 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "프로필을 불러오지 못했습니다. (${error.code()})"
             }
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            else -> "\uD504\uB85C\uD544\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "프로필을 불러오지 못했습니다."
         }
     }
 }
