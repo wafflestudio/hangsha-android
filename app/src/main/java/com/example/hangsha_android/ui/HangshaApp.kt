@@ -25,6 +25,7 @@ import com.example.hangsha_android.ui.components.HangshaAdaptiveLayout
 import com.example.hangsha_android.ui.components.HangshaBottomBar
 import com.example.hangsha_android.ui.components.HangshaNavigationRail
 import com.example.hangsha_android.ui.components.LocalHangshaWindowInfo
+import com.example.hangsha_android.ui.components.PlayUpdatePromptHost
 import com.example.hangsha_android.ui.navigation.BottomTab
 import com.example.hangsha_android.ui.navigation.HangshaDestinations
 import com.example.hangsha_android.ui.navigation.HangshaNavHost
@@ -117,4 +118,6 @@ fun HangshaApp() {
             }
         }
     }
+
+    PlayUpdatePromptHost(enabled = showMainNavigation)
 }

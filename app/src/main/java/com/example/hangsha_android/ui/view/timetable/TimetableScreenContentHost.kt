@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -64,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -88,6 +91,7 @@ import java.time.LocalDate
 
 private const val GridStartMinute = 7 * 60
 private const val GridEndMinute = 24 * 60
+private const val MaxVisibleEventColumns = 2
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridHourHeight = 56.dp
@@ -749,6 +753,7 @@ private fun TimetableScreenContent(
                             .verticalScroll(gridScrollState, enabled = !isEventTimelineExpanded)
                     ) {
                         WeeklyTimetableGrid(
+                            weekStart = weekStart,
                             weekViewConfig = weekViewConfig,
                             courses = selectedTimetable.courses,
                             events = events,
@@ -1141,6 +1146,7 @@ private fun WeekdayHeader(weekViewConfig: TimetableWeekViewConfig) {
 // 주간 그리드: 시간 좌표 계산 결과에 따라 수업/행사 레이어를 순서대로 올린다.
 @Composable
 private fun WeeklyTimetableGrid(
+    weekStart: LocalDate,
     weekViewConfig: TimetableWeekViewConfig,
     courses: List<CourseUiModel>,
     events: List<TimetableEventItem>,
@@ -1179,8 +1185,16 @@ private fun WeeklyTimetableGrid(
             gridStartMinute = GridStartMinute,
             gridEndMinute = GridEndMinute,
             dayCount = weekViewConfig.dayCount,
-            splitOverlaps = true
+            splitOverlaps = true,
+            maxLanesPerPage = MaxVisibleEventColumns
         ).associateBy { it.id }
+    }
+    val positionedEventsByDay = remember(events, eventPositions) {
+        events.mapNotNull { event ->
+            eventPositions[event.id]?.let { position ->
+                PositionedTimetableEvent(event = event, position = position)
+            }
+        }.groupBy { positioned -> positioned.position.weekday }
     }
 
     BoxWithConstraints(modifier = modifier) {
@@ -1207,20 +1221,22 @@ private fun WeeklyTimetableGrid(
                     onClick = null
                 )
             }
-            events.forEach { event ->
-                val position = eventPositions[event.id] ?: return@forEach
-                TimetableBlockBackground(position, dayWidth, gridHeight, event.categoryColor, 0.7f)
-            }
-            events.forEach { event ->
-                val position = eventPositions[event.id] ?: return@forEach
-                TimetableBlockLabel(
-                    position = position,
-                    dayWidth = dayWidth,
-                    gridHeight = gridHeight,
-                    text = event.title,
-                    textColor = PureWhite,
-                    onClick = { onEventClick(event.eventId) }
-                )
+            repeat(weekViewConfig.dayCount) { weekday ->
+                val positionedEvents = positionedEventsByDay[weekday].orEmpty()
+                if (positionedEvents.isNotEmpty()) {
+                    TimetableEventDayPager(
+                        date = weekStart.plusDays(weekday.toLong()),
+                        positionedEvents = positionedEvents,
+                        dayWidth = dayWidth,
+                        gridHeight = gridHeight,
+                        onEventClick = onEventClick,
+                        modifier = Modifier
+                            .offset(x = TimeLabelWidth + dayWidth * weekday)
+                            .width(dayWidth)
+                            .height(gridHeight)
+                            .clipToBounds()
+                    )
+                }
             }
         } else {
             courseBlocks.forEach { block ->
@@ -1234,6 +1250,62 @@ private fun WeeklyTimetableGrid(
                     subtitle = block.subtitle,
                     isDeleting = deletingCourseId == block.courseId,
                     onDelete = { onDeleteCourse(block.courseId) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimetableEventDayPager(
+    date: LocalDate,
+    positionedEvents: List<PositionedTimetableEvent>,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    onEventClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pageCount = positionedEvents.maxOfOrNull { positioned ->
+        positioned.position.pageCount
+    } ?: 1
+    val pagerState = rememberPagerState(pageCount = { pageCount })
+
+    LaunchedEffect(date, positionedEvents, pageCount) {
+        if (pagerState.currentPage != 0) {
+            pagerState.scrollToPage(0)
+        }
+    }
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = modifier,
+        userScrollEnabled = pageCount > 1,
+        key = { page -> page }
+    ) { page ->
+        val visibleEvents = positionedEvents.filter { positioned ->
+            val visiblePage = minOf(page, positioned.position.pageCount - 1)
+            positioned.position.pageIndex == visiblePage
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            visibleEvents.forEach { positioned ->
+                TimetableBlockBackground(
+                    position = positioned.position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    color = positioned.event.categoryColor,
+                    alpha = 0.7f,
+                    relativeToDay = true
+                )
+            }
+            visibleEvents.forEach { positioned ->
+                TimetableBlockLabel(
+                    position = positioned.position,
+                    dayWidth = dayWidth,
+                    gridHeight = gridHeight,
+                    text = positioned.event.title,
+                    textColor = PureWhite,
+                    onClick = { onEventClick(positioned.event.eventId) },
+                    relativeToDay = true
                 )
             }
         }
@@ -1330,19 +1402,37 @@ private fun CourseBlock(
     }
 }
 @Composable
-private fun TimetableBlockBackground(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, color: Color, alpha: Float) {
-    Box(modifier = blockModifier(position, dayWidth, gridHeight).background(color.copy(alpha = alpha)))
+private fun TimetableBlockBackground(
+    position: PositionedTimetableBlock,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    color: Color,
+    alpha: Float,
+    relativeToDay: Boolean = false
+) {
+    Box(
+        modifier = blockModifier(position, dayWidth, gridHeight, relativeToDay)
+            .background(color.copy(alpha = alpha))
+    )
 }
 
 @Composable
-private fun TimetableBlockLabel(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp, text: String, textColor: Color, onClick: (() -> Unit)?) {
+private fun TimetableBlockLabel(
+    position: PositionedTimetableBlock,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    text: String,
+    textColor: Color,
+    onClick: (() -> Unit)?,
+    relativeToDay: Boolean = false
+) {
     val clickModifier = if (onClick != null) {
         Modifier.clickable(onClick = onClick)
     } else {
         Modifier
     }
     Box(
-        modifier = blockModifier(position, dayWidth, gridHeight)
+        modifier = blockModifier(position, dayWidth, gridHeight, relativeToDay)
             .then(clickModifier)
             .padding(horizontal = 4.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
@@ -1706,13 +1796,24 @@ private fun FieldErrorText(message: String) {
     Text(message, color = MaterialTheme.colorScheme.error, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 }
 
-private fun blockModifier(position: PositionedTimetableBlock, dayWidth: Dp, gridHeight: Dp): Modifier {
+private fun blockModifier(
+    position: PositionedTimetableBlock,
+    dayWidth: Dp,
+    gridHeight: Dp,
+    relativeToDay: Boolean = false
+): Modifier {
     val laneWidth = dayWidth / position.laneCount
-    val x = TimeLabelWidth + (dayWidth * position.weekday) + (laneWidth * position.laneIndex)
+    val dayOrigin = if (relativeToDay) 0.dp else TimeLabelWidth + dayWidth * position.weekday
+    val x = dayOrigin + laneWidth * position.laneIndex
     val y = gridHeight * position.topFraction
     val height = gridHeight * position.heightFraction
     return Modifier.offset(x = x + 1.dp, y = y).width(laneWidth - 2.dp).height(height)
 }
+
+private data class PositionedTimetableEvent(
+    val event: TimetableEventItem,
+    val position: PositionedTimetableBlock
+)
 
 private data class CourseBlockUiModel(
     val id: String,

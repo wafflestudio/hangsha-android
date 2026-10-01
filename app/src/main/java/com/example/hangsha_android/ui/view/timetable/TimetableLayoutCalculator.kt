@@ -15,7 +15,9 @@ internal data class PositionedTimetableBlock(
     val topFraction: Float,
     val heightFraction: Float,
     val laneIndex: Int,
-    val laneCount: Int
+    val laneCount: Int,
+    val pageIndex: Int,
+    val pageCount: Int
 )
 
 internal object TimetableLayoutCalculator {
@@ -24,11 +26,13 @@ internal object TimetableLayoutCalculator {
         gridStartMinute: Int,
         gridEndMinute: Int,
         dayCount: Int = 5,
-        splitOverlaps: Boolean = false
+        splitOverlaps: Boolean = false,
+        maxLanesPerPage: Int = 2
     ): List<PositionedTimetableBlock> {
         if (gridEndMinute <= gridStartMinute) {
             return emptyList()
         }
+        require(maxLanesPerPage > 0) { "maxLanesPerPage must be positive." }
 
         val clippedBlocks = blocks.mapNotNull { block ->
             clipBlock(
@@ -43,8 +47,8 @@ internal object TimetableLayoutCalculator {
             clippedBlocks
                 .groupBy { it.weekday }
                 .values
-                .flatMap { blocksForDay -> assignOverlapLanes(blocksForDay) }
-                .sortedWith(compareBy({ it.weekday }, { it.clippedStartMinute }, { it.laneIndex }))
+                .flatMap { blocksForDay -> assignOverlapLanes(blocksForDay, maxLanesPerPage) }
+                .sortedWith(compareBy({ it.weekday }, { it.clippedStartMinute }, { it.pageIndex }, { it.laneIndex }))
         } else {
             clippedBlocks
         }
@@ -75,12 +79,15 @@ internal object TimetableLayoutCalculator {
             topFraction = (clippedStart - gridStartMinute).toFloat() / gridDuration,
             heightFraction = (clippedEnd - clippedStart).toFloat() / gridDuration,
             laneIndex = 0,
-            laneCount = 1
+            laneCount = 1,
+            pageIndex = 0,
+            pageCount = 1
         )
     }
 
     private fun assignOverlapLanes(
-        blocks: List<PositionedTimetableBlock>
+        blocks: List<PositionedTimetableBlock>,
+        maxLanesPerPage: Int
     ): List<PositionedTimetableBlock> {
         val sortedBlocks = blocks.sortedWith(compareBy({ it.clippedStartMinute }, { it.clippedEndMinute }))
         val result = mutableListOf<PositionedTimetableBlock>()
@@ -91,7 +98,7 @@ internal object TimetableLayoutCalculator {
             if (activeGroup.isEmpty()) {
                 return
             }
-            result += assignLanesWithinGroup(activeGroup)
+            result += assignLanesWithinGroup(activeGroup, maxLanesPerPage)
             activeGroup.clear()
             activeGroupEnd = Int.MIN_VALUE
         }
@@ -109,7 +116,8 @@ internal object TimetableLayoutCalculator {
     }
 
     private fun assignLanesWithinGroup(
-        blocks: List<PositionedTimetableBlock>
+        blocks: List<PositionedTimetableBlock>,
+        maxLanesPerPage: Int
     ): List<PositionedTimetableBlock> {
         val laneEnds = mutableListOf<Int>()
         val assigned = blocks.map { block ->
@@ -123,6 +131,17 @@ internal object TimetableLayoutCalculator {
             block.copy(laneIndex = laneIndex)
         }
         val laneCount = maxOf(1, laneEnds.size)
-        return assigned.map { block -> block.copy(laneCount = laneCount) }
+        val pageCount = (laneCount + maxLanesPerPage - 1) / maxLanesPerPage
+        return assigned.map { block ->
+            val pageIndex = block.laneIndex / maxLanesPerPage
+            val firstLaneOnPage = pageIndex * maxLanesPerPage
+            val lanesOnPage = minOf(maxLanesPerPage, laneCount - firstLaneOnPage)
+            block.copy(
+                laneIndex = block.laneIndex % maxLanesPerPage,
+                laneCount = lanesOnPage,
+                pageIndex = pageIndex,
+                pageCount = pageCount
+            )
+        }
     }
 }
