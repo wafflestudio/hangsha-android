@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.mymemos
 
+import com.example.hangsha_android.ui.components.HangshaToastType
+
 data class MyMemosUiState(
     val isLoading: Boolean = true,
     val deletingMemoId: Long? = null,
@@ -11,6 +13,7 @@ data class MyMemosUiState(
     val editTagInput: String = "",
     val errorMessage: String? = null,
     val toastMessage: String? = null,
+    val toastType: HangshaToastType = HangshaToastType.Info,
     val groupedMemos: List<MyMemoDateGroup> = emptyList()
 )
 
