@@ -4,10 +4,10 @@ import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
 import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
 import com.example.hangsha_android.util.toHangshaDate
+import com.example.hangsha_android.data.repository.model.EventDateRange
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.YearMonth
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -27,14 +27,11 @@ internal data class CalendarEventCardItem(
 )
 
 internal fun buildCalendarEventCardItems(
-    currentMonth: YearMonth,
+    contentRange: EventDateRange,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
     organizationNames: Map<Long, String>,
     eventTypeNames: Map<Long, String>
 ): List<CalendarEventCardItem> {
-    val monthStart = currentMonth.atDay(1)
-    val monthEnd = currentMonth.atEndOfMonth()
-
     return eventsByDate.entries
         .asSequence()
         .sortedBy { (date, _) -> date }
@@ -42,7 +39,7 @@ internal fun buildCalendarEventCardItems(
         .distinctBy { event -> event.id }
         .filter { event ->
             val range = event.displayRange()
-            !range.end.isBefore(monthStart) && !range.start.isAfter(monthEnd)
+            !range.end.isBefore(contentRange.from) && !range.start.isAfter(contentRange.to)
         }
         .map { event -> event.toCardItem(organizationNames, eventTypeNames) }
         .toList()

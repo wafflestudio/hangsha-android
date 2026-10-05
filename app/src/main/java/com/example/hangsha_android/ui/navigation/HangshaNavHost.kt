@@ -442,8 +442,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             CalendarScreen(
                 uiState = calendarUiState,
-                onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
-                onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onPreviousPeriodClick = { calendarViewModel.showPreviousPeriod() },
+                onNextPeriodClick = { calendarViewModel.showNextPeriod() },
                 onViewModeChange = { calendarViewModel.setViewMode(it) },
                 onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
                 onDateClick = { date ->

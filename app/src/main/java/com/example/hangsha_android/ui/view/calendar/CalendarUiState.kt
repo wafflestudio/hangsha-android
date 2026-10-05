@@ -1,14 +1,15 @@
 package com.example.hangsha_android.ui.view.calendar
 
-import com.example.hangsha_android.util.currentHangshaMonth
+import com.example.hangsha_android.util.currentHangshaDate
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import java.time.LocalDate
 import java.time.YearMonth
 
 data class CalendarUiState(
-    val currentMonth: YearMonth = currentHangshaMonth(),
+    val anchorDate: LocalDate = currentHangshaDate(),
+    val period: CalendarPeriod = CalendarPeriod.MONTH,
     val viewMode: CalendarViewMode = CalendarViewMode.CALENDAR,
-    val visibleRange: EventDateRange = currentMonth.toCalendarGridRange(),
+    val visibleRange: EventDateRange = period.visibleRange(anchorDate),
     val visibleDates: List<LocalDate> = visibleRange.toDateList(),
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
     val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
@@ -27,6 +28,12 @@ data class CalendarUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
+    val contentRange: EventDateRange
+        get() = period.contentRange(anchorDate)
+
+    val currentMonth: YearMonth
+        get() = YearMonth.from(anchorDate)
+
     val hasActiveFilters: Boolean
         get() = appliedFilters.hasActiveFilters
 }
