@@ -30,21 +30,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-private val KoreanMonthFormatter =
-    DateTimeFormatter.ofPattern("yyyy'년' M'월'", Locale.KOREAN)
-
 @Composable
 internal fun CalendarHeader(
-    currentMonth: YearMonth,
+    title: String,
     selectedViewMode: CalendarViewMode,
     hasActiveFilters: Boolean,
     isLoading: Boolean,
-    onPreviousMonthClick: () -> Unit,
-    onNextMonthClick: () -> Unit,
+    onPreviousPeriodClick: () -> Unit,
+    onNextPeriodClick: () -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit
@@ -54,7 +47,7 @@ internal fun CalendarHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = currentMonth.format(KoreanMonthFormatter),
+            text = title,
             style = MaterialTheme.typography.labelLarge,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
@@ -62,8 +55,8 @@ internal fun CalendarHeader(
         Spacer(modifier = Modifier.width(8.dp))
         HeaderNavigationButtons(
             isLoading = isLoading,
-            onPreviousMonthClick = onPreviousMonthClick,
-            onNextMonthClick = onNextMonthClick
+            onPreviousPeriodClick = onPreviousPeriodClick,
+            onNextPeriodClick = onNextPeriodClick
         )
         Spacer(modifier = Modifier.width(8.dp))
         CalendarFilterButton(
@@ -94,27 +87,27 @@ internal fun CalendarHeader(
 @Composable
 private fun HeaderNavigationButtons(
     isLoading: Boolean,
-    onPreviousMonthClick: () -> Unit,
-    onNextMonthClick: () -> Unit
+    onPreviousPeriodClick: () -> Unit,
+    onNextPeriodClick: () -> Unit
 ) {
     HeaderCircleButton(
         enabled = !isLoading,
-        onClick = onPreviousMonthClick
+        onClick = onPreviousPeriodClick
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-            contentDescription = "이전 달",
+            contentDescription = "이전 기간",
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     Spacer(modifier = Modifier.width(1.dp))
     HeaderCircleButton(
         enabled = !isLoading,
-        onClick = onNextMonthClick
+        onClick = onNextPeriodClick
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = "다음 달",
+            contentDescription = "다음 기간",
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

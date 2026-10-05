@@ -24,8 +24,8 @@ private val ScreenVerticalPadding = 15.dp
 @Composable
 fun CalendarScreen(
     uiState: CalendarUiState,
-    onPreviousMonthClick: () -> Unit,
-    onNextMonthClick: () -> Unit,
+    onPreviousPeriodClick: () -> Unit,
+    onNextPeriodClick: () -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onDateClick: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
@@ -62,13 +62,13 @@ fun CalendarScreen(
     }
 
     val eventCardItems = remember(
-        uiState.currentMonth,
+        uiState.contentRange,
         uiState.eventsByDate,
         uiState.organizationNames,
         uiState.eventTypeNames
     ) {
         buildCalendarEventCardItems(
-            currentMonth = uiState.currentMonth,
+            contentRange = uiState.contentRange,
             eventsByDate = uiState.eventsByDate,
             organizationNames = uiState.organizationNames,
             eventTypeNames = uiState.eventTypeNames
@@ -86,12 +86,12 @@ fun CalendarScreen(
     ) {
         Spacer(modifier = Modifier.height(25.dp))
         CalendarHeader(
-            currentMonth = uiState.currentMonth,
+            title = uiState.period.headerTitle(uiState.anchorDate),
             selectedViewMode = uiState.viewMode,
             hasActiveFilters = uiState.hasActiveFilters,
             isLoading = uiState.isLoading,
-            onPreviousMonthClick = onPreviousMonthClick,
-            onNextMonthClick = onNextMonthClick,
+            onPreviousPeriodClick = onPreviousPeriodClick,
+            onNextPeriodClick = onNextPeriodClick,
             onViewModeChange = onViewModeChange,
             onSearchClick = onSearchClick,
             onOpenFilterClick = onOpenFilterClick
@@ -108,41 +108,15 @@ fun CalendarScreen(
                     .weight(1f)
             )
         } else {
-            when (uiState.viewMode) {
-                CalendarViewMode.CALENDAR -> {
-                    CalendarMonthView(
-                        visibleDates = uiState.visibleDates,
-                        currentMonth = uiState.currentMonth,
-                        eventsByDate = uiState.eventsByDate,
-                        isLoading = uiState.isLoading,
-                        onDateClick = onDateClick,
-                        onEventClick = onEventClick,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                CalendarViewMode.LIST -> {
-                    CalendarListView(
-                        items = eventCardItems,
-                        isLoading = uiState.isLoading,
-                        showBookmarkAction = showBookmarkAction,
-                        onEventClick = onEventClick,
-                        onBookmarkClick = onBookmarkClick,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                CalendarViewMode.GRID -> {
-                    CalendarGridView(
-                        items = eventCardItems,
-                        isLoading = uiState.isLoading,
-                        showBookmarkAction = showBookmarkAction,
-                        onEventClick = onEventClick,
-                        onBookmarkClick = onBookmarkClick,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
+            CalendarViewHost(
+                uiState = uiState,
+                eventCardItems = eventCardItems,
+                showBookmarkAction = showBookmarkAction,
+                onDateClick = onDateClick,
+                onEventClick = onEventClick,
+                onBookmarkClick = onBookmarkClick,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

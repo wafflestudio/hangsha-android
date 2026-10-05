@@ -10,13 +10,11 @@ import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.model.CategoryType
-import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
-import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -102,15 +100,35 @@ class CalendarViewModel @Inject constructor(
                 onBookmarkedEventIdsChanged(eventIds)
             }
         }
-        loadMonth(_uiState.value.currentMonth)
+        loadPeriod(
+            anchorDate = _uiState.value.anchorDate,
+            period = _uiState.value.period
+        )
     }
 
-    fun showPreviousMonth() {
-        loadMonth(_uiState.value.currentMonth.minusMonths(1))
+    fun showPreviousPeriod() {
+        val state = _uiState.value
+        loadPeriod(
+            anchorDate = state.period.move(state.anchorDate, -1),
+            period = state.period
+        )
     }
 
-    fun showNextMonth() {
-        loadMonth(_uiState.value.currentMonth.plusMonths(1))
+    fun showNextPeriod() {
+        val state = _uiState.value
+        loadPeriod(
+            anchorDate = state.period.move(state.anchorDate, 1),
+            period = state.period
+        )
+    }
+
+    fun setPeriod(period: CalendarPeriod) {
+        val state = _uiState.value
+        if (state.period == period) return
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = period
+        )
     }
 
     fun setViewMode(viewMode: CalendarViewMode) {
@@ -157,10 +175,12 @@ class CalendarViewModel @Inject constructor(
     }
 
     fun retry() {
-        loadMonth(
-            month = _uiState.value.currentMonth,
-            filters = _uiState.value.appliedFilters,
-            hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        val state = _uiState.value
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
+            filters = state.appliedFilters,
+            hasAppliedServerFilters = state.hasAppliedServerFilters
         )
     }
 
@@ -190,8 +210,9 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = currentState.currentMonth,
+        loadPeriod(
+            anchorDate = currentState.anchorDate,
+            period = currentState.period,
             filters = normalizedFilters,
             hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
@@ -320,8 +341,9 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = state.currentMonth,
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
             filters = appliedFilters,
             hasAppliedServerFilters = true
         )
@@ -330,7 +352,9 @@ class CalendarViewModel @Inject constructor(
         val state = _uiState.value
         if (!state.isFilterSheetVisible) return
 
-        val month = state.currentMonth
+        val anchorDate = state.anchorDate
+        val period = state.period
+        val contentRange = state.contentRange
         val filters = state.draftFilters
         filterCountJob?.cancel()
         _uiState.update {
@@ -345,17 +369,15 @@ class CalendarViewModel @Inject constructor(
                 delay(FILTER_COUNT_DEBOUNCE_MS)
                 val count = withTimeout(FILTER_COUNT_TIMEOUT_MS) {
                     eventRepository.getEventCount(
-                        range = EventDateRange(
-                            from = month.atDay(1),
-                            to = month.atEndOfMonth()
-                        ),
+                        range = contentRange,
                         filters = filters
                     ).requireCount()
                 }
                 _uiState.update { current ->
                     if (
                         current.isFilterSheetVisible &&
-                        current.currentMonth == month &&
+                        current.anchorDate == anchorDate &&
+                        current.period == period &&
                         current.draftFilters == filters
                     ) {
                         current.copy(
@@ -372,7 +394,8 @@ class CalendarViewModel @Inject constructor(
                 _uiState.update { current ->
                     if (
                         current.isFilterSheetVisible &&
-                        current.currentMonth == month &&
+                        current.anchorDate == anchorDate &&
+                        current.period == period &&
                         current.draftFilters == filters
                     ) {
                         current.copy(
@@ -388,19 +411,21 @@ class CalendarViewModel @Inject constructor(
     }
     // 현재 월의 전체 source 데이터를 먼저 가져오고,
     // 그다음 화면 표시용 데이터만 분기해서 구성한다.
-    private fun loadMonth(
-        month: YearMonth,
+    private fun loadPeriod(
+        anchorDate: LocalDate,
+        period: CalendarPeriod,
         filters: CalendarFilterState = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
         preserveFilterSheetState: Boolean = false
     ) {
-        val visibleRange = month.toCalendarGridRange()
+        val visibleRange = period.visibleRange(anchorDate)
         val visibleDates = visibleRange.toDateList()
 
         loadJob?.cancel()
         _uiState.update {
             it.copy(
-                currentMonth = month,
+                anchorDate = anchorDate,
+                period = period,
                 visibleRange = visibleRange,
                 visibleDates = visibleDates,
                 appliedFilters = filters,
@@ -426,7 +451,7 @@ class CalendarViewModel @Inject constructor(
                 val visibleEventsByDate = body.toCalendarEventsByDate()
                 val filterOptions = buildFilterOptions()
 
-                CalendarMonthLoadResult(
+                CalendarPeriodLoadResult(
                     filterSourceEventsByDate = visibleEventsByDate,
                     visibleEventsByDate = visibleEventsByDate,
                     filterOptions = filterOptions
@@ -546,8 +571,9 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = previousState.currentMonth,
+        loadPeriod(
+            anchorDate = previousState.anchorDate,
+            period = previousState.period,
             filters = updatedAppliedFilters,
             hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
             preserveFilterSheetState = true
@@ -582,8 +608,9 @@ class CalendarViewModel @Inject constructor(
                 hasAppliedServerFilters = applied.hasActiveFilters
             )
         }
-        loadMonth(
-            month = state.currentMonth,
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
             filters = applied,
             hasAppliedServerFilters = applied.hasActiveFilters,
             preserveFilterSheetState = true
@@ -613,7 +640,7 @@ class CalendarViewModel @Inject constructor(
     }
 }
 
-private data class CalendarMonthLoadResult(
+private data class CalendarPeriodLoadResult(
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>,
     val visibleEventsByDate: Map<LocalDate, List<CalendarEvent>>,
     val filterOptions: CalendarFilterOptions
