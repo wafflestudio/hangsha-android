@@ -113,6 +113,49 @@ class CalendarViewModel @Inject constructor(
         loadMonth(_uiState.value.currentMonth.plusMonths(1))
     }
 
+    fun setViewMode(viewMode: CalendarViewMode) {
+        _uiState.update { state ->
+            if (state.viewMode == viewMode) state else state.copy(viewMode = viewMode)
+        }
+    }
+
+    fun toggleBookmark(eventId: Long) {
+        val currentState = _uiState.value
+        val targetEvent = currentState.filterSourceEventsByDate.values
+            .asSequence()
+            .flatten()
+            .firstOrNull { event -> event.id == eventId }
+            ?: currentState.eventsByDate.values
+                .asSequence()
+                .flatten()
+                .firstOrNull { event -> event.id == eventId }
+            ?: return
+        val shouldBookmark = !targetEvent.isBookmarked
+
+        _uiState.update { state ->
+            state.withUpdatedBookmark(
+                eventId = eventId,
+                isBookmarked = shouldBookmark
+            ).copy(errorMessage = null)
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                bookmarkRepository.setBookmark(
+                    eventId = eventId,
+                    isBookmarked = shouldBookmark
+                )
+            }.onFailure { error ->
+                _uiState.update { state ->
+                    state.withUpdatedBookmark(
+                        eventId = eventId,
+                        isBookmarked = !shouldBookmark
+                    ).copy(errorMessage = mapBookmarkErrorMessage(error))
+                }
+            }
+        }
+    }
+
     fun retry() {
         loadMonth(
             month = _uiState.value.currentMonth,
@@ -449,6 +492,23 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
+    private fun mapBookmarkErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
+            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is HttpException -> when (error.code()) {
+                400 -> "\uBD81\uB9C8\uD06C \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
+                403 -> "\uC774 \uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+                else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+            }
+            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            else -> "\uBD81\uB9C8\uD06C\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+        }
+    }
+
     private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
         return when (error) {
             is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
@@ -617,6 +677,37 @@ private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
             event.copy(isBookmarked = event.id in bookmarkedEventIds)
         }
     }
+}
+
+private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
+    eventId: Long,
+    isBookmarked: Boolean
+): Map<LocalDate, List<CalendarEvent>> {
+    return mapValues { (_, events) ->
+        events.map { event ->
+            if (event.id == eventId) {
+                event.copy(isBookmarked = isBookmarked)
+            } else {
+                event
+            }
+        }
+    }
+}
+
+private fun CalendarUiState.withUpdatedBookmark(
+    eventId: Long,
+    isBookmarked: Boolean
+): CalendarUiState {
+    return copy(
+        filterSourceEventsByDate = filterSourceEventsByDate.withBookmarkState(
+            eventId = eventId,
+            isBookmarked = isBookmarked
+        ),
+        eventsByDate = eventsByDate.withBookmarkState(
+            eventId = eventId,
+            isBookmarked = isBookmarked
+        ).applyFilters(appliedFilters)
+    )
 }
 
 private fun Response<EventCountResponse>.requireCount(): Int {

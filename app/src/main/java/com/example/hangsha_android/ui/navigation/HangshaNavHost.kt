@@ -422,6 +422,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         composable(BottomTab.Calendar.route) {
             val calendarViewModel: CalendarViewModel = hiltViewModel()
             val calendarUiState by calendarViewModel.uiState.collectAsState()
+            val authStateViewModel: AuthStateViewModel = hiltViewModel()
+            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
             val calendarSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
             val returnedCalendarFilters = calendarSavedStateHandle?.toCalendarFilterState()
             val returnedCalendarHasAppliedServerFilters: Boolean? = calendarSavedStateHandle
@@ -442,6 +444,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = calendarUiState,
                 onPreviousMonthClick = { calendarViewModel.showPreviousMonth() },
                 onNextMonthClick = { calendarViewModel.showNextMonth() },
+                onViewModeChange = { calendarViewModel.setViewMode(it) },
                 onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
                 onDateClick = { date ->
                     navController.currentBackStackEntry?.savedStateHandle?.apply {
@@ -455,6 +458,14 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
+                onBookmarkClick = { eventId ->
+                    if (isLoggedIn) {
+                        calendarViewModel.toggleBookmark(eventId)
+                    } else {
+                        navController.navigateToLoginFromMain()
+                    }
+                },
+                showBookmarkAction = isLoggedIn,
                 onOpenFilterClick = { calendarViewModel.openFilterSheet() },
                 onDismissFilterSheet = { calendarViewModel.dismissFilterSheet() },
                 onSelectFilterTab = { calendarViewModel.selectFilterTab(it) },

@@ -7,6 +7,7 @@ import java.time.YearMonth
 
 data class CalendarUiState(
     val currentMonth: YearMonth = currentHangshaMonth(),
+    val viewMode: CalendarViewMode = CalendarViewMode.CALENDAR,
     val visibleRange: EventDateRange = currentMonth.toCalendarGridRange(),
     val visibleDates: List<LocalDate> = visibleRange.toDateList(),
     val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
