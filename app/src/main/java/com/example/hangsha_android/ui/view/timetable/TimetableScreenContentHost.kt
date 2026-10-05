@@ -3,6 +3,8 @@ package com.example.hangsha_android.ui.view.timetable
 import com.example.hangsha_android.util.currentHangshaDate
 import android.app.TimePickerDialog
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -89,10 +91,16 @@ import com.example.hangsha_android.ui.components.LocalHangshaToastState
 import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.ui.theme.PureWhite
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 private const val GridStartMinute = 7 * 60
 private const val GridEndMinute = 24 * 60
 private const val MaxVisibleEventColumns = 2
+private const val EventPagerHintOffsetFraction = 0.24f
+private const val EventPagerHintDelayMillis = 350L
+private const val EventPagerHintPauseMillis = 90L
+private const val EventPagerHintOutDurationMillis = 360
+private const val EventPagerHintReturnDurationMillis = 320
 private val TimeLabelWidth = 26.dp
 private val HeaderHeight = 26.dp
 private val GridHourHeight = 56.dp
@@ -1266,11 +1274,40 @@ private fun TimetableEventDayPager(
         positioned.position.pageCount
     } ?: 1
     val pagerState = rememberPagerState(pageCount = { pageCount })
+    var hasPlayedSwipeHint by rememberSaveable(date) { mutableStateOf(false) }
 
     LaunchedEffect(date, positionedEvents, pageCount) {
         if (pagerState.currentPage != 0) {
             pagerState.scrollToPage(0)
         }
+    }
+
+    LaunchedEffect(date, pageCount) {
+        if (pageCount <= 1 || hasPlayedSwipeHint) return@LaunchedEffect
+        hasPlayedSwipeHint = true
+
+        delay(EventPagerHintDelayMillis)
+        if (pagerState.isScrollInProgress || pagerState.currentPage != 0) {
+            return@LaunchedEffect
+        }
+
+        pagerState.animateScrollToPage(
+            page = 0,
+            pageOffsetFraction = EventPagerHintOffsetFraction,
+            animationSpec = tween(
+                durationMillis = EventPagerHintOutDurationMillis,
+                easing = FastOutSlowInEasing
+            )
+        )
+        delay(EventPagerHintPauseMillis)
+        pagerState.animateScrollToPage(
+            page = 0,
+            pageOffsetFraction = 0f,
+            animationSpec = tween(
+                durationMillis = EventPagerHintReturnDurationMillis,
+                easing = FastOutSlowInEasing
+            )
+        )
     }
 
     HorizontalPager(
