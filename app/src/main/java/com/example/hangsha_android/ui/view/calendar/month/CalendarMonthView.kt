@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.month
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.util.currentHangshaDate
 import java.time.DayOfWeek
 import java.time.LocalDate

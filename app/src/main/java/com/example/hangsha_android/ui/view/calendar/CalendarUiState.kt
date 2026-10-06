@@ -9,10 +9,7 @@ data class CalendarUiState(
     val anchorDate: LocalDate = currentHangshaDate(),
     val period: CalendarPeriod = CalendarPeriod.MONTH,
     val viewMode: CalendarViewMode = CalendarViewMode.CALENDAR,
-    val visibleRange: EventDateRange = period.visibleRange(anchorDate),
-    val visibleDates: List<LocalDate> = visibleRange.toDateList(),
-    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
-    val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
+    val pageStates: Map<CalendarPageKey, CalendarPeriodPage> = emptyMap(),
     val organizationNames: Map<Long, String> = emptyMap(),
     val statusNames: Map<Long, String> = emptyMap(),
     val eventTypeNames: Map<Long, String> = emptyMap(),
@@ -25,9 +22,26 @@ data class CalendarUiState(
     val isFilterCountLoading: Boolean = false,
     val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
-    val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
+    val currentPage: CalendarPeriodPage?
+        get() = pageStates[CalendarPageKey.from(period, anchorDate)]
+
+    val visibleRange: EventDateRange
+        get() = period.visibleRange(anchorDate)
+
+    val visibleDates: List<LocalDate>
+        get() = visibleRange.toDateList()
+
+    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>
+        get() = currentPage?.filterSourceEventsByDate.orEmpty()
+
+    val eventsByDate: Map<LocalDate, List<CalendarEvent>>
+        get() = currentPage?.eventsByDate.orEmpty()
+
+    val isLoading: Boolean
+        get() = currentPage?.isLoading ?: true
+
     val contentRange: EventDateRange
         get() = period.contentRange(anchorDate)
 

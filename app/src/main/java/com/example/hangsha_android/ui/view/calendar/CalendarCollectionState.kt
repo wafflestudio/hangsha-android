@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 internal fun CalendarCollectionState(
     items: List<CalendarEventCardItem>,
     isLoading: Boolean,
+    emptyMessage: String,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -24,7 +25,7 @@ internal fun CalendarCollectionState(
 
             items.isEmpty() -> {
                 Text(
-                    text = "이 달에 표시할 행사가 없습니다.",
+                    text = emptyMessage,
                     modifier = Modifier.align(Alignment.Center),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

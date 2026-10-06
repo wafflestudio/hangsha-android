@@ -5,25 +5,53 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
+import com.example.hangsha_android.ui.view.calendar.list.CalendarListView
+import com.example.hangsha_android.ui.view.calendar.month.CalendarMonthView
 import java.time.LocalDate
+import java.time.YearMonth
 
 @Composable
 internal fun CalendarViewHost(
-    uiState: CalendarUiState,
-    eventCardItems: List<CalendarEventCardItem>,
+    period: CalendarPeriod,
+    anchorDate: LocalDate,
+    viewMode: CalendarViewMode,
+    page: CalendarPeriodPage,
+    organizationNames: Map<Long, String>,
+    eventTypeNames: Map<Long, String>,
     showBookmarkAction: Boolean,
     onDateClick: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     onBookmarkClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    when (uiState.viewMode) {
+    val eventCardItems = if (viewMode == CalendarViewMode.CALENDAR) {
+        emptyList()
+    } else {
+        remember(period, anchorDate, page.eventsByDate, organizationNames, eventTypeNames) {
+            buildCalendarEventCardItems(
+                contentRange = period.contentRange(anchorDate),
+                eventsByDate = page.eventsByDate,
+                organizationNames = organizationNames,
+                eventTypeNames = eventTypeNames
+            )
+        }
+    }
+    val emptyMessage = when (period) {
+        CalendarPeriod.MONTH -> "이 달에 표시할 행사가 없습니다."
+        CalendarPeriod.WEEK -> "이 주에 표시할 행사가 없습니다."
+        CalendarPeriod.DAY -> "이 날에 표시할 행사가 없습니다."
+    }
+
+    when (viewMode) {
         CalendarViewMode.LIST -> {
             CalendarListView(
                 items = eventCardItems,
-                isLoading = uiState.isLoading,
+                isLoading = page.isLoading,
+                emptyMessage = emptyMessage,
                 showBookmarkAction = showBookmarkAction,
                 onEventClick = onEventClick,
                 onBookmarkClick = onBookmarkClick,
@@ -34,7 +62,8 @@ internal fun CalendarViewHost(
         CalendarViewMode.GRID -> {
             CalendarGridView(
                 items = eventCardItems,
-                isLoading = uiState.isLoading,
+                isLoading = page.isLoading,
+                emptyMessage = emptyMessage,
                 showBookmarkAction = showBookmarkAction,
                 onEventClick = onEventClick,
                 onBookmarkClick = onBookmarkClick,
@@ -44,7 +73,9 @@ internal fun CalendarViewHost(
 
         CalendarViewMode.CALENDAR -> {
             CalendarTemporalViewHost(
-                uiState = uiState,
+                period = period,
+                anchorDate = anchorDate,
+                page = page,
                 onDateClick = onDateClick,
                 onEventClick = onEventClick,
                 modifier = modifier
@@ -55,18 +86,20 @@ internal fun CalendarViewHost(
 
 @Composable
 private fun CalendarTemporalViewHost(
-    uiState: CalendarUiState,
+    period: CalendarPeriod,
+    anchorDate: LocalDate,
+    page: CalendarPeriodPage,
     onDateClick: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     modifier: Modifier
 ) {
-    when (uiState.period) {
+    when (period) {
         CalendarPeriod.MONTH -> {
             CalendarMonthView(
-                visibleDates = uiState.visibleDates,
-                currentMonth = uiState.currentMonth,
-                eventsByDate = uiState.eventsByDate,
-                isLoading = uiState.isLoading,
+                visibleDates = period.visibleRange(anchorDate).toDateList(),
+                currentMonth = YearMonth.from(anchorDate),
+                eventsByDate = page.eventsByDate,
+                isLoading = page.isLoading,
                 onDateClick = onDateClick,
                 onEventClick = onEventClick,
                 modifier = modifier
