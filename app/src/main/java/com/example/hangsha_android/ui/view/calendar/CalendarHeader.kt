@@ -54,7 +54,6 @@ internal fun CalendarHeader(
         )
         Spacer(modifier = Modifier.width(8.dp))
         HeaderNavigationButtons(
-            isLoading = isLoading,
             onPreviousPeriodClick = onPreviousPeriodClick,
             onNextPeriodClick = onNextPeriodClick
         )
@@ -86,12 +85,11 @@ internal fun CalendarHeader(
 
 @Composable
 private fun HeaderNavigationButtons(
-    isLoading: Boolean,
     onPreviousPeriodClick: () -> Unit,
     onNextPeriodClick: () -> Unit
 ) {
     HeaderCircleButton(
-        enabled = !isLoading,
+        enabled = true,
         onClick = onPreviousPeriodClick
     ) {
         Icon(
@@ -102,7 +100,7 @@ private fun HeaderNavigationButtons(
     }
     Spacer(modifier = Modifier.width(1.dp))
     HeaderCircleButton(
-        enabled = !isLoading,
+        enabled = true,
         onClick = onNextPeriodClick
     ) {
         Icon(

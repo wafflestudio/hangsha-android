@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.month
 
 import androidx.compose.ui.graphics.Color
 

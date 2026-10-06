@@ -1,5 +1,6 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.month
 
+import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.util.toHangshaDate
 import java.time.LocalDate
 import java.time.LocalDateTime

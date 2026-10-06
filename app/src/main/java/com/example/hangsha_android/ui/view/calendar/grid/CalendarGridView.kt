@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.grid
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,12 +28,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.view.calendar.CalendarBookmarkButton
+import com.example.hangsha_android.ui.view.calendar.CalendarCollectionState
+import com.example.hangsha_android.ui.view.calendar.CalendarEventCardItem
+import com.example.hangsha_android.ui.view.calendar.CalendarEventThumbnail
+import com.example.hangsha_android.ui.view.calendar.rememberCalendarEventCountdown
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 
 @Composable
 internal fun CalendarGridView(
     items: List<CalendarEventCardItem>,
     isLoading: Boolean,
+    emptyMessage: String,
     showBookmarkAction: Boolean,
     onEventClick: (Long) -> Unit,
     onBookmarkClick: (Long) -> Unit,
@@ -42,6 +48,7 @@ internal fun CalendarGridView(
     CalendarCollectionState(
         items = items,
         isLoading = isLoading,
+        emptyMessage = emptyMessage,
         modifier = modifier
     ) {
         LazyVerticalGrid(

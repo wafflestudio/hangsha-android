@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.month
 
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.Canvas
@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.util.currentHangshaDate
 import java.time.DayOfWeek
