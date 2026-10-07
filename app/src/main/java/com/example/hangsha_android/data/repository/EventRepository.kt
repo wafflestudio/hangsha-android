@@ -54,6 +54,24 @@ class EventRepository @Inject constructor(
         }
     }
 
+    suspend fun getCalendarDayEvents(
+        date: LocalDate,
+        filters: CalendarFilterState
+    ): DayEventsResponse {
+        return collectDayEventPages { page, size ->
+            eventApi.getDayEvents(
+                date = date.toString(),
+                page = page,
+                size = size,
+                orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
+                statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
+                eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
+                excludedKeywords = filters.excludedKeywords
+                    .takeIf { it.isNotEmpty() && !isLoggedIn() }
+            )
+        }
+    }
+
 
     suspend fun getEventCount(
         range: EventDateRange,

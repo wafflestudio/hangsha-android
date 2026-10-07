@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
+import com.example.hangsha_android.ui.view.calendar.day.CalendarDayView
 import com.example.hangsha_android.ui.view.calendar.list.CalendarListView
 import com.example.hangsha_android.ui.view.calendar.month.CalendarMonthView
 import java.time.LocalDate
@@ -114,8 +115,11 @@ private fun CalendarTemporalViewHost(
         }
 
         CalendarPeriod.DAY -> {
-            FutureCalendarPeriodView(
-                message = "일별 일정 보기를 준비 중입니다.",
+            CalendarDayView(
+                date = anchorDate,
+                events = page.eventsByDate[anchorDate].orEmpty(),
+                isLoading = page.isLoading,
+                onEventClick = onEventClick,
                 modifier = modifier
             )
         }
