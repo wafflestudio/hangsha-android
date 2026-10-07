@@ -1,16 +1,15 @@
 package com.example.hangsha_android.ui.view.calendar
 
-import com.example.hangsha_android.util.currentHangshaMonth
+import com.example.hangsha_android.util.currentHangshaDate
 import com.example.hangsha_android.data.repository.model.EventDateRange
 import java.time.LocalDate
 import java.time.YearMonth
 
 data class CalendarUiState(
-    val currentMonth: YearMonth = currentHangshaMonth(),
-    val visibleRange: EventDateRange = currentMonth.toCalendarGridRange(),
-    val visibleDates: List<LocalDate> = visibleRange.toDateList(),
-    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
-    val eventsByDate: Map<LocalDate, List<CalendarEvent>> = emptyMap(),
+    val anchorDate: LocalDate = currentHangshaDate(),
+    val period: CalendarPeriod = CalendarPeriod.MONTH,
+    val viewMode: CalendarViewMode = CalendarViewMode.CALENDAR,
+    val pageStates: Map<CalendarPageKey, CalendarPeriodPage> = emptyMap(),
     val organizationNames: Map<Long, String> = emptyMap(),
     val statusNames: Map<Long, String> = emptyMap(),
     val eventTypeNames: Map<Long, String> = emptyMap(),
@@ -23,9 +22,32 @@ data class CalendarUiState(
     val isFilterCountLoading: Boolean = false,
     val hasAppliedServerFilters: Boolean = appliedFilters.hasActiveFilters,
     val isFilterSheetVisible: Boolean = false,
-    val isLoading: Boolean = true,
     val errorMessage: String? = null
 ) {
+    val currentPage: CalendarPeriodPage?
+        get() = pageStates[CalendarPageKey.from(period, anchorDate)]
+
+    val visibleRange: EventDateRange
+        get() = period.visibleRange(anchorDate)
+
+    val visibleDates: List<LocalDate>
+        get() = visibleRange.toDateList()
+
+    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>
+        get() = currentPage?.filterSourceEventsByDate.orEmpty()
+
+    val eventsByDate: Map<LocalDate, List<CalendarEvent>>
+        get() = currentPage?.eventsByDate.orEmpty()
+
+    val isLoading: Boolean
+        get() = currentPage?.isLoading ?: true
+
+    val contentRange: EventDateRange
+        get() = period.contentRange(anchorDate)
+
+    val currentMonth: YearMonth
+        get() = YearMonth.from(anchorDate)
+
     val hasActiveFilters: Boolean
         get() = appliedFilters.hasActiveFilters
 }

@@ -10,17 +10,16 @@ import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.model.CategoryType
-import com.example.hangsha_android.data.repository.model.EventDateRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDate
-import java.time.YearMonth
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.currentCoroutineContext
 import retrofit2.HttpException
 import retrofit2.Response
 
@@ -44,7 +44,8 @@ class CalendarViewModel @Inject constructor(
     )
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
-    private var loadJob: Job? = null
+    private val pageLoadJobs = mutableMapOf<CalendarPageKey, Job>()
+    private var cacheFilters = _uiState.value.appliedFilters
     private var filterCountJob: Job? = null
 
     init {
@@ -102,22 +103,76 @@ class CalendarViewModel @Inject constructor(
                 onBookmarkedEventIdsChanged(eventIds)
             }
         }
-        loadMonth(_uiState.value.currentMonth)
+        loadPeriod(
+            anchorDate = _uiState.value.anchorDate,
+            period = _uiState.value.period
+        )
     }
 
-    fun showPreviousMonth() {
-        loadMonth(_uiState.value.currentMonth.minusMonths(1))
+    fun showPeriod(anchorDate: LocalDate) {
+        val state = _uiState.value
+        if (CalendarPageKey.from(state.period, state.anchorDate) ==
+            CalendarPageKey.from(state.period, anchorDate)
+        ) return
+        loadPeriod(anchorDate = anchorDate, period = state.period)
     }
 
-    fun showNextMonth() {
-        loadMonth(_uiState.value.currentMonth.plusMonths(1))
+    fun setPeriod(period: CalendarPeriod) {
+        val state = _uiState.value
+        if (state.period == period) return
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = period
+        )
+    }
+
+    fun setViewMode(viewMode: CalendarViewMode) {
+        _uiState.update { state ->
+            if (state.viewMode == viewMode) state else state.copy(viewMode = viewMode)
+        }
+    }
+
+    fun toggleBookmark(eventId: Long) {
+        val currentState = _uiState.value
+        val targetEvent = currentState.pageStates.values
+            .asSequence()
+            .flatMap { page -> page.filterSourceEventsByDate.values.asSequence().flatten() }
+            .firstOrNull { event -> event.id == eventId }
+            ?: return
+        val shouldBookmark = !targetEvent.isBookmarked
+
+        _uiState.update { state ->
+            state.withUpdatedBookmark(
+                eventId = eventId,
+                isBookmarked = shouldBookmark
+            ).copy(errorMessage = null)
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                bookmarkRepository.setBookmark(
+                    eventId = eventId,
+                    isBookmarked = shouldBookmark
+                )
+            }.onFailure { error ->
+                _uiState.update { state ->
+                    state.withUpdatedBookmark(
+                        eventId = eventId,
+                        isBookmarked = !shouldBookmark
+                    ).copy(errorMessage = mapBookmarkErrorMessage(error))
+                }
+            }
+        }
     }
 
     fun retry() {
-        loadMonth(
-            month = _uiState.value.currentMonth,
-            filters = _uiState.value.appliedFilters,
-            hasAppliedServerFilters = _uiState.value.hasAppliedServerFilters
+        val state = _uiState.value
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
+            filters = state.appliedFilters,
+            hasAppliedServerFilters = state.hasAppliedServerFilters,
+            forceRefresh = true
         )
     }
 
@@ -147,8 +202,9 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = currentState.currentMonth,
+        loadPeriod(
+            anchorDate = currentState.anchorDate,
+            period = currentState.period,
             filters = normalizedFilters,
             hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
@@ -277,17 +333,21 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = state.currentMonth,
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
             filters = appliedFilters,
-            hasAppliedServerFilters = true
+            hasAppliedServerFilters = true,
+            forceRefresh = true
         )
     }
     private fun requestFilterCount() {
         val state = _uiState.value
         if (!state.isFilterSheetVisible) return
 
-        val month = state.currentMonth
+        val anchorDate = state.anchorDate
+        val period = state.period
+        val contentRange = state.contentRange
         val filters = state.draftFilters
         filterCountJob?.cancel()
         _uiState.update {
@@ -302,17 +362,15 @@ class CalendarViewModel @Inject constructor(
                 delay(FILTER_COUNT_DEBOUNCE_MS)
                 val count = withTimeout(FILTER_COUNT_TIMEOUT_MS) {
                     eventRepository.getEventCount(
-                        range = EventDateRange(
-                            from = month.atDay(1),
-                            to = month.atEndOfMonth()
-                        ),
+                        range = contentRange,
                         filters = filters
                     ).requireCount()
                 }
                 _uiState.update { current ->
                     if (
                         current.isFilterSheetVisible &&
-                        current.currentMonth == month &&
+                        current.anchorDate == anchorDate &&
+                        current.period == period &&
                         current.draftFilters == filters
                     ) {
                         current.copy(
@@ -329,7 +387,8 @@ class CalendarViewModel @Inject constructor(
                 _uiState.update { current ->
                     if (
                         current.isFilterSheetVisible &&
-                        current.currentMonth == month &&
+                        current.anchorDate == anchorDate &&
+                        current.period == period &&
                         current.draftFilters == filters
                     ) {
                         current.copy(
@@ -343,86 +402,128 @@ class CalendarViewModel @Inject constructor(
             }
         }
     }
-    // 현재 월의 전체 source 데이터를 먼저 가져오고,
-    // 그다음 화면 표시용 데이터만 분기해서 구성한다.
-    private fun loadMonth(
-        month: YearMonth,
+    // Each period keeps its own page data so adjacent pages can render during a swipe.
+    private fun loadPeriod(
+        anchorDate: LocalDate,
+        period: CalendarPeriod,
         filters: CalendarFilterState = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
-        preserveFilterSheetState: Boolean = false
+        preserveFilterSheetState: Boolean = false,
+        forceRefresh: Boolean = false
     ) {
-        val visibleRange = month.toCalendarGridRange()
-        val visibleDates = visibleRange.toDateList()
+        val key = CalendarPageKey.from(period, anchorDate)
+        val retainedKeys = (-2..2).map { offset ->
+            CalendarPageKey.from(period, period.move(anchorDate, offset.toLong()))
+        }.toSet()
+        val filtersChanged = cacheFilters != filters
 
-        loadJob?.cancel()
-        _uiState.update {
-            it.copy(
-                currentMonth = month,
-                visibleRange = visibleRange,
-                visibleDates = visibleDates,
+        if (filtersChanged) {
+            pageLoadJobs.values.toList().forEach(Job::cancel)
+            pageLoadJobs.clear()
+            cacheFilters = filters
+        } else {
+            pageLoadJobs.keys.filter { it !in retainedKeys }.forEach { staleKey ->
+                pageLoadJobs.remove(staleKey)?.cancel()
+            }
+        }
+        if (!preserveFilterSheetState) filterCountJob?.cancel()
+
+        _uiState.update { state ->
+            val pages = if (filtersChanged) emptyMap() else {
+                state.pageStates.filterKeys { it in retainedKeys }
+            }
+            val cachedPage = pages[key]
+            state.copy(
+                anchorDate = anchorDate,
+                period = period,
+                pageStates = pages,
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
-                isLoading = true,
-                errorMessage = null,
-                isFilterSheetVisible = if (preserveFilterSheetState) it.isFilterSheetVisible else false,
-                draftFilters = if (preserveFilterSheetState) it.draftFilters else filters,
-                selectedFilterTab = if (preserveFilterSheetState) it.selectedFilterTab else CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = if (preserveFilterSheetState) it.excludeKeywordInput else ""
+                errorMessage = cachedPage?.errorMessage,
+                isFilterSheetVisible = if (preserveFilterSheetState) state.isFilterSheetVisible else false,
+                draftFilters = if (preserveFilterSheetState) state.draftFilters else filters,
+                selectedFilterTab = if (preserveFilterSheetState) state.selectedFilterTab else CalendarFilterTab.EVENT_TYPE,
+                excludeKeywordInput = if (preserveFilterSheetState) state.excludeKeywordInput else ""
             )
         }
 
-        loadJob = viewModelScope.launch {
-            val sourceUserId = bookmarkRepository.currentUserId()
-            runCatching {
+        ensurePage(key, filters, forceRefresh)
+        ensurePage(CalendarPageKey.from(period, period.move(anchorDate, -1)), filters)
+        ensurePage(CalendarPageKey.from(period, period.move(anchorDate, 1)), filters)
+    }
+
+    private fun ensurePage(
+        key: CalendarPageKey,
+        filters: CalendarFilterState,
+        forceRefresh: Boolean = false
+    ) {
+        val existing = _uiState.value.pageStates[key]
+        if (!forceRefresh && existing != null &&
+            (!existing.isLoading || pageLoadJobs.containsKey(key))
+        ) return
+
+        pageLoadJobs.remove(key)?.cancel()
+        _uiState.update { state ->
+            state.copy(pageStates = state.pageStates + (key to CalendarPeriodPage()))
+        }
+
+        val job = viewModelScope.launch {
+            try {
+                val sourceUserId = bookmarkRepository.currentUserId()
                 val response = eventRepository.getEvents(
-                    range = visibleRange,
+                    range = key.period.visibleRange(key.startDate),
                     filters = filters
                 )
                 val body = response.requireBody("Events response was empty.")
                 bookmarkRepository.syncKnownRemoteBookmarks(body.toBookmarkMap(), sourceUserId)
-                val visibleEventsByDate = body.toCalendarEventsByDate()
-                val filterOptions = buildFilterOptions()
-
-                CalendarMonthLoadResult(
-                    filterSourceEventsByDate = visibleEventsByDate,
-                    visibleEventsByDate = visibleEventsByDate,
-                    filterOptions = filterOptions
+                val sourceEvents = body.toCalendarEventsByDate()
+                    .withBookmarkState(bookmarkRepository.currentBookmarkedEventIds())
+                currentCoroutineContext().ensureActive()
+                updatePage(
+                    key,
+                    filters,
+                    CalendarPeriodPage(
+                        filterSourceEventsByDate = sourceEvents,
+                        eventsByDate = sourceEvents.applyFilters(filters),
+                        isLoading = false
+                    )
                 )
-            }.fold(
-                onSuccess = { result ->
-                    _uiState.update {
-                        val bookmarkIds = bookmarkRepository.currentBookmarkedEventIds()
-                        val filterSourceEventsByDate = result.filterSourceEventsByDate
-                            .withBookmarkState(bookmarkIds)
-                        val visibleEventsByDate = result.visibleEventsByDate
-                            .withBookmarkState(bookmarkIds)
-                        it.copy(
-                            filterSourceEventsByDate = filterSourceEventsByDate,
-                            eventsByDate = visibleEventsByDate.applyFilters(
-                                filters = filters
-                            ),
-                            availableFilterOptions = result.filterOptions,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            filterSourceEventsByDate = emptyMap(),
-                            eventsByDate = emptyMap(),
-                            availableFilterOptions = CalendarFilterOptions(),
-                            isLoading = false,
-                            errorMessage = mapErrorMessage(error)
-                        )
-                    }
-                }
-            )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                updatePage(
+                    key,
+                    filters,
+                    CalendarPeriodPage(
+                        isLoading = false,
+                        errorMessage = mapErrorMessage(error)
+                    )
+                )
+            }
+        }
+        pageLoadJobs[key] = job
+        job.invokeOnCompletion {
+            if (pageLoadJobs[key] === job) pageLoadJobs.remove(key)
         }
     }
 
-    // 새 카테고리 목록 API의 ID만 행사 조회 필터로 사용한다.
+    private fun updatePage(
+        key: CalendarPageKey,
+        filters: CalendarFilterState,
+        page: CalendarPeriodPage
+    ) {
+        if (cacheFilters != filters) return
+        _uiState.update { state ->
+            if (key !in state.pageStates) return@update state
+            val updated = state.copy(pageStates = state.pageStates + (key to page))
+            if (CalendarPageKey.from(state.period, state.anchorDate) != key) updated else {
+                updated.copy(
+                    availableFilterOptions = buildFilterOptions(),
+                    errorMessage = page.errorMessage
+                )
+            }
+        }
+    }
     private fun buildFilterOptions(): CalendarFilterOptions {
         return CalendarFilterOptions(
             orgIds = categoryRepository.organizations.value.map { item -> item.key.id },
@@ -433,37 +534,54 @@ class CalendarViewModel @Inject constructor(
 
     private fun mapErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
             is HttpException -> when (error.code()) {
-                400 -> "\uD589\uC0AC \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                403 -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBCFC \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
-                404 -> "\uD589\uC0AC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                400 -> "행사 요청이 올바르지 않습니다."
+                401 -> "로그인이 필요합니다."
+                403 -> "행사 목록을 볼 권한이 없습니다."
+                404 -> "행사 정보를 찾을 수 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "행사 목록을 불러오지 못했습니다. (${error.code()})"
             }
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IllegalStateException -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
-            else -> "\uD589\uC0AC \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            is IllegalStateException -> "행사 목록을 불러오지 못했습니다."
+            else -> "행사 목록을 불러오지 못했습니다."
+        }
+    }
+
+    private fun mapBookmarkErrorMessage(error: Throwable): String {
+        return when (error) {
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
+            is HttpException -> when (error.code()) {
+                400 -> "북마크 요청이 올바르지 않습니다."
+                401 -> "로그인이 필요합니다."
+                403 -> "이 북마크를 변경할 권한이 없습니다."
+                404 -> "행사 정보를 찾을 수 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "북마크를 변경하지 못했습니다. (${error.code()})"
+            }
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            else -> "북마크를 변경하지 못했습니다."
         }
     }
 
     private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
         return when (error) {
-            is UnknownHostException -> "\uC778\uD130\uB137 \uC5F0\uACB0\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694."
-            is SocketTimeoutException -> "\uC694\uCCAD \uC2DC\uAC04\uC774 \uCD08\uACFC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
+            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
             is HttpException -> when (error.code()) {
-                400 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC \uC694\uCCAD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-                401 -> "\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-                403 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD560 \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
-                404 -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-                in 500..599 -> "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-                else -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. (${error.code()})"
+                400 -> "제외 키워드 요청이 올바르지 않습니다."
+                401 -> "로그인이 필요합니다."
+                403 -> "제외 키워드를 변경할 권한이 없습니다."
+                404 -> "제외 키워드 정보를 찾을 수 없습니다."
+                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                else -> "제외 키워드를 변경하지 못했습니다. (${error.code()})"
             }
-            is IOException -> "\uB124\uD2B8\uC6CC\uD06C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
-            is IllegalStateException -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
-            else -> "\uC81C\uC678 \uD0A4\uC6CC\uB4DC\uB97C \uBCC0\uACBD\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
+            is IllegalStateException -> "제외 키워드를 변경하지 못했습니다."
+            else -> "제외 키워드를 변경하지 못했습니다."
         }
     }
 
@@ -486,8 +604,9 @@ class CalendarViewModel @Inject constructor(
                 errorMessage = null
             )
         }
-        loadMonth(
-            month = previousState.currentMonth,
+        loadPeriod(
+            anchorDate = previousState.anchorDate,
+            period = previousState.period,
             filters = updatedAppliedFilters,
             hasAppliedServerFilters = updatedAppliedFilters.hasActiveFilters,
             preserveFilterSheetState = true
@@ -496,15 +615,15 @@ class CalendarViewModel @Inject constructor(
     }
     private fun onBookmarkedEventIdsChanged(eventIds: Set<Long>) {
         _uiState.update {
-            val filterSourceEventsByDate = it.filterSourceEventsByDate.withBookmarkState(eventIds)
-            val eventsByDate = it.eventsByDate.withBookmarkState(eventIds)
-                .applyFilters(
-                    filters = it.appliedFilters
-                )
-
             it.copy(
-                filterSourceEventsByDate = filterSourceEventsByDate,
-                eventsByDate = eventsByDate
+                pageStates = it.pageStates.mapValues { (_, page) ->
+                    page.copy(
+                        filterSourceEventsByDate = page.filterSourceEventsByDate
+                            .withBookmarkState(eventIds),
+                        eventsByDate = page.eventsByDate.withBookmarkState(eventIds)
+                            .applyFilters(it.appliedFilters)
+                    )
+                }
             )
         }
     }
@@ -522,8 +641,9 @@ class CalendarViewModel @Inject constructor(
                 hasAppliedServerFilters = applied.hasActiveFilters
             )
         }
-        loadMonth(
-            month = state.currentMonth,
+        loadPeriod(
+            anchorDate = state.anchorDate,
+            period = state.period,
             filters = applied,
             hasAppliedServerFilters = applied.hasActiveFilters,
             preserveFilterSheetState = true
@@ -552,12 +672,6 @@ class CalendarViewModel @Inject constructor(
         )
     }
 }
-
-private data class CalendarMonthLoadResult(
-    val filterSourceEventsByDate: Map<LocalDate, List<CalendarEvent>>,
-    val visibleEventsByDate: Map<LocalDate, List<CalendarEvent>>,
-    val filterOptions: CalendarFilterOptions
-)
 
 private fun MonthlyEventsResponse.toCalendarEventsByDate(): Map<LocalDate, List<CalendarEvent>> {
     return byDate.entries
@@ -617,6 +731,41 @@ private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
             event.copy(isBookmarked = event.id in bookmarkedEventIds)
         }
     }
+}
+
+private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
+    eventId: Long,
+    isBookmarked: Boolean
+): Map<LocalDate, List<CalendarEvent>> {
+    return mapValues { (_, events) ->
+        events.map { event ->
+            if (event.id == eventId) {
+                event.copy(isBookmarked = isBookmarked)
+            } else {
+                event
+            }
+        }
+    }
+}
+
+private fun CalendarUiState.withUpdatedBookmark(
+    eventId: Long,
+    isBookmarked: Boolean
+): CalendarUiState {
+    return copy(
+        pageStates = pageStates.mapValues { (_, page) ->
+            page.copy(
+                filterSourceEventsByDate = page.filterSourceEventsByDate.withBookmarkState(
+                    eventId = eventId,
+                    isBookmarked = isBookmarked
+                ),
+                eventsByDate = page.eventsByDate.withBookmarkState(
+                    eventId = eventId,
+                    isBookmarked = isBookmarked
+                ).applyFilters(appliedFilters)
+            )
+        }
+    )
 }
 
 private fun Response<EventCountResponse>.requireCount(): Int {
