@@ -1,7 +1,10 @@
 package com.example.hangsha_android.ui.view.calendar
 
-import com.example.hangsha_android.util.currentHangshaDate
 import com.example.hangsha_android.data.repository.model.EventDateRange
+import com.example.hangsha_android.data.repository.model.EventFilters
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterOptions
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterTab
+import com.example.hangsha_android.util.currentHangshaDate
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -13,8 +16,8 @@ data class CalendarUiState(
     val organizationNames: Map<Long, String> = emptyMap(),
     val statusNames: Map<Long, String> = emptyMap(),
     val eventTypeNames: Map<Long, String> = emptyMap(),
-    val appliedFilters: CalendarFilterState = CalendarFilterState(),
-    val draftFilters: CalendarFilterState = CalendarFilterState(),
+    val appliedFilters: EventFilters = EventFilters(),
+    val draftFilters: EventFilters = EventFilters(),
     val availableFilterOptions: CalendarFilterOptions = CalendarFilterOptions(),
     val selectedFilterTab: CalendarFilterTab = CalendarFilterTab.EVENT_TYPE,
     val excludeKeywordInput: String = "",
@@ -50,32 +53,4 @@ data class CalendarUiState(
 
     val hasActiveFilters: Boolean
         get() = appliedFilters.hasActiveFilters
-}
-
-internal fun Map<LocalDate, List<CalendarEvent>>.applyFilters(
-    filters: CalendarFilterState
-): Map<LocalDate, List<CalendarEvent>> {
-    if (!filters.hasActiveFilters) return this
-
-    return entries
-        .mapNotNull { (date, events) ->
-            val filteredEvents = events.filter {
-                it.matches(filters = filters)
-            }
-            if (filteredEvents.isEmpty()) {
-                null
-            } else {
-                date to filteredEvents
-            }
-        }
-        .toMap(linkedMapOf())
-}
-
-private fun CalendarEvent.matches(
-    filters: CalendarFilterState
-): Boolean {
-    if (filters.orgIds.isNotEmpty() && (orgId == null || orgId !in filters.orgIds)) return false
-    if (filters.statusIds.isNotEmpty() && (statusId == null || statusId !in filters.statusIds)) return false
-    if (filters.eventTypeIds.isNotEmpty() && (eventTypeId == null || eventTypeId !in filters.eventTypeIds)) return false
-    return true
 }

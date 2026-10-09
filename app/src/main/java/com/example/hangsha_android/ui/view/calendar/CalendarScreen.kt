@@ -1,22 +1,18 @@
 package com.example.hangsha_android.ui.view.calendar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterBottomSheet
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterTab
+import com.example.hangsha_android.ui.view.calendar.header.CalendarPeriodHeader
 import com.example.hangsha_android.ui.view.calendar.pager.CalendarPeriodPager
 import java.time.LocalDate
 
@@ -74,23 +70,12 @@ fun CalendarScreen(
                 vertical = ScreenVerticalPadding
             )
     ) {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            CalendarPeriodToggle(
-                selectedPeriod = uiState.period,
-                onPeriodSelected = onCalendarPeriodChange
-            )
-            IconButton(
-                onClick = onSearchClick,
-                enabled = !uiState.isLoading,
-                modifier = Modifier.align(Alignment.CenterEnd)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = "행사 검색",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        CalendarPeriodHeader(
+            selectedPeriod = uiState.period,
+            isLoading = uiState.isLoading,
+            onPeriodSelected = onCalendarPeriodChange,
+            onSearchClick = onSearchClick
+        )
         Spacer(modifier = Modifier.height(4.dp))
         CalendarPeriodPager(
             uiState = uiState,

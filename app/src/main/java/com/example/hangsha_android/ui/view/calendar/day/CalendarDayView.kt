@@ -29,8 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.ui.components.eventPreviewClickable
+import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.LocalDate
 

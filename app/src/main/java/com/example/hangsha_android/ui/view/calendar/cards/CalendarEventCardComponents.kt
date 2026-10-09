@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.cards
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

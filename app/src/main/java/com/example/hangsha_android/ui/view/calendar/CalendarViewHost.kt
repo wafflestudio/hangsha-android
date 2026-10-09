@@ -6,12 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.example.hangsha_android.ui.components.EventPreviewHost
-import com.example.hangsha_android.ui.view.event.toEventPreview
-import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
+import com.example.hangsha_android.ui.view.calendar.cards.buildCalendarEventCardItems
 import com.example.hangsha_android.ui.view.calendar.day.CalendarDayView
+import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
 import com.example.hangsha_android.ui.view.calendar.list.CalendarListView
 import com.example.hangsha_android.ui.view.calendar.month.CalendarMonthView
 import com.example.hangsha_android.ui.view.calendar.week.CalendarWeekView
+import com.example.hangsha_android.ui.view.event.toEventPreview
 import java.time.LocalDate
 import java.time.YearMonth
 
