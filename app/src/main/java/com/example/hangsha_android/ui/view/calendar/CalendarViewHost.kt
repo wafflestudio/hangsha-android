@@ -1,16 +1,16 @@
 package com.example.hangsha_android.ui.view.calendar
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.hangsha_android.ui.components.EventPreviewHost
+import com.example.hangsha_android.ui.view.event.toEventPreview
 import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
+import com.example.hangsha_android.ui.view.calendar.day.CalendarDayView
 import com.example.hangsha_android.ui.view.calendar.list.CalendarListView
 import com.example.hangsha_android.ui.view.calendar.month.CalendarMonthView
+import com.example.hangsha_android.ui.view.calendar.week.CalendarWeekView
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -18,12 +18,16 @@ import java.time.YearMonth
 internal fun CalendarViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
+    initialWeekDayIndex: Int,
+    isCurrentPage: Boolean,
     viewMode: CalendarViewMode,
     page: CalendarPeriodPage,
     organizationNames: Map<Long, String>,
     eventTypeNames: Map<Long, String>,
     showBookmarkAction: Boolean,
     onDateClick: (LocalDate) -> Unit,
+    onOpenDayCalendar: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     onBookmarkClick: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -72,24 +76,38 @@ internal fun CalendarViewHost(
         }
 
         CalendarViewMode.CALENDAR -> {
-            CalendarTemporalViewHost(
-                period = period,
-                anchorDate = anchorDate,
-                page = page,
-                onDateClick = onDateClick,
-                onEventClick = onEventClick,
-                modifier = modifier
-            )
+            val previews = remember(page.eventsByDate, organizationNames, eventTypeNames) {
+                page.eventsByDate.values.flatten().distinctBy { it.id }.associate { event ->
+                    event.id to event.toEventPreview(organizationNames, eventTypeNames)
+                }
+            }
+            EventPreviewHost(events = previews, modifier = modifier) {
+                CalendarTemporalViewHost(
+                    period = period,
+                    anchorDate = anchorDate,
+                    initialWeekDayIndex = initialWeekDayIndex,
+                    isCurrentPage = isCurrentPage,
+                    page = page,
+                    onDateClick = onDateClick,
+                    onOpenDayCalendar = onOpenDayCalendar,
+                    onVisibleWeekDayChange = onVisibleWeekDayChange,
+                    onEventClick = onEventClick,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }
-
 @Composable
 private fun CalendarTemporalViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
+    initialWeekDayIndex: Int,
+    isCurrentPage: Boolean,
     page: CalendarPeriodPage,
     onDateClick: (LocalDate) -> Unit,
+    onOpenDayCalendar: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     modifier: Modifier
 ) {
@@ -107,34 +125,27 @@ private fun CalendarTemporalViewHost(
         }
 
         CalendarPeriod.WEEK -> {
-            FutureCalendarPeriodView(
-                message = "주별 일정 보기를 준비 중입니다.",
+            CalendarWeekView(
+                weekStart = period.visibleRange(anchorDate).from,
+                initialDayIndex = initialWeekDayIndex,
+                isCurrentPage = isCurrentPage,
+                eventsByDate = page.eventsByDate,
+                isLoading = page.isLoading,
+                onOpenDayCalendar = onOpenDayCalendar,
+                onVisibleDayChange = onVisibleWeekDayChange,
+                onEventClick = onEventClick,
                 modifier = modifier
             )
         }
 
         CalendarPeriod.DAY -> {
-            FutureCalendarPeriodView(
-                message = "일별 일정 보기를 준비 중입니다.",
+            CalendarDayView(
+                date = anchorDate,
+                events = page.eventsByDate[anchorDate].orEmpty(),
+                isLoading = page.isLoading,
+                onEventClick = onEventClick,
                 modifier = modifier
             )
         }
-    }
-}
-
-@Composable
-private fun FutureCalendarPeriodView(
-    message: String,
-    modifier: Modifier
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

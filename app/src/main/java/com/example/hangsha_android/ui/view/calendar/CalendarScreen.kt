@@ -1,13 +1,16 @@
 package com.example.hangsha_android.ui.view.calendar
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.view.calendar.pager.CalendarPeriodPager
@@ -19,7 +22,10 @@ private val ScreenVerticalPadding = 15.dp
 @Composable
 fun CalendarScreen(
     uiState: CalendarUiState,
+    onCalendarPeriodChange: (CalendarPeriod) -> Unit,
     onPeriodSelected: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
+    onOpenDayCalendar: (LocalDate) -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onDateClick: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
@@ -64,10 +70,18 @@ fun CalendarScreen(
                 vertical = ScreenVerticalPadding
             )
     ) {
-        Spacer(modifier = Modifier.height(25.dp))
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CalendarPeriodToggle(
+                selectedPeriod = uiState.period,
+                onPeriodSelected = onCalendarPeriodChange
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
         CalendarPeriodPager(
             uiState = uiState,
             onPeriodSelected = onPeriodSelected,
+            onVisibleWeekDayChange = onVisibleWeekDayChange,
+            onOpenDayCalendar = onOpenDayCalendar,
             onViewModeChange = onViewModeChange,
             onDateClick = onDateClick,
             onEventClick = onEventClick,

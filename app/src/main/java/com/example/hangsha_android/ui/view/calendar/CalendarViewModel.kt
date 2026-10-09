@@ -117,12 +117,37 @@ class CalendarViewModel @Inject constructor(
         loadPeriod(anchorDate = anchorDate, period = state.period)
     }
 
+    fun showVisibleWeekDay(date: LocalDate) {
+        _uiState.update { state ->
+            if (state.period != CalendarPeriod.WEEK ||
+                CalendarPageKey.from(CalendarPeriod.WEEK, state.anchorDate) !=
+                CalendarPageKey.from(CalendarPeriod.WEEK, date)
+            ) state else state.copy(anchorDate = date)
+        }
+    }
+
     fun setPeriod(period: CalendarPeriod) {
         val state = _uiState.value
         if (state.period == period) return
         loadPeriod(
             anchorDate = state.anchorDate,
             period = period
+        )
+    }
+
+    fun showDayCalendar(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.CALENDAR
+        )
+    }
+
+    fun showDayList(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.LIST
         )
     }
 
@@ -173,40 +198,6 @@ class CalendarViewModel @Inject constructor(
             filters = state.appliedFilters,
             hasAppliedServerFilters = state.hasAppliedServerFilters,
             forceRefresh = true
-        )
-    }
-
-    fun restoreAppliedFilters(
-        filters: CalendarFilterState,
-        hasAppliedServerFilters: Boolean
-    ) {
-        val normalizedFilters = filters.copy(
-            excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
-        ).normalizedAgainstCatalog(categoryRepository.loadedCategoryTypes.value)
-        val currentState = _uiState.value
-        if (
-            currentState.appliedFilters == normalizedFilters &&
-            currentState.hasAppliedServerFilters == hasAppliedServerFilters
-        ) {
-            return
-        }
-
-        _uiState.update {
-            it.copy(
-                appliedFilters = normalizedFilters,
-                draftFilters = normalizedFilters,
-                hasAppliedServerFilters = normalizedFilters.hasActiveFilters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = "",
-                isFilterSheetVisible = false,
-                errorMessage = null
-            )
-        }
-        loadPeriod(
-            anchorDate = currentState.anchorDate,
-            period = currentState.period,
-            filters = normalizedFilters,
-            hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
     }
 
@@ -409,7 +400,8 @@ class CalendarViewModel @Inject constructor(
         filters: CalendarFilterState = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
         preserveFilterSheetState: Boolean = false,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        viewMode: CalendarViewMode? = null
     ) {
         val key = CalendarPageKey.from(period, anchorDate)
         val retainedKeys = (-2..2).map { offset ->
@@ -436,6 +428,7 @@ class CalendarViewModel @Inject constructor(
             state.copy(
                 anchorDate = anchorDate,
                 period = period,
+                viewMode = viewMode ?: state.viewMode,
                 pageStates = pages,
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
@@ -470,13 +463,22 @@ class CalendarViewModel @Inject constructor(
         val job = viewModelScope.launch {
             try {
                 val sourceUserId = bookmarkRepository.currentUserId()
-                val response = eventRepository.getEvents(
-                    range = key.period.visibleRange(key.startDate),
-                    filters = filters
-                )
-                val body = response.requireBody("Events response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(body.toBookmarkMap(), sourceUserId)
-                val sourceEvents = body.toCalendarEventsByDate()
+                val sourceEventsResponse = if (key.period == CalendarPeriod.DAY) {
+                    val body = eventRepository.getDayEvents(key.startDate, filters)
+                    bookmarkRepository.syncKnownRemoteBookmarks(
+                        body.items.toBookmarkMap(), sourceUserId
+                    )
+                    mapOf(key.startDate to body.items.map { it.toCalendarEvent(key.startDate) })
+                } else {
+                    val response = eventRepository.getEvents(
+                        range = key.period.visibleRange(key.startDate),
+                        filters = filters
+                    )
+                    val body = response.requireBody("Events response was empty.")
+                    bookmarkRepository.syncKnownRemoteBookmarks(body.toBookmarkMap(), sourceUserId)
+                    body.toCalendarEventsByDate()
+                }
+                val sourceEvents = sourceEventsResponse
                     .withBookmarkState(bookmarkRepository.currentBookmarkedEventIds())
                 currentCoroutineContext().ensureActive()
                 updatePage(
@@ -695,6 +697,11 @@ private fun MonthlyEventsResponse.toBookmarkMap(): Map<Long, Boolean> {
         }
         .toMap()
 }
+
+private fun List<EventSummaryResponse>.toBookmarkMap(): Map<Long, Boolean> =
+    mapNotNull { event ->
+        event.isBookmarked?.let { isBookmarked -> event.id to isBookmarked }
+    }.toMap()
 
 private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent {
     return CalendarEvent(
