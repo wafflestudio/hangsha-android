@@ -28,11 +28,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hangsha_android.ui.view.calendar.CalendarBookmarkButton
-import com.example.hangsha_android.ui.view.calendar.CalendarCollectionState
-import com.example.hangsha_android.ui.view.calendar.CalendarEventCardItem
-import com.example.hangsha_android.ui.view.calendar.CalendarEventThumbnail
-import com.example.hangsha_android.ui.view.calendar.rememberCalendarEventCountdown
+import com.example.hangsha_android.ui.view.calendar.cards.CalendarBookmarkButton
+import com.example.hangsha_android.ui.view.calendar.cards.CalendarCollectionState
+import com.example.hangsha_android.ui.view.calendar.cards.CalendarEventCardItem
+import com.example.hangsha_android.ui.view.calendar.cards.CalendarEventThumbnail
+import com.example.hangsha_android.ui.view.calendar.cards.rememberCalendarEventCountdown
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 
 @Composable

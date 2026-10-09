@@ -25,14 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.unit.dp
-import com.example.hangsha_android.ui.view.calendar.CalendarHeader
 import com.example.hangsha_android.ui.view.calendar.CalendarPageKey
 import com.example.hangsha_android.ui.view.calendar.CalendarPeriod
 import com.example.hangsha_android.ui.view.calendar.CalendarPeriodPage
 import com.example.hangsha_android.ui.view.calendar.CalendarUiState
 import com.example.hangsha_android.ui.view.calendar.CalendarViewHost
 import com.example.hangsha_android.ui.view.calendar.CalendarViewMode
-import com.example.hangsha_android.ui.view.calendar.headerTitle
+import com.example.hangsha_android.ui.view.calendar.header.CalendarHeader
+import com.example.hangsha_android.ui.view.calendar.header.headerTitle
 import com.example.hangsha_android.ui.view.calendar.week.WeekPagerGestures
 import com.example.hangsha_android.ui.view.calendar.week.weekPagerGestures
 import java.time.LocalDate

@@ -1,13 +1,9 @@
 package com.example.hangsha_android.ui.view.calendar.day
 
 import com.example.hangsha_android.ui.view.calendar.CalendarEvent
-import com.example.hangsha_android.util.HANGSHA_ZONE_ID
+import com.example.hangsha_android.ui.view.calendar.timelineRange
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.time.format.DateTimeParseException
 
 internal data class CalendarDayEventItem(
     val eventId: Long,
@@ -40,11 +36,9 @@ internal object CalendarDayEventMapper {
 
     private fun CalendarEvent.toDayItem(date: LocalDate): CalendarDayEventItem? {
         val base = CalendarDayEventItem(id, title, eventTypeId)
-        val primary = if (isPeriodEvent) parseRange(applyStart, applyEnd) else parseRange(eventStart, eventEnd)
-        val fallback = if (isPeriodEvent) parseRange(eventStart, eventEnd) else parseRange(applyStart, applyEnd)
-        val range = primary ?: fallback ?: return base
-        val start = range.first
-        val end = range.second
+        val range = timelineRange() ?: return base
+        val start = range.start
+        val end = range.end
         if (start.isDateOnly || end.isDateOnly || !end.dateTime.isAfter(start.dateTime)) return base
         if (date.isBefore(start.dateTime.toLocalDate()) ||
             date.isAfter(end.dateTime.toLocalDate()) ||
@@ -73,40 +67,8 @@ internal object CalendarDayEventMapper {
         return base.copy(startMinute = startMinute, endMinute = endMinute)
     }
 
-    private fun parseRange(startValue: String?, endValue: String?): Pair<ParsedTime, ParsedTime>? {
-        val start = parseTime(startValue) ?: return null
-        val end = parseTime(endValue) ?: return null
-        return start to end
-    }
-
-    private fun parseTime(value: String?): ParsedTime? {
-        val text = value?.trim().orEmpty()
-        if (text.isEmpty()) return null
-        try {
-            return ParsedTime(
-                OffsetDateTime.parse(text).atZoneSameInstant(HANGSHA_ZONE_ID).toLocalDateTime(),
-                false
-            )
-        } catch (_: DateTimeParseException) { }
-        try {
-            return ParsedTime(
-                ZonedDateTime.parse(text).withZoneSameInstant(HANGSHA_ZONE_ID).toLocalDateTime(),
-                false
-            )
-        } catch (_: DateTimeParseException) { }
-        try {
-            return ParsedTime(LocalDateTime.parse(text), false)
-        } catch (_: DateTimeParseException) { }
-        return try {
-            ParsedTime(LocalDate.parse(text).atStartOfDay(), true)
-        } catch (_: DateTimeParseException) {
-            null
-        }
-    }
-
     private fun LocalTime.toMinuteOfDay(): Int = hour * 60 + minute
 
-    private data class ParsedTime(val dateTime: LocalDateTime, val isDateOnly: Boolean)
 }
 
 internal data class PositionedCalendarDayEvent(

@@ -1,12 +1,8 @@
 package com.example.hangsha_android.ui.view.calendar.month
 
 import com.example.hangsha_android.ui.view.calendar.CalendarEvent
-import com.example.hangsha_android.util.toHangshaDate
+import com.example.hangsha_android.ui.view.calendar.parseCalendarEventDate
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 
 internal data class CalendarMonthEventItem(
@@ -27,7 +23,7 @@ internal data class PositionedCalendarMonthEvent(
     val continuesAfterWeek: Boolean
 )
 
-internal data class CalendarWeekEventLayout(
+internal data class CalendarMonthWeekLayout(
     val visibleEvents: List<PositionedCalendarMonthEvent>,
     val overflowByDay: List<Int>
 )
@@ -66,39 +62,13 @@ internal object CalendarMonthEventMapper {
     }
 
     private fun normalizeRange(start: String?, end: String?): DateRange? {
-        val parsedStart = parseDate(start)
-        val parsedEnd = parseDate(end)
+        val parsedStart = parseCalendarEventDate(start)
+        val parsedEnd = parseCalendarEventDate(end)
         val fallback = parsedStart ?: parsedEnd ?: return null
         return DateRange(
             start = parsedStart ?: fallback,
             end = parsedEnd ?: fallback
         )
-    }
-
-    private fun parseDate(value: String?): LocalDate? {
-        val normalized = value?.trim().orEmpty()
-        if (normalized.isEmpty()) return null
-
-        try {
-            return OffsetDateTime.parse(normalized).toHangshaDate()
-        } catch (_: DateTimeParseException) {
-            // Try the remaining ISO-8601 formats below.
-        }
-        try {
-            return ZonedDateTime.parse(normalized).toOffsetDateTime().toHangshaDate()
-        } catch (_: DateTimeParseException) {
-            // Try a local date-time next.
-        }
-        try {
-            return LocalDateTime.parse(normalized).toLocalDate()
-        } catch (_: DateTimeParseException) {
-            // Finally accept a date-only server value.
-        }
-        return try {
-            LocalDate.parse(normalized)
-        } catch (_: DateTimeParseException) {
-            null
-        }
     }
 
     private data class DateRange(
@@ -113,9 +83,9 @@ internal object CalendarMonthEventLayoutCalculator {
         weekStart: LocalDate,
         dayCount: Int = 7,
         maxVisibleLanes: Int = 4
-    ): CalendarWeekEventLayout {
+    ): CalendarMonthWeekLayout {
         if (dayCount <= 0 || maxVisibleLanes < 0) {
-            return CalendarWeekEventLayout(
+            return CalendarMonthWeekLayout(
                 visibleEvents = emptyList(),
                 overflowByDay = emptyList()
             )
@@ -166,7 +136,7 @@ internal object CalendarMonthEventLayoutCalculator {
                 }
             }
 
-        return CalendarWeekEventLayout(
+        return CalendarMonthWeekLayout(
             visibleEvents = positioned.filter { it.laneIndex < maxVisibleLanes },
             overflowByDay = overflowByDay
         )
