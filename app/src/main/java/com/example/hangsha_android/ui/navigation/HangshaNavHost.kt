@@ -181,7 +181,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     error
                 )
                 loginViewModel.onGoogleLoginError(
-                    "Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. (${error.statusCode})"
+                    "Google 로그인에 실패했습니다. (${error.statusCode})"
                 )
                 return@rememberLauncherForActivityResult
             } catch (error: Exception) {
@@ -190,7 +190,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                     "Google sign-in failed: message=${error.message}",
                     error
                 )
-                loginViewModel.onGoogleLoginError("Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
+                loginViewModel.onGoogleLoginError("Google 로그인에 실패했습니다.")
                 return@rememberLauncherForActivityResult
             }
 
@@ -199,7 +199,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
         val kakaoLoginCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
             if (error != null) {
                 Log.e("AuthLog", "Kakao login failed: message=${error.message}", error)
-                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
+                loginViewModel.onKakaoLoginError("카카오 로그인에 실패했습니다.")
             } else {
                 loginViewModel.loginWithKakao(token?.accessToken)
             }
@@ -215,7 +215,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                         "AuthLog",
                         "Naver login failed: errorCode=$errorCode, errorDesc=$errorDesc"
                     )
-                    loginViewModel.onNaverLoginError("\uB124\uC774\uBC84 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.")
+                    loginViewModel.onNaverLoginError("네이버 로그인에 실패했습니다.")
                 }
             }
         }
@@ -259,7 +259,7 @@ fun NavGraphBuilder.loginGraph(navController: NavHostController) {
                                 error
                             )
                             if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                                loginViewModel.onKakaoLoginError("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")
+                                loginViewModel.onKakaoLoginError("카카오 로그인이 취소되었습니다.")
                                 return@loginWithKakaoTalk
                             }
                             UserApiClient.instance.loginWithKakaoAccount(
@@ -444,6 +444,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 uiState = calendarUiState,
                 onCalendarPeriodChange = { calendarViewModel.setPeriod(it) },
                 onPeriodSelected = { calendarViewModel.showPeriod(it) },
+                onOpenDayCalendar = { calendarViewModel.showDayCalendar(it) },
                 onViewModeChange = { calendarViewModel.setViewMode(it) },
                 onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
                 onDateClick = { date ->
@@ -639,8 +640,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 )
             } else {
                 LoginRequiredScreen(
-                    title = "\uC2DC\uAC04\uD45C\uB294 \uB85C\uADF8\uC778 \uD6C4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-                    message = "\uC2DC\uAC04\uD45C\uC640 \uC218\uC5C5 \uC815\uBCF4\uB294 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    title = "시간표는 로그인 후 사용할 수 있습니다.",
+                    message = "시간표와 수업 정보는 계정에 저장됩니다.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = { navController.navigateToCalendarTab() }
                 )
@@ -657,8 +658,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 )
             } else {
                 LoginRequiredScreen(
-                    title = "\uD589\uC0AC \uD6C4\uAE30\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-                    message = "\uD589\uC0AC\uC5D0 \uC791\uC131\uD55C \uBA54\uBAA8\uAC00 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    title = "행사 후기는 로그인 후 확인할 수 있습니다.",
+                    message = "행사에 작성한 메모가 계정에 저장됩니다.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = {
                         navController.navigate(BottomTab.Calendar.route) {
@@ -676,8 +677,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             if (!isLoggedIn) {
                 LoginRequiredScreen(
-                    title = "\uCC1C\uD55C \uD589\uC0AC\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-                    message = "\uCC1C\uD55C \uD589\uC0AC\uB294 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    title = "찜한 행사는 로그인 후 확인할 수 있습니다.",
+                    message = "찜한 행사는 계정에 저장됩니다.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -748,8 +749,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 )
             } else {
                 LoginRequiredScreen(
-                    title = "\uBA54\uBAA8\uB294 \uB85C\uADF8\uC778 \uD6C4 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-                    message = "\uD589\uC0AC\uC5D0 \uC791\uC131\uD55C \uBA54\uBAA8\uAC00 \uACC4\uC815\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4.",
+                    title = "메모는 로그인 후 확인할 수 있습니다.",
+                    message = "행사에 작성한 메모가 계정에 저장됩니다.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -821,8 +822,8 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             if (!isLoggedIn) {
                 LoginRequiredScreen(
-                    title = "\uB9C8\uC774\uD398\uC774\uC9C0\uB294 \uB85C\uADF8\uC778 \uD6C4 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-                    message = "\uACC4\uC815 \uC815\uBCF4\uC640 \uAC1C\uC778 \uC800\uC7A5 \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD574 \uC8FC\uC138\uC694.",
+                    title = "마이페이지는 로그인 후 사용할 수 있습니다.",
+                    message = "계정 정보와 개인 저장 내용을 확인하려면 로그인해 주세요.",
                     onLoginClick = { navController.navigateToLoginFromMain() },
                     onNavigateBack = { navController.navigateToCalendarTab() }
                 )

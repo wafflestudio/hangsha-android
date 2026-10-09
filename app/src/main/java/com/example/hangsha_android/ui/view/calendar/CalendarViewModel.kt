@@ -126,6 +126,14 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
+    fun showDayCalendar(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.CALENDAR
+        )
+    }
+
     fun setViewMode(viewMode: CalendarViewMode) {
         _uiState.update { state ->
             if (state.viewMode == viewMode) state else state.copy(viewMode = viewMode)
@@ -409,7 +417,8 @@ class CalendarViewModel @Inject constructor(
         filters: CalendarFilterState = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
         preserveFilterSheetState: Boolean = false,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        viewMode: CalendarViewMode? = null
     ) {
         val key = CalendarPageKey.from(period, anchorDate)
         val retainedKeys = (-2..2).map { offset ->
@@ -436,6 +445,7 @@ class CalendarViewModel @Inject constructor(
             state.copy(
                 anchorDate = anchorDate,
                 period = period,
+                viewMode = viewMode ?: state.viewMode,
                 pageStates = pages,
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
