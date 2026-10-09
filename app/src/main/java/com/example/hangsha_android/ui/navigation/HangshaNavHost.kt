@@ -29,14 +29,10 @@ import com.example.hangsha_android.ui.components.HangshaToastType
 import com.example.hangsha_android.ui.components.LocalHangshaToastState
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksScreen
 import com.example.hangsha_android.ui.view.bookmarks.BookmarksViewModel
-import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
 import com.example.hangsha_android.ui.view.login.LoginScreen
 import com.example.hangsha_android.ui.view.login.LoginViewModel
 import com.example.hangsha_android.ui.view.calendar.CalendarScreen
 import com.example.hangsha_android.ui.view.calendar.CalendarViewModel
-import com.example.hangsha_android.ui.view.dailyevents.DailyEventsFilterState
-import com.example.hangsha_android.ui.view.dailyevents.DailyEventsScreen
-import com.example.hangsha_android.ui.view.dailyevents.DailyEventsViewModel
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailScreen
 import com.example.hangsha_android.ui.view.eventdetail.EventDetailViewModel
 import com.example.hangsha_android.ui.view.guest.LoginRequiredScreen
@@ -87,17 +83,6 @@ sealed class HangshaDestinations(val route: String) {
     data object MyBookmarks : HangshaDestinations("my_bookmarks")
     data object MyMemos : HangshaDestinations("my_memos")
     data object Search : HangshaDestinations("search")
-    data object DailyEvents : HangshaDestinations("daily_events/{date}") {
-        const val baseRoute = "daily_events"
-        const val dateArg = "date"
-        const val orgIdsKey = "daily_events_org_ids"
-        const val statusIdsKey = "daily_events_status_ids"
-        const val eventTypeIdsKey = "daily_events_event_type_ids"
-        const val excludedKeywordsKey = "daily_events_excluded_keywords"
-        const val hasAppliedServerFiltersKey = "daily_events_has_applied_server_filters"
-
-        fun createRoute(date: String): String = "$baseRoute/$date"
-    }
     data object EventDetail : HangshaDestinations("event_detail/{eventId}") {
         const val baseRoute = "event_detail"
         const val eventIdArg = "eventId"
@@ -424,22 +409,6 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             val calendarUiState by calendarViewModel.uiState.collectAsState()
             val authStateViewModel: AuthStateViewModel = hiltViewModel()
             val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
-            val calendarSavedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-            val returnedCalendarFilters = calendarSavedStateHandle?.toCalendarFilterState()
-            val returnedCalendarHasAppliedServerFilters: Boolean? = calendarSavedStateHandle
-                ?.get<Boolean>(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey)
-                ?: returnedCalendarFilters?.hasActiveFilters
-
-            LaunchedEffect(returnedCalendarFilters, returnedCalendarHasAppliedServerFilters) {
-                val filters = returnedCalendarFilters ?: return@LaunchedEffect
-                calendarViewModel.restoreAppliedFilters(
-                    filters = filters,
-                    hasAppliedServerFilters = returnedCalendarHasAppliedServerFilters
-                        ?: filters.hasActiveFilters
-                )
-                calendarSavedStateHandle?.clearCalendarFilters()
-            }
-
             CalendarScreen(
                 uiState = calendarUiState,
                 onCalendarPeriodChange = { calendarViewModel.setPeriod(it) },
@@ -447,15 +416,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 onOpenDayCalendar = { calendarViewModel.showDayCalendar(it) },
                 onViewModeChange = { calendarViewModel.setViewMode(it) },
                 onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
-                onDateClick = { date ->
-                    navController.currentBackStackEntry?.savedStateHandle?.apply {
-                        setDailyEventsFilters(
-                            filters = calendarUiState.appliedFilters,
-                            hasAppliedServerFilters = calendarUiState.hasAppliedServerFilters
-                        )
-                    }
-                    navController.navigate(HangshaDestinations.DailyEvents.createRoute(date.toString()))
-                },
+                onDateClick = { calendarViewModel.showDayList(it) },
                 onEventClick = { eventId ->
                     navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
                 },
@@ -496,73 +457,6 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                 },
                 onRetry = searchViewModel::retry,
                 onLoadMore = searchViewModel::loadNextPage
-            )
-        }
-        composable(
-            route = HangshaDestinations.DailyEvents.route,
-            arguments = listOf(
-                navArgument(HangshaDestinations.DailyEvents.dateArg) {
-                    type = NavType.StringType
-                }
-            )
-        ) {
-            val dailyEventsViewModel: DailyEventsViewModel = hiltViewModel()
-            val dailyEventsUiState by dailyEventsViewModel.uiState.collectAsState()
-            val authStateViewModel: AuthStateViewModel = hiltViewModel()
-            val isLoggedIn by authStateViewModel.isLoggedIn.collectAsState()
-            val previousSavedStateHandle = navController.previousBackStackEntry?.savedStateHandle
-            val initialDailyFilters = previousSavedStateHandle?.toDailyEventsFilterState()
-            val initialHasAppliedServerFilters = previousSavedStateHandle
-                ?.get<Boolean>(HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey)
-                ?: initialDailyFilters?.hasActiveFilters
-
-            LaunchedEffect(initialDailyFilters, initialHasAppliedServerFilters) {
-                dailyEventsViewModel.initialize(
-                    filters = initialDailyFilters,
-                    hasAppliedServerFilters = initialHasAppliedServerFilters
-                )
-            }
-
-            LaunchedEffect(
-                dailyEventsUiState.appliedFilters,
-                dailyEventsUiState.hasAppliedServerFilters
-            ) {
-                previousSavedStateHandle?.setCalendarFilters(
-                    filters = dailyEventsUiState.appliedFilters.toCalendarFilterState(),
-                    hasAppliedServerFilters = dailyEventsUiState.hasAppliedServerFilters
-                )
-            }
-
-            DailyEventsScreen(
-                uiState = dailyEventsUiState,
-                showBookmarkAction = isLoggedIn,
-                onDateSelected = { date -> dailyEventsViewModel.showDate(date) },
-                onOpenFilterClick = { dailyEventsViewModel.openFilterSheet() },
-                onDismissFilterSheet = { dailyEventsViewModel.dismissFilterSheet() },
-                onSelectFilterTab = { dailyEventsViewModel.selectFilterTab(it) },
-                onToggleOrgId = { dailyEventsViewModel.toggleDraftOrgId(it) },
-                onToggleStatus = { dailyEventsViewModel.toggleDraftStatus(it) },
-                onToggleEventType = { dailyEventsViewModel.toggleDraftEventType(it) },
-                onExcludeKeywordInputChange = {
-                    dailyEventsViewModel.updateExcludeKeywordInput(it)
-                },
-                onAddExcludeKeyword = { dailyEventsViewModel.addDraftExcludeKeyword() },
-                onRemoveExcludeKeyword = {
-                    dailyEventsViewModel.removeDraftExcludeKeyword(it)
-                },
-                onApplyFilters = { dailyEventsViewModel.applyDraftFilters() },
-                onClearFilters = { dailyEventsViewModel.clearDraftFilters() },
-                onRetryClick = { dailyEventsViewModel.retry() },
-                onEventClick = { eventId ->
-                    navController.navigate(HangshaDestinations.EventDetail.createRoute(eventId))
-                },
-                onBookmarkClick = { eventId ->
-                    if (isLoggedIn) {
-                        dailyEventsViewModel.toggleBookmark(eventId)
-                    } else {
-                        navController.navigateToLoginFromMain()
-                    }
-                }
             )
         }
         composable(
@@ -960,96 +854,10 @@ private fun NavHostController.navigateToCalendarTab() {
     }
 }
 
-private object CalendarFilterNavigationKeys {
-    const val orgIdsKey = "calendar_org_ids"
-    const val statusIdsKey = "calendar_status_ids"
-    const val eventTypeIdsKey = "calendar_event_type_ids"
-    const val excludedKeywordsKey = "calendar_excluded_keywords"
-    const val hasAppliedServerFiltersKey = "calendar_has_applied_server_filters"
-}
-
 private object InterestPriorityNavigationKeys {
     const val updatedKey = "interest_priority_updated"
 }
 
 private object MyBookmarksNavigationKeys {
     const val bookmarkChangedKey = "my_bookmarks_bookmark_changed"
-}
-
-private fun androidx.lifecycle.SavedStateHandle.setDailyEventsFilters(
-    filters: CalendarFilterState,
-    hasAppliedServerFilters: Boolean
-) {
-    set(HangshaDestinations.DailyEvents.orgIdsKey, ArrayList(filters.orgIds))
-    set(HangshaDestinations.DailyEvents.statusIdsKey, ArrayList(filters.statusIds))
-    set(HangshaDestinations.DailyEvents.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
-    set(HangshaDestinations.DailyEvents.excludedKeywordsKey, ArrayList(filters.excludedKeywords))
-    set(
-        HangshaDestinations.DailyEvents.hasAppliedServerFiltersKey,
-        hasAppliedServerFilters
-    )
-}
-
-private fun androidx.lifecycle.SavedStateHandle.setCalendarFilters(
-    filters: CalendarFilterState,
-    hasAppliedServerFilters: Boolean
-) {
-    set(CalendarFilterNavigationKeys.orgIdsKey, ArrayList(filters.orgIds))
-    set(CalendarFilterNavigationKeys.statusIdsKey, ArrayList(filters.statusIds))
-    set(CalendarFilterNavigationKeys.eventTypeIdsKey, ArrayList(filters.eventTypeIds))
-    set(CalendarFilterNavigationKeys.excludedKeywordsKey, ArrayList(filters.excludedKeywords))
-    set(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey, hasAppliedServerFilters)
-}
-
-private fun androidx.lifecycle.SavedStateHandle.toDailyEventsFilterState(): DailyEventsFilterState? {
-    if (!contains(HangshaDestinations.DailyEvents.statusIdsKey)) {
-        return null
-    }
-
-    return DailyEventsFilterState(
-        orgIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.orgIdsKey)?.toSet()
-            ?: emptySet(),
-        statusIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.statusIdsKey)?.toSet()
-            ?: emptySet(),
-        eventTypeIds = get<ArrayList<Long>>(HangshaDestinations.DailyEvents.eventTypeIdsKey)?.toSet()
-            ?: emptySet(),
-        excludedKeywords = get<ArrayList<String>>(HangshaDestinations.DailyEvents.excludedKeywordsKey)
-            ?.toList()
-            ?: emptyList()
-    )
-}
-
-private fun androidx.lifecycle.SavedStateHandle.toCalendarFilterState(): CalendarFilterState? {
-    if (!contains(CalendarFilterNavigationKeys.statusIdsKey)) {
-        return null
-    }
-
-    return CalendarFilterState(
-        orgIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)?.toSet()
-            ?: emptySet(),
-        statusIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)?.toSet()
-            ?: emptySet(),
-        eventTypeIds = get<ArrayList<Long>>(CalendarFilterNavigationKeys.eventTypeIdsKey)?.toSet()
-            ?: emptySet(),
-        excludedKeywords = get<ArrayList<String>>(CalendarFilterNavigationKeys.excludedKeywordsKey)
-            ?.toList()
-            ?: emptyList()
-    )
-}
-
-private fun androidx.lifecycle.SavedStateHandle.clearCalendarFilters() {
-    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.orgIdsKey)
-    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.statusIdsKey)
-    remove<ArrayList<Long>>(CalendarFilterNavigationKeys.eventTypeIdsKey)
-    remove<ArrayList<String>>(CalendarFilterNavigationKeys.excludedKeywordsKey)
-    remove<Boolean>(CalendarFilterNavigationKeys.hasAppliedServerFiltersKey)
-}
-
-private fun DailyEventsFilterState.toCalendarFilterState(): CalendarFilterState {
-    return CalendarFilterState(
-        orgIds = orgIds,
-        statusIds = statusIds,
-        eventTypeIds = eventTypeIds,
-        excludedKeywords = excludedKeywords
-    )
 }

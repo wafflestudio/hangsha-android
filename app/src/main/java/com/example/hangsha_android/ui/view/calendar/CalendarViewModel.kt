@@ -134,6 +134,14 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
+    fun showDayList(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.LIST
+        )
+    }
+
     fun setViewMode(viewMode: CalendarViewMode) {
         _uiState.update { state ->
             if (state.viewMode == viewMode) state else state.copy(viewMode = viewMode)
@@ -181,40 +189,6 @@ class CalendarViewModel @Inject constructor(
             filters = state.appliedFilters,
             hasAppliedServerFilters = state.hasAppliedServerFilters,
             forceRefresh = true
-        )
-    }
-
-    fun restoreAppliedFilters(
-        filters: CalendarFilterState,
-        hasAppliedServerFilters: Boolean
-    ) {
-        val normalizedFilters = filters.copy(
-            excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
-        ).normalizedAgainstCatalog(categoryRepository.loadedCategoryTypes.value)
-        val currentState = _uiState.value
-        if (
-            currentState.appliedFilters == normalizedFilters &&
-            currentState.hasAppliedServerFilters == hasAppliedServerFilters
-        ) {
-            return
-        }
-
-        _uiState.update {
-            it.copy(
-                appliedFilters = normalizedFilters,
-                draftFilters = normalizedFilters,
-                hasAppliedServerFilters = normalizedFilters.hasActiveFilters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = "",
-                isFilterSheetVisible = false,
-                errorMessage = null
-            )
-        }
-        loadPeriod(
-            anchorDate = currentState.anchorDate,
-            period = currentState.period,
-            filters = normalizedFilters,
-            hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
     }
 
@@ -481,7 +455,7 @@ class CalendarViewModel @Inject constructor(
             try {
                 val sourceUserId = bookmarkRepository.currentUserId()
                 val sourceEventsResponse = if (key.period == CalendarPeriod.DAY) {
-                    val body = eventRepository.getCalendarDayEvents(key.startDate, filters)
+                    val body = eventRepository.getDayEvents(key.startDate, filters)
                     bookmarkRepository.syncKnownRemoteBookmarks(
                         body.items.toBookmarkMap(), sourceUserId
                     )
