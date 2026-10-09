@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,8 @@ import com.example.hangsha_android.ui.view.calendar.CalendarUiState
 import com.example.hangsha_android.ui.view.calendar.CalendarViewHost
 import com.example.hangsha_android.ui.view.calendar.CalendarViewMode
 import com.example.hangsha_android.ui.view.calendar.headerTitle
+import com.example.hangsha_android.ui.view.calendar.week.WeekPagerGestures
+import com.example.hangsha_android.ui.view.calendar.week.weekPagerGestures
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -51,7 +54,6 @@ internal fun CalendarPeriodPager(
     onEventClick: (Long) -> Unit,
     onBookmarkClick: (Long) -> Unit,
     showBookmarkAction: Boolean,
-    onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit,
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -67,14 +69,22 @@ internal fun CalendarPeriodPager(
         val scope = rememberCoroutineScope()
         val currentAnchor = rememberUpdatedState(uiState.anchorDate)
         val currentOnPeriodSelected = rememberUpdatedState(onPeriodSelected)
-        val pageNestedScrollConnection = if (
+        val isWeekCalendar =
             period == CalendarPeriod.WEEK && uiState.viewMode == CalendarViewMode.CALENDAR
-        ) {
-            // Let the week grid scroll first; the pager receives drag left at its edges.
+        val weekGestures = remember(pagerState) { WeekPagerGestures(pagerState) }
+        val weekGestureModifier = if (isWeekCalendar) {
+            Modifier.weekPagerGestures(weekGestures)
+        } else Modifier
+        val pageNestedScrollConnection = if (isWeekCalendar) {
+            // Vertical child scrolling must never feed horizontal delta/velocity to this pager.
             remember { object : NestedScrollConnection {} }
         } else {
             PagerDefaults.pageNestedScrollConnection(pagerState, Orientation.Horizontal)
         }
+        val flingBehavior = PagerDefaults.flingBehavior(
+            state = pagerState,
+            pagerSnapDistance = PagerSnapDistance.atMost(1)
+        )
 
         fun anchorForPage(page: Int): LocalDate =
             period.move(origin, (page - InitialPage).toLong())
@@ -106,34 +116,35 @@ internal fun CalendarPeriodPager(
                 hasActiveFilters = uiState.hasActiveFilters,
                 isLoading = uiState.isLoading,
                 onPreviousPeriodClick = {
-                    scope.launch {
+                    if (!pagerState.isScrollInProgress) scope.launch {
                         pagerState.animateScrollToPage(
                             (pagerState.settledPage - 1).coerceAtLeast(0)
                         )
                     }
                 },
                 onNextPeriodClick = {
-                    scope.launch {
+                    if (!pagerState.isScrollInProgress) scope.launch {
                         pagerState.animateScrollToPage(
                             (pagerState.settledPage + 1).coerceAtMost(PageCount - 1)
                         )
                     }
                 },
                 onViewModeChange = onViewModeChange,
-                onSearchClick = onSearchClick,
                 onOpenFilterClick = onOpenFilterClick
             )
             Spacer(modifier = Modifier.height(15.dp))
 
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f),
-                userScrollEnabled = true,
+                modifier = Modifier.weight(1f).then(weekGestureModifier),
+                userScrollEnabled = !isWeekCalendar,
+                flingBehavior = flingBehavior,
                 pageNestedScrollConnection = pageNestedScrollConnection,
                 key = { page ->
                     CalendarPageKey.from(period, anchorForPage(page)).startDate.toEpochDay()
                 }
             ) { page ->
+                val weekScrollState = if (isWeekCalendar) weekGestures.rememberGridState(page) else null
                 val anchor = anchorForPage(page)
                 val pageKey = CalendarPageKey.from(period, anchor)
                 val initialWeekDayIndex = remember(page, uiState.viewMode) {
@@ -162,6 +173,7 @@ internal fun CalendarPeriodPager(
                         period = period,
                         anchorDate = anchor,
                         initialWeekDayIndex = initialWeekDayIndex,
+                        weekScrollState = weekScrollState,
                         isCurrentPage = page == pagerState.settledPage,
                         viewMode = uiState.viewMode,
                         page = pageState,
