@@ -19,6 +19,7 @@ internal fun CalendarViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
     initialWeekDayIndex: Int,
+    isCurrentPage: Boolean,
     viewMode: CalendarViewMode,
     page: CalendarPeriodPage,
     organizationNames: Map<Long, String>,
@@ -26,6 +27,7 @@ internal fun CalendarViewHost(
     showBookmarkAction: Boolean,
     onDateClick: (LocalDate) -> Unit,
     onOpenDayCalendar: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     onBookmarkClick: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -84,9 +86,11 @@ internal fun CalendarViewHost(
                     period = period,
                     anchorDate = anchorDate,
                     initialWeekDayIndex = initialWeekDayIndex,
+                    isCurrentPage = isCurrentPage,
                     page = page,
                     onDateClick = onDateClick,
                     onOpenDayCalendar = onOpenDayCalendar,
+                    onVisibleWeekDayChange = onVisibleWeekDayChange,
                     onEventClick = onEventClick,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -99,9 +103,11 @@ private fun CalendarTemporalViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
     initialWeekDayIndex: Int,
+    isCurrentPage: Boolean,
     page: CalendarPeriodPage,
     onDateClick: (LocalDate) -> Unit,
     onOpenDayCalendar: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
     modifier: Modifier
 ) {
@@ -122,9 +128,11 @@ private fun CalendarTemporalViewHost(
             CalendarWeekView(
                 weekStart = period.visibleRange(anchorDate).from,
                 initialDayIndex = initialWeekDayIndex,
+                isCurrentPage = isCurrentPage,
                 eventsByDate = page.eventsByDate,
                 isLoading = page.isLoading,
                 onOpenDayCalendar = onOpenDayCalendar,
+                onVisibleDayChange = onVisibleWeekDayChange,
                 onEventClick = onEventClick,
                 modifier = modifier
             )

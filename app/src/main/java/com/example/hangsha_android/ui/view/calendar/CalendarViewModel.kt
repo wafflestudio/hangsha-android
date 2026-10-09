@@ -117,6 +117,15 @@ class CalendarViewModel @Inject constructor(
         loadPeriod(anchorDate = anchorDate, period = state.period)
     }
 
+    fun showVisibleWeekDay(date: LocalDate) {
+        _uiState.update { state ->
+            if (state.period != CalendarPeriod.WEEK ||
+                CalendarPageKey.from(CalendarPeriod.WEEK, state.anchorDate) !=
+                CalendarPageKey.from(CalendarPeriod.WEEK, date)
+            ) state else state.copy(anchorDate = date)
+        }
+    }
+
     fun setPeriod(period: CalendarPeriod) {
         val state = _uiState.value
         if (state.period == period) return

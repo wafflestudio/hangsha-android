@@ -24,6 +24,7 @@ fun CalendarScreen(
     uiState: CalendarUiState,
     onCalendarPeriodChange: (CalendarPeriod) -> Unit,
     onPeriodSelected: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onOpenDayCalendar: (LocalDate) -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onDateClick: (LocalDate) -> Unit,
@@ -79,6 +80,7 @@ fun CalendarScreen(
         CalendarPeriodPager(
             uiState = uiState,
             onPeriodSelected = onPeriodSelected,
+            onVisibleWeekDayChange = onVisibleWeekDayChange,
             onOpenDayCalendar = onOpenDayCalendar,
             onViewModeChange = onViewModeChange,
             onDateClick = onDateClick,

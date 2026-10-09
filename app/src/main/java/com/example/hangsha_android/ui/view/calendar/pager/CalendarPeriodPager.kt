@@ -44,6 +44,7 @@ private const val InitialPage = PageCount / 2
 internal fun CalendarPeriodPager(
     uiState: CalendarUiState,
     onPeriodSelected: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
     onOpenDayCalendar: (LocalDate) -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onDateClick: (LocalDate) -> Unit,
@@ -79,10 +80,17 @@ internal fun CalendarPeriodPager(
             period.move(origin, (page - InitialPage).toLong())
 
         LaunchedEffect(pagerState, originDate) {
+            var previousPage = pagerState.settledPage
             snapshotFlow { pagerState.settledPage }
                 .distinctUntilChanged()
                 .collect { page ->
-                    val anchor = anchorForPage(page)
+                    val anchor = if (period == CalendarPeriod.WEEK && page != previousPage) {
+                        val weekStart = CalendarPageKey.from(period, anchorForPage(page)).startDate
+                        weekStart.plusDays(if (page > previousPage) 0 else 6)
+                    } else {
+                        anchorForPage(page)
+                    }
+                    previousPage = page
                     if (CalendarPageKey.from(period, anchor) !=
                         CalendarPageKey.from(period, currentAnchor.value)
                     ) {
@@ -154,6 +162,7 @@ internal fun CalendarPeriodPager(
                         period = period,
                         anchorDate = anchor,
                         initialWeekDayIndex = initialWeekDayIndex,
+                        isCurrentPage = page == pagerState.settledPage,
                         viewMode = uiState.viewMode,
                         page = pageState,
                         organizationNames = uiState.organizationNames,
@@ -161,6 +170,7 @@ internal fun CalendarPeriodPager(
                         showBookmarkAction = showBookmarkAction,
                         onDateClick = onDateClick,
                         onOpenDayCalendar = onOpenDayCalendar,
+                        onVisibleWeekDayChange = onVisibleWeekDayChange,
                         onEventClick = onEventClick,
                         onBookmarkClick = onBookmarkClick,
                         modifier = Modifier.fillMaxSize()
