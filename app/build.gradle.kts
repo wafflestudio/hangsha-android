@@ -62,8 +62,8 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 19
-        versionName = "1.2"
+        versionCode = 20
+        versionName = "1.3"
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",
@@ -164,6 +164,11 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.compose.ui.text)
     testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    // Espresso 3.7 supports touch injection on Android 16.
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("com.google.dagger:hilt-android:2.56.2")
     ksp("com.google.dagger:hilt-android-compiler:2.56.2")

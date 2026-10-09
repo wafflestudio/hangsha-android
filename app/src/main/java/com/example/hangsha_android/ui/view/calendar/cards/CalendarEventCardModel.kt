@@ -1,16 +1,13 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.cards
 
+import com.example.hangsha_android.data.repository.model.EventDateRange
+import com.example.hangsha_android.ui.view.calendar.CalendarEvent
+import com.example.hangsha_android.ui.view.calendar.parseCalendarEventDate
 import com.example.hangsha_android.ui.view.event.formatApplicationDeadlineLabel
 import com.example.hangsha_android.ui.view.event.formatEventCountdownLabel
 import com.example.hangsha_android.ui.view.org.organizationLabel
-import com.example.hangsha_android.util.toHangshaDate
-import com.example.hangsha_android.data.repository.model.EventDateRange
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import java.util.Locale
 
 internal data class CalendarEventCardItem(
@@ -49,8 +46,8 @@ private fun CalendarEvent.toCardItem(
     organizationNames: Map<Long, String>,
     eventTypeNames: Map<Long, String>
 ): CalendarEventCardItem {
-    val eventStartDate = parseCalendarCardDate(eventStart)
-    val eventEndDate = parseCalendarCardDate(eventEnd)
+    val eventStartDate = parseCalendarEventDate(eventStart)
+    val eventEndDate = parseCalendarEventDate(eventEnd)
 
     return CalendarEventCardItem(
         id = id,
@@ -72,7 +69,7 @@ private fun CalendarEvent.toCardItem(
             fallback = date
         ),
         applicationCountdownLabel = formatApplicationDeadlineLabel(
-            parseCalendarCardDate(applyEnd)
+            parseCalendarEventDate(applyEnd)
         ),
         eventCountdownLabel = formatEventCountdownLabel(eventStartDate, eventEndDate),
         isBookmarked = isBookmarked
@@ -98,8 +95,8 @@ private fun normalizeCalendarCardRange(
     startValue: String?,
     endValue: String?
 ): CalendarCardDateRange? {
-    val start = parseCalendarCardDate(startValue)
-    val end = parseCalendarCardDate(endValue)
+    val start = parseCalendarEventDate(startValue)
+    val end = parseCalendarEventDate(endValue)
     val fallback = start ?: end ?: return null
     val normalizedStart = start ?: fallback
     val normalizedEnd = end?.takeUnless { it.isBefore(normalizedStart) } ?: normalizedStart
@@ -125,26 +122,4 @@ private fun formatCalendarCardDateRange(
         else ->
             "${normalizedStart.format(CalendarCardFullDateFormatter)} ~ ${normalizedEnd.format(CalendarCardFullDateFormatter)}"
     }
-}
-
-private fun parseCalendarCardDate(value: String?): LocalDate? {
-    val normalized = value?.trim().orEmpty()
-    if (normalized.isEmpty()) return null
-
-    try {
-        return OffsetDateTime.parse(normalized).toHangshaDate()
-    } catch (_: DateTimeParseException) {
-        // Try the remaining ISO-8601 formats below.
-    }
-    try {
-        return ZonedDateTime.parse(normalized).toOffsetDateTime().toHangshaDate()
-    } catch (_: DateTimeParseException) {
-        // Try a local date-time next.
-    }
-    try {
-        return LocalDateTime.parse(normalized).toLocalDate()
-    } catch (_: DateTimeParseException) {
-        // Finally accept a date-only server value.
-    }
-    return runCatching { LocalDate.parse(normalized) }.getOrNull()
 }

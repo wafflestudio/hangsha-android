@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import com.example.hangsha_android.ui.components.eventPreviewClickable
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -277,7 +279,7 @@ private fun TimelineSection(
                         .offset(x = x, y = y)
                         .width(width)
                         .height(PeriodLaneHeight)
-                        .clickable { onEventClick(event.eventId) }
+                        .eventPreviewClickable(event.eventId) { onEventClick(event.eventId) }
                 )
             } else {
                 AllDayBand(
@@ -286,7 +288,7 @@ private fun TimelineSection(
                         .offset(x = x, y = y + 2.dp)
                         .width(width)
                         .height(24.dp)
-                        .clickable { onEventClick(event.eventId) }
+                        .eventPreviewClickable(event.eventId) { onEventClick(event.eventId) }
                 )
             }
         }

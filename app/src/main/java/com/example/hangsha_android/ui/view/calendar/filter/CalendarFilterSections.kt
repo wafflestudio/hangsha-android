@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.dailyevents
+package com.example.hangsha_android.ui.view.calendar.filter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,22 +9,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,155 +29,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.example.hangsha_android.ui.components.EventFilterFooter
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
-import com.example.hangsha_android.ui.view.org.organizationLabel
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DailyEventsFilterBottomSheet(
-    uiState: DailyEventsUiState,
-    onDismiss: () -> Unit,
-    onSelectTab: (DailyEventsFilterTab) -> Unit,
-    onToggleOrgId: (Long) -> Unit,
-    onToggleStatus: (Long) -> Unit,
-    onToggleEventType: (Long) -> Unit,
-    onExcludeKeywordInputChange: (String) -> Unit,
-    onAddExcludeKeyword: () -> Unit,
-    onRemoveExcludeKeyword: (String) -> Unit,
-    onApply: () -> Unit,
-    onClear: () -> Unit
-) {
-    val draft = uiState.draftFilters
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp)
-        ) {
-            FilterTabRow(
-                selectedTab = uiState.selectedFilterTab,
-                onSelectTab = onSelectTab
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
-            ) {
-                when (uiState.selectedFilterTab) {
-                    DailyEventsFilterTab.EVENT_TYPE -> {
-                        EventTypeSection(
-                            selected = draft.eventTypeIds,
-                            options = uiState.availableFilterOptions.eventTypeIds,
-                            names = uiState.eventTypeNames,
-                            onToggle = onToggleEventType
-                        )
-                    }
-
-                    DailyEventsFilterTab.ORGANIZER -> {
-                        FilterChecklistSection(
-                            allLabel = "주최 기관 전체",
-                            title = "주최 기관",
-                            emptyText = "선택 가능한 주최 기관이 없습니다.",
-                            options = uiState.availableFilterOptions.orgIds,
-                            selected = draft.orgIds,
-                            label = { organizationLabel(it, uiState.organizationNames) },
-                            onToggle = onToggleOrgId
-                        )
-                    }
-
-                    DailyEventsFilterTab.RECRUITMENT_STATUS -> {
-                        FilterChecklistSection(
-                            allLabel = "모집 현황 전체",
-                            title = "모집 현황",
-                            emptyText = "선택 가능한 모집 현황이 없습니다.",
-                            options = uiState.availableFilterOptions.statusIds,
-                            selected = draft.statusIds,
-                            label = { uiState.statusNames[it] ?: statusLabel(it) },
-                            onToggle = onToggleStatus
-                        )
-                    }
-
-                    DailyEventsFilterTab.EXCLUDE -> {
-                        ExcludeKeywordSection(
-                            input = uiState.excludeKeywordInput,
-                            keywords = draft.excludedKeywords,
-                            onInputChange = onExcludeKeywordInputChange,
-                            onAdd = onAddExcludeKeyword,
-                            onRemove = onRemoveExcludeKeyword
-                        )
-                    }
-                }
-            }
-
-            EventFilterFooter(
-                resultCount = uiState.filteredItemCount,
-                isCountLoading = uiState.isFilterCountLoading,
-                isLoading = uiState.isLoading,
-                onClear = onClear,
-                onApply = onApply
-            )
-        }
-    }
-}
 
 @Composable
-private fun FilterTabRow(
-    selectedTab: DailyEventsFilterTab,
-    onSelectTab: (DailyEventsFilterTab) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 20.dp)
-    ) {
-        DailyEventsFilterTab.entries.forEach { tab ->
-            val isSelected = tab == selectedTab
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onSelectTab(tab) }
-                    .padding(top = 8.dp, bottom = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = tab.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(if (isSelected) 2.dp else 1.dp)
-                        .background(
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.outlineVariant
-                            }
-                        )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EventTypeSection(
+// 행사 종류 탭
+internal fun EventTypeSection(
     selected: Set<Long>,
     options: List<Long>,
     names: Map<Long, String>,
@@ -235,7 +87,8 @@ private fun EventTypeSection(
 }
 
 @Composable
-private fun <T> FilterChecklistSection(
+// 주최 기관, 모집 현황
+internal fun <T> FilterChecklistSection(
     allLabel: String,
     title: String,
     emptyText: String,
@@ -296,6 +149,7 @@ private fun <T> FilterChecklistSection(
 }
 
 @Composable
+// 체크형 목록의 개별 한 줄 UI
 private fun FilterChecklistRow(
     text: String,
     selected: Boolean,
@@ -318,6 +172,7 @@ private fun FilterChecklistRow(
 }
 
 @Composable
+// 체크 사각형 UI
 private fun SelectionSquare(selected: Boolean) {
     Box(
         modifier = Modifier
@@ -331,7 +186,8 @@ private fun SelectionSquare(selected: Boolean) {
 }
 
 @Composable
-private fun ExcludeKeywordSection(
+// 제외 키워드 입력창
+internal fun ExcludeKeywordSection(
     input: String,
     keywords: List<String>,
     onInputChange: (String) -> Unit,
@@ -340,7 +196,7 @@ private fun ExcludeKeywordSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
-            text = "해당 단어를 포함하는 행사는 표시하지 않습니다.",
+            text = "해당 단어를 포함하는 행사는 표시되지 않습니다.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -391,7 +247,7 @@ private fun ExcludeKeywordSection(
     }
 }
 
-private fun statusLabel(statusId: Long): String {
+internal fun statusLabel(statusId: Long): String {
     return when (statusId) {
         1L -> "모집대기"
         2L -> "모집중"

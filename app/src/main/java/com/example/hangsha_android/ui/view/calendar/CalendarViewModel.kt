@@ -3,31 +3,35 @@ package com.example.hangsha_android.ui.view.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hangsha_android.data.network.model.EventCountResponse
-import com.example.hangsha_android.data.network.model.EventSummaryResponse
-import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.BookmarkRepository
 import com.example.hangsha_android.data.repository.CategoryRepository
 import com.example.hangsha_android.data.repository.EventRepository
 import com.example.hangsha_android.data.repository.ExcludedKeywordsRepository
 import com.example.hangsha_android.data.repository.model.CategoryType
+import com.example.hangsha_android.data.repository.model.EventFilters
+import com.example.hangsha_android.ui.view.calendar.data.CalendarPageLoader
+import com.example.hangsha_android.ui.view.calendar.data.calendarBookmarkErrorMessage
+import com.example.hangsha_android.ui.view.calendar.data.calendarExcludedKeywordErrorMessage
+import com.example.hangsha_android.ui.view.calendar.data.calendarLoadErrorMessage
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterOptions
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterTab
+import com.example.hangsha_android.ui.view.calendar.filter.applyFilters
+import com.example.hangsha_android.ui.view.calendar.filter.resetSelections
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.currentCoroutineContext
 import retrofit2.HttpException
 import retrofit2.Response
 
@@ -44,6 +48,7 @@ class CalendarViewModel @Inject constructor(
     )
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
+    private val pageLoader = CalendarPageLoader(eventRepository, bookmarkRepository)
     private val pageLoadJobs = mutableMapOf<CalendarPageKey, Job>()
     private var cacheFilters = _uiState.value.appliedFilters
     private var filterCountJob: Job? = null
@@ -117,12 +122,37 @@ class CalendarViewModel @Inject constructor(
         loadPeriod(anchorDate = anchorDate, period = state.period)
     }
 
+    fun showVisibleWeekDay(date: LocalDate) {
+        _uiState.update { state ->
+            if (state.period != CalendarPeriod.WEEK ||
+                CalendarPageKey.from(CalendarPeriod.WEEK, state.anchorDate) !=
+                CalendarPageKey.from(CalendarPeriod.WEEK, date)
+            ) state else state.copy(anchorDate = date)
+        }
+    }
+
     fun setPeriod(period: CalendarPeriod) {
         val state = _uiState.value
         if (state.period == period) return
         loadPeriod(
             anchorDate = state.anchorDate,
             period = period
+        )
+    }
+
+    fun showDayCalendar(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.CALENDAR
+        )
+    }
+
+    fun showDayList(date: LocalDate) {
+        loadPeriod(
+            anchorDate = date,
+            period = CalendarPeriod.DAY,
+            viewMode = CalendarViewMode.LIST
         )
     }
 
@@ -159,7 +189,7 @@ class CalendarViewModel @Inject constructor(
                     state.withUpdatedBookmark(
                         eventId = eventId,
                         isBookmarked = !shouldBookmark
-                    ).copy(errorMessage = mapBookmarkErrorMessage(error))
+                    ).copy(errorMessage = calendarBookmarkErrorMessage(error))
                 }
             }
         }
@@ -173,40 +203,6 @@ class CalendarViewModel @Inject constructor(
             filters = state.appliedFilters,
             hasAppliedServerFilters = state.hasAppliedServerFilters,
             forceRefresh = true
-        )
-    }
-
-    fun restoreAppliedFilters(
-        filters: CalendarFilterState,
-        hasAppliedServerFilters: Boolean
-    ) {
-        val normalizedFilters = filters.copy(
-            excludedKeywords = excludedKeywordsRepository.currentExcludedKeywords()
-        ).normalizedAgainstCatalog(categoryRepository.loadedCategoryTypes.value)
-        val currentState = _uiState.value
-        if (
-            currentState.appliedFilters == normalizedFilters &&
-            currentState.hasAppliedServerFilters == hasAppliedServerFilters
-        ) {
-            return
-        }
-
-        _uiState.update {
-            it.copy(
-                appliedFilters = normalizedFilters,
-                draftFilters = normalizedFilters,
-                hasAppliedServerFilters = normalizedFilters.hasActiveFilters,
-                selectedFilterTab = CalendarFilterTab.EVENT_TYPE,
-                excludeKeywordInput = "",
-                isFilterSheetVisible = false,
-                errorMessage = null
-            )
-        }
-        loadPeriod(
-            anchorDate = currentState.anchorDate,
-            period = currentState.period,
-            filters = normalizedFilters,
-            hasAppliedServerFilters = normalizedFilters.hasActiveFilters
         )
     }
 
@@ -301,7 +297,7 @@ class CalendarViewModel @Inject constructor(
             }.onSuccess {
                 _uiState.update { it.copy(excludeKeywordInput = "") }
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+                _uiState.update { it.copy(errorMessage = calendarExcludedKeywordErrorMessage(error)) }
             }
         }
     }
@@ -311,7 +307,7 @@ class CalendarViewModel @Inject constructor(
             runCatching {
                 excludedKeywordsRepository.removeExcludedKeyword(keyword)
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = mapExcludedKeywordErrorMessage(error)) }
+                _uiState.update { it.copy(errorMessage = calendarExcludedKeywordErrorMessage(error)) }
             }
         }
     }
@@ -406,10 +402,11 @@ class CalendarViewModel @Inject constructor(
     private fun loadPeriod(
         anchorDate: LocalDate,
         period: CalendarPeriod,
-        filters: CalendarFilterState = _uiState.value.appliedFilters,
+        filters: EventFilters = _uiState.value.appliedFilters,
         hasAppliedServerFilters: Boolean = _uiState.value.hasAppliedServerFilters,
         preserveFilterSheetState: Boolean = false,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        viewMode: CalendarViewMode? = null
     ) {
         val key = CalendarPageKey.from(period, anchorDate)
         val retainedKeys = (-2..2).map { offset ->
@@ -436,6 +433,7 @@ class CalendarViewModel @Inject constructor(
             state.copy(
                 anchorDate = anchorDate,
                 period = period,
+                viewMode = viewMode ?: state.viewMode,
                 pageStates = pages,
                 appliedFilters = filters,
                 hasAppliedServerFilters = hasAppliedServerFilters,
@@ -454,7 +452,7 @@ class CalendarViewModel @Inject constructor(
 
     private fun ensurePage(
         key: CalendarPageKey,
-        filters: CalendarFilterState,
+        filters: EventFilters,
         forceRefresh: Boolean = false
     ) {
         val existing = _uiState.value.pageStates[key]
@@ -469,25 +467,9 @@ class CalendarViewModel @Inject constructor(
 
         val job = viewModelScope.launch {
             try {
-                val sourceUserId = bookmarkRepository.currentUserId()
-                val response = eventRepository.getEvents(
-                    range = key.period.visibleRange(key.startDate),
-                    filters = filters
-                )
-                val body = response.requireBody("Events response was empty.")
-                bookmarkRepository.syncKnownRemoteBookmarks(body.toBookmarkMap(), sourceUserId)
-                val sourceEvents = body.toCalendarEventsByDate()
-                    .withBookmarkState(bookmarkRepository.currentBookmarkedEventIds())
+                val page = pageLoader.load(key, filters)
                 currentCoroutineContext().ensureActive()
-                updatePage(
-                    key,
-                    filters,
-                    CalendarPeriodPage(
-                        filterSourceEventsByDate = sourceEvents,
-                        eventsByDate = sourceEvents.applyFilters(filters),
-                        isLoading = false
-                    )
-                )
+                updatePage(key, filters, page)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
@@ -496,7 +478,7 @@ class CalendarViewModel @Inject constructor(
                     filters,
                     CalendarPeriodPage(
                         isLoading = false,
-                        errorMessage = mapErrorMessage(error)
+                        errorMessage = calendarLoadErrorMessage(error)
                     )
                 )
             }
@@ -509,7 +491,7 @@ class CalendarViewModel @Inject constructor(
 
     private fun updatePage(
         key: CalendarPageKey,
-        filters: CalendarFilterState,
+        filters: EventFilters,
         page: CalendarPeriodPage
     ) {
         if (cacheFilters != filters) return
@@ -530,59 +512,6 @@ class CalendarViewModel @Inject constructor(
             statusIds = categoryRepository.eventStatuses.value.map { item -> item.key.id },
             eventTypeIds = categoryRepository.eventTypes.value.map { item -> item.key.id }
         )
-    }
-
-    private fun mapErrorMessage(error: Throwable): String {
-        return when (error) {
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is HttpException -> when (error.code()) {
-                400 -> "행사 요청이 올바르지 않습니다."
-                401 -> "로그인이 필요합니다."
-                403 -> "행사 목록을 볼 권한이 없습니다."
-                404 -> "행사 정보를 찾을 수 없습니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "행사 목록을 불러오지 못했습니다. (${error.code()})"
-            }
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            is IllegalStateException -> "행사 목록을 불러오지 못했습니다."
-            else -> "행사 목록을 불러오지 못했습니다."
-        }
-    }
-
-    private fun mapBookmarkErrorMessage(error: Throwable): String {
-        return when (error) {
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is HttpException -> when (error.code()) {
-                400 -> "북마크 요청이 올바르지 않습니다."
-                401 -> "로그인이 필요합니다."
-                403 -> "이 북마크를 변경할 권한이 없습니다."
-                404 -> "행사 정보를 찾을 수 없습니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "북마크를 변경하지 못했습니다. (${error.code()})"
-            }
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            else -> "북마크를 변경하지 못했습니다."
-        }
-    }
-
-    private fun mapExcludedKeywordErrorMessage(error: Throwable): String {
-        return when (error) {
-            is UnknownHostException -> "인터넷 연결을 확인해 주세요."
-            is SocketTimeoutException -> "요청 시간이 초과되었습니다. 다시 시도해 주세요."
-            is HttpException -> when (error.code()) {
-                400 -> "제외 키워드 요청이 올바르지 않습니다."
-                401 -> "로그인이 필요합니다."
-                403 -> "제외 키워드를 변경할 권한이 없습니다."
-                404 -> "제외 키워드 정보를 찾을 수 없습니다."
-                in 500..599 -> "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-                else -> "제외 키워드를 변경하지 못했습니다. (${error.code()})"
-            }
-            is IOException -> "네트워크 오류가 발생했습니다. 다시 시도해 주세요."
-            is IllegalStateException -> "제외 키워드를 변경하지 못했습니다."
-            else -> "제외 키워드를 변경하지 못했습니다."
-        }
     }
 
     private fun onExcludedKeywordsChanged(keywords: List<String>) {
@@ -650,9 +579,9 @@ class CalendarViewModel @Inject constructor(
         )
     }
 
-    private fun CalendarFilterState.normalizedAgainstCatalog(
+    private fun EventFilters.normalizedAgainstCatalog(
         loadedTypes: Set<CategoryType>
-    ): CalendarFilterState {
+    ): EventFilters {
         return copy(
             orgIds = if (CategoryType.ORGANIZATION in loadedTypes) {
                 orgIds intersect categoryRepository.organizations.value.map { it.key.id }.toSet()
@@ -673,101 +602,6 @@ class CalendarViewModel @Inject constructor(
     }
 }
 
-private fun MonthlyEventsResponse.toCalendarEventsByDate(): Map<LocalDate, List<CalendarEvent>> {
-    return byDate.entries
-        .mapNotNull { (dateString, response) ->
-            val date = runCatching { LocalDate.parse(dateString) }.getOrNull()
-                ?: return@mapNotNull null
-
-            date to response.events.map { event ->
-                event.toCalendarEvent(date)
-            }
-        }
-        .sortedBy { it.first }
-        .toMap(linkedMapOf())
-}
-
-private fun MonthlyEventsResponse.toBookmarkMap(): Map<Long, Boolean> {
-    return byDate.values
-        .flatMap { it.events }
-        .mapNotNull { event ->
-            event.isBookmarked?.let { isBookmarked -> event.id to isBookmarked }
-        }
-        .toMap()
-}
-
-private fun EventSummaryResponse.toCalendarEvent(date: LocalDate): CalendarEvent {
-    return CalendarEvent(
-        id = id,
-        date = date,
-        title = title,
-        imageUrl = imageUrl,
-        operationMode = operationMode,
-        statusId = statusId,
-        eventTypeId = eventTypeId,
-        orgId = orgId,
-        applyStart = applyStart,
-        applyEnd = applyEnd,
-        eventStart = eventStart,
-        eventEnd = eventEnd,
-        isPeriodEvent = isPeriodEvent,
-        capacity = capacity,
-        applyCount = applyCount,
-        organization = organization,
-        location = location,
-        applyLink = applyLink,
-        tags = tags,
-        isInterested = isInterested == true,
-        matchedInterestPriority = matchedInterestPriority,
-        isBookmarked = isBookmarked == true
-        )
-}
-
-private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
-    bookmarkedEventIds: Set<Long>
-): Map<LocalDate, List<CalendarEvent>> {
-    return mapValues { (_, events) ->
-        events.map { event ->
-            event.copy(isBookmarked = event.id in bookmarkedEventIds)
-        }
-    }
-}
-
-private fun Map<LocalDate, List<CalendarEvent>>.withBookmarkState(
-    eventId: Long,
-    isBookmarked: Boolean
-): Map<LocalDate, List<CalendarEvent>> {
-    return mapValues { (_, events) ->
-        events.map { event ->
-            if (event.id == eventId) {
-                event.copy(isBookmarked = isBookmarked)
-            } else {
-                event
-            }
-        }
-    }
-}
-
-private fun CalendarUiState.withUpdatedBookmark(
-    eventId: Long,
-    isBookmarked: Boolean
-): CalendarUiState {
-    return copy(
-        pageStates = pageStates.mapValues { (_, page) ->
-            page.copy(
-                filterSourceEventsByDate = page.filterSourceEventsByDate.withBookmarkState(
-                    eventId = eventId,
-                    isBookmarked = isBookmarked
-                ),
-                eventsByDate = page.eventsByDate.withBookmarkState(
-                    eventId = eventId,
-                    isBookmarked = isBookmarked
-                ).applyFilters(appliedFilters)
-            )
-        }
-    )
-}
-
 private fun Response<EventCountResponse>.requireCount(): Int {
     if (!isSuccessful) {
         throw HttpException(this)
@@ -776,16 +610,6 @@ private fun Response<EventCountResponse>.requireCount(): Int {
     return body()?.count?.coerceAtLeast(0)
         ?: throw IllegalStateException("Event count response was empty.")
 }
-private fun Response<MonthlyEventsResponse>.requireBody(
-    emptyMessage: String
-): MonthlyEventsResponse {
-    if (!isSuccessful) {
-        throw HttpException(this)
-    }
-
-    return body() ?: throw IllegalStateException(emptyMessage)
-}
-
 private fun <T> Set<T>.toggle(value: T): Set<T> {
     return if (value in this) {
         this - value

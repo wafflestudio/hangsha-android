@@ -1,4 +1,4 @@
-package com.example.hangsha_android.ui.view.calendar
+package com.example.hangsha_android.ui.view.calendar.header
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,10 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,8 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.view.calendar.CalendarViewMode
+
 @Composable
 internal fun CalendarHeader(
     title: String,
@@ -39,46 +40,40 @@ internal fun CalendarHeader(
     onPreviousPeriodClick: () -> Unit,
     onNextPeriodClick: () -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
-    onSearchClick: () -> Unit,
     onOpenFilterClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        HeaderNavigationButtons(
-            onPreviousPeriodClick = onPreviousPeriodClick,
-            onNextPeriodClick = onNextPeriodClick
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        CalendarFilterButton(
-            isLoading = isLoading,
-            hasActiveFilters = hasActiveFilters,
-            onOpenFilterClick = onOpenFilterClick
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Column(horizontalAlignment = Alignment.End) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.align(Alignment.End)) {
             CalendarViewModeToggle(
                 selectedMode = selectedViewMode,
                 onModeSelected = onViewModeChange
             )
-            IconButton(
-                onClick = onSearchClick,
-                enabled = !isLoading
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = "행사 검색",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f, fill = false),
+                style = MaterialTheme.typography.labelLarge,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            HeaderNavigationButtons(
+                onPreviousPeriodClick = onPreviousPeriodClick,
+                onNextPeriodClick = onNextPeriodClick
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            CalendarFilterButton(
+                isLoading = isLoading,
+                hasActiveFilters = hasActiveFilters,
+                onOpenFilterClick = onOpenFilterClick
+            )
         }
     }
 }

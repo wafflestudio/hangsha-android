@@ -25,8 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.components.eventPreviewClickable
 import com.example.hangsha_android.ui.view.calendar.CalendarEvent
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import com.example.hangsha_android.util.currentHangshaDate
@@ -251,6 +252,7 @@ private fun CalendarMonthEventSegment(
     if (positioned.event.isPeriodEvent) {
         PeriodEventBand(
             title = positioned.event.title,
+            eventId = positioned.event.eventId,
             color = color,
             onClick = onClick,
             modifier = modifier
@@ -258,6 +260,7 @@ private fun CalendarMonthEventSegment(
     } else {
         BlockEventBand(
             title = positioned.event.title,
+            eventId = positioned.event.eventId,
             color = color,
             onClick = onClick,
             modifier = modifier
@@ -268,6 +271,7 @@ private fun CalendarMonthEventSegment(
 @Composable
 private fun BlockEventBand(
     title: String,
+    eventId: Long,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -276,7 +280,7 @@ private fun BlockEventBand(
         modifier = modifier
             .clip(RoundedCornerShape(3.dp))
             .background(color)
-            .clickable(onClick = onClick)
+            .eventPreviewClickable(eventId, onClick)
             .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -296,12 +300,13 @@ private fun BlockEventBand(
 @Composable
 private fun PeriodEventBand(
     title: String,
+    eventId: Long,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.clickable(onClick = onClick)
+        modifier = modifier.eventPreviewClickable(eventId, onClick)
     ) {
         Text(
             text = title,

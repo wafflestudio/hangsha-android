@@ -10,6 +10,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterBottomSheet
+import com.example.hangsha_android.ui.view.calendar.filter.CalendarFilterTab
+import com.example.hangsha_android.ui.view.calendar.header.CalendarPeriodHeader
 import com.example.hangsha_android.ui.view.calendar.pager.CalendarPeriodPager
 import java.time.LocalDate
 
@@ -19,7 +22,10 @@ private val ScreenVerticalPadding = 15.dp
 @Composable
 fun CalendarScreen(
     uiState: CalendarUiState,
+    onCalendarPeriodChange: (CalendarPeriod) -> Unit,
     onPeriodSelected: (LocalDate) -> Unit,
+    onVisibleWeekDayChange: (LocalDate) -> Unit,
+    onOpenDayCalendar: (LocalDate) -> Unit,
     onViewModeChange: (CalendarViewMode) -> Unit,
     onDateClick: (LocalDate) -> Unit,
     onEventClick: (Long) -> Unit,
@@ -64,16 +70,23 @@ fun CalendarScreen(
                 vertical = ScreenVerticalPadding
             )
     ) {
-        Spacer(modifier = Modifier.height(25.dp))
+        CalendarPeriodHeader(
+            selectedPeriod = uiState.period,
+            isLoading = uiState.isLoading,
+            onPeriodSelected = onCalendarPeriodChange,
+            onSearchClick = onSearchClick
+        )
+        Spacer(modifier = Modifier.height(4.dp))
         CalendarPeriodPager(
             uiState = uiState,
             onPeriodSelected = onPeriodSelected,
+            onVisibleWeekDayChange = onVisibleWeekDayChange,
+            onOpenDayCalendar = onOpenDayCalendar,
             onViewModeChange = onViewModeChange,
             onDateClick = onDateClick,
             onEventClick = onEventClick,
             onBookmarkClick = onBookmarkClick,
             showBookmarkAction = showBookmarkAction,
-            onSearchClick = onSearchClick,
             onOpenFilterClick = onOpenFilterClick,
             onRetryClick = onRetryClick,
             modifier = Modifier.weight(1f)

@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.example.hangsha_android.ui.navigation.BottomTab
-import com.example.hangsha_android.ui.navigation.HangshaDestinations
 
 @Composable
 fun HangshaBottomBar(
@@ -79,10 +78,5 @@ fun HangshaNavigationRail(
 }
 
 private fun NavDestination?.isSelected(tab: BottomTab): Boolean {
-    val currentRoute = this?.route
-    return when {
-        tab == BottomTab.Calendar &&
-            currentRoute?.startsWith(HangshaDestinations.DailyEvents.baseRoute) == true -> true
-        else -> this?.hierarchy?.any { it.route == tab.route } == true
-    }
+    return this?.hierarchy?.any { it.route == tab.route } == true
 }

@@ -1,5 +1,7 @@
 package com.example.hangsha_android.data.repository
 
+import com.example.hangsha_android.data.repository.model.EventFilters
+
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.api.EventApi
 import com.example.hangsha_android.data.network.model.DayEventsResponse
@@ -9,8 +11,6 @@ import com.example.hangsha_android.data.network.model.EventSearchResponse
 import com.example.hangsha_android.data.network.model.EventSummaryResponse
 import com.example.hangsha_android.data.network.model.MonthlyEventsResponse
 import com.example.hangsha_android.data.repository.model.EventDateRange
-import com.example.hangsha_android.ui.view.calendar.CalendarFilterState
-import com.example.hangsha_android.ui.view.dailyevents.DailyEventsFilterState
 import java.time.LocalDate
 import javax.inject.Inject
 import retrofit2.HttpException
@@ -22,7 +22,7 @@ class EventRepository @Inject constructor(
 ) {
     suspend fun getEvents(
         range: EventDateRange,
-        filters: CalendarFilterState = CalendarFilterState()
+        filters: EventFilters = EventFilters()
     ): Response<MonthlyEventsResponse> {
         return eventApi.getEvents(
             from = range.from.toString(),
@@ -38,7 +38,7 @@ class EventRepository @Inject constructor(
 
     suspend fun getDayEvents(
         date: LocalDate,
-        filters: DailyEventsFilterState = DailyEventsFilterState()
+        filters: EventFilters
     ): DayEventsResponse {
         return collectDayEventPages { page, size ->
             eventApi.getDayEvents(
@@ -54,10 +54,9 @@ class EventRepository @Inject constructor(
         }
     }
 
-
     suspend fun getEventCount(
         range: EventDateRange,
-        filters: CalendarFilterState
+        filters: EventFilters
     ): Response<EventCountResponse> {
         return eventApi.getEventCount(
             from = range.from.toString(),
@@ -71,21 +70,6 @@ class EventRepository @Inject constructor(
         )
     }
 
-    suspend fun getDayEventCount(
-        date: LocalDate,
-        filters: DailyEventsFilterState
-    ): Response<EventCountResponse> {
-        return eventApi.getEventCount(
-            from = date.toString(),
-            to = date.toString(),
-            statusId = filters.statusIds.sorted().takeIf { it.isNotEmpty() },
-            eventTypeId = filters.eventTypeIds.sorted().takeIf { it.isNotEmpty() },
-            orgId = filters.orgIds.sorted().takeIf { it.isNotEmpty() },
-            applyExcludedKeywords = true,
-            excludedKeywords = filters.excludedKeywords
-                .takeIf { it.isNotEmpty() && !isLoggedIn() }
-        )
-    }
     suspend fun searchEvents(
         query: String,
         page: Int,
