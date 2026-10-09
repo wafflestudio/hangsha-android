@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.calendar
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -19,6 +20,7 @@ internal fun CalendarViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
     initialWeekDayIndex: Int,
+    weekScrollState: ScrollState?,
     isCurrentPage: Boolean,
     viewMode: CalendarViewMode,
     page: CalendarPeriodPage,
@@ -86,6 +88,7 @@ internal fun CalendarViewHost(
                     period = period,
                     anchorDate = anchorDate,
                     initialWeekDayIndex = initialWeekDayIndex,
+                    weekScrollState = weekScrollState,
                     isCurrentPage = isCurrentPage,
                     page = page,
                     onDateClick = onDateClick,
@@ -103,6 +106,7 @@ private fun CalendarTemporalViewHost(
     period: CalendarPeriod,
     anchorDate: LocalDate,
     initialWeekDayIndex: Int,
+    weekScrollState: ScrollState?,
     isCurrentPage: Boolean,
     page: CalendarPeriodPage,
     onDateClick: (LocalDate) -> Unit,
@@ -128,6 +132,9 @@ private fun CalendarTemporalViewHost(
             CalendarWeekView(
                 weekStart = period.visibleRange(anchorDate).from,
                 initialDayIndex = initialWeekDayIndex,
+                horizontalScroll = requireNotNull(weekScrollState) {
+                    "Week calendar requires the pager-owned scroll state"
+                },
                 isCurrentPage = isCurrentPage,
                 eventsByDate = page.eventsByDate,
                 isLoading = page.isLoading,

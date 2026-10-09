@@ -1,5 +1,6 @@
 package com.example.hangsha_android.ui.view.calendar.week
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +65,7 @@ private val HourHeight = 64.dp
 internal fun CalendarWeekView(
     weekStart: LocalDate,
     initialDayIndex: Int,
+    horizontalScroll: ScrollState,
     isCurrentPage: Boolean,
     eventsByDate: Map<LocalDate, List<CalendarEvent>>,
     isLoading: Boolean,
@@ -98,13 +100,15 @@ internal fun CalendarWeekView(
         val latest = layout.timed.maxOfOrNull { it.endMinute } ?: 24 * 60
         maxOf(firstHour + 1, minOf(24, (latest + 59) / 60 + 2))
     }
-    val horizontalScroll = rememberScrollState()
     val verticalScroll = rememberScrollState()
     val density = LocalDensity.current
     val currentIsCurrentPage = rememberUpdatedState(isCurrentPage)
     val currentOnVisibleDayChange = rememberUpdatedState(onVisibleDayChange)
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         val viewportWidth = (maxWidth - AxisWidth).coerceAtLeast(1.dp)
         val dayWidth = maxOf(MinimumDayWidth, viewportWidth / 7)
         val contentWidth = dayWidth * 7
@@ -112,7 +116,10 @@ internal fun CalendarWeekView(
 
         LaunchedEffect(weekStart, initialDayIndex, dayWidth, viewportWidth) {
             if (contentWidth > viewportWidth) {
-                val maxScroll = snapshotFlow { horizontalScroll.maxValue }.first { it > 0 }
+                // ScrollState uses Int.MAX_VALUE until the first measurement. Wait for
+                // the real bound so its later clamp is not reported as a user's date change.
+                val maxScroll = snapshotFlow { horizontalScroll.maxValue }
+                    .first { it != Int.MAX_VALUE }
                 val target = with(density) {
                     (dayWidth * (initialDayIndex.coerceIn(0, 6) + 0.5f) - viewportWidth / 2)
                         .toPx().toInt()
@@ -122,11 +129,14 @@ internal fun CalendarWeekView(
 
             // The initial positioning is not a user selection. Track the centered day
             // only after a later horizontal scroll comes to rest.
+            var lastReportedOffset = horizontalScroll.value
             snapshotFlow { horizontalScroll.isScrollInProgress }
                 .distinctUntilChanged()
                 .drop(1)
                 .filter { !it }
                 .collect {
+                    if (horizontalScroll.value == lastReportedOffset) return@collect
+                    lastReportedOffset = horizontalScroll.value
                     if (currentIsCurrentPage.value) {
                         val dayIndex = with(density) {
                             ((horizontalScroll.value + viewportWidth.toPx() / 2) / dayWidth.toPx())
@@ -138,7 +148,9 @@ internal fun CalendarWeekView(
         }
 
         Row(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.width(AxisWidth).fillMaxHeight()) {
+            Column(
+                modifier = Modifier.width(AxisWidth).fillMaxHeight()
+            ) {
                 Spacer(modifier = Modifier.height(DateHeaderHeight))
                 if (allDayLanes > 0) {
                     Box(
@@ -171,7 +183,7 @@ internal fun CalendarWeekView(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .horizontalScroll(horizontalScroll)
+                    .horizontalScroll(horizontalScroll, enabled = false, overscrollEffect = null)
                     .width(contentWidth)
             ) {
                 WeekDateHeader(
