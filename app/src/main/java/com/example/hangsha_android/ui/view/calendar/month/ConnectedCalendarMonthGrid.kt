@@ -1,5 +1,7 @@
 package com.example.hangsha_android.ui.view.calendar.month
 
+import com.example.hangsha_android.ui.components.eventPreviewClickable
+
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -251,6 +253,7 @@ private fun CalendarMonthEventSegment(
     if (positioned.event.isPeriodEvent) {
         PeriodEventBand(
             title = positioned.event.title,
+            eventId = positioned.event.eventId,
             color = color,
             onClick = onClick,
             modifier = modifier
@@ -258,6 +261,7 @@ private fun CalendarMonthEventSegment(
     } else {
         BlockEventBand(
             title = positioned.event.title,
+            eventId = positioned.event.eventId,
             color = color,
             onClick = onClick,
             modifier = modifier
@@ -268,6 +272,7 @@ private fun CalendarMonthEventSegment(
 @Composable
 private fun BlockEventBand(
     title: String,
+    eventId: Long,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -276,7 +281,7 @@ private fun BlockEventBand(
         modifier = modifier
             .clip(RoundedCornerShape(3.dp))
             .background(color)
-            .clickable(onClick = onClick)
+            .eventPreviewClickable(eventId, onClick)
             .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -296,12 +301,13 @@ private fun BlockEventBand(
 @Composable
 private fun PeriodEventBand(
     title: String,
+    eventId: Long,
     color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.clickable(onClick = onClick)
+        modifier = modifier.eventPreviewClickable(eventId, onClick)
     ) {
         Text(
             text = title,

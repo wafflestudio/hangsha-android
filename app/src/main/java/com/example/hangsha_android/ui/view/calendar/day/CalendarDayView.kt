@@ -1,7 +1,6 @@
 package com.example.hangsha_android.ui.view.calendar.day
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -31,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.ui.view.calendar.CalendarEvent
+import com.example.hangsha_android.ui.components.eventPreviewClickable
 import com.example.hangsha_android.ui.view.event.eventTypeColor
 import java.time.LocalDate
 
@@ -171,7 +171,7 @@ private fun DayEventBand(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .background(eventTypeColor(event.eventTypeId))
-            .clickable(onClick = onClick)
+            .eventPreviewClickable(event.eventId, onClick)
             .padding(horizontal = 6.dp, vertical = 4.dp),
         contentAlignment = Alignment.CenterStart
     ) {

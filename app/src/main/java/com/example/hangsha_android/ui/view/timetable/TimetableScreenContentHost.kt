@@ -1,5 +1,10 @@
 package com.example.hangsha_android.ui.view.timetable
 
+import com.example.hangsha_android.ui.components.EventPreviewHost
+import com.example.hangsha_android.ui.components.eventPreviewClickable
+import com.example.hangsha_android.ui.view.event.EventPreviewData
+import com.example.hangsha_android.ui.view.event.toEventPreview
+
 import com.example.hangsha_android.util.currentHangshaDate
 import android.app.TimePickerDialog
 import androidx.activity.compose.BackHandler
@@ -183,6 +188,9 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
             weekStart = weekStart,
             dayCount = weekViewConfig.dayCount
         )
+    }
+    val eventPreviews = remember(apiUiState.weeklyEventSummaries) {
+        apiUiState.weeklyEventSummaries.associate { it.id to it.toEventPreview() }
     }
     var timetables by remember { mutableStateOf(emptyList<TimetableUiModel>()) }
     var selectedYear by rememberSaveable { mutableStateOf(DefaultYear) }
@@ -401,6 +409,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
     }
 
     TimetableScreenContent(
+        eventPreviews = eventPreviews,
         selectedYear = selectedYear,
         selectedSemester = selectedSemester,
         yearOptions = YearOptions,
@@ -633,6 +642,7 @@ internal fun TimetableScreenContentHost(onEventClick: (Long) -> Unit) {
 // 화면 전체 레이아웃: 그리드, 플로팅 버튼, 하단 패널들을 한 화면 안에서 겹쳐 배치한다.
 @Composable
 private fun TimetableScreenContent(
+    eventPreviews: Map<Long, EventPreviewData>,
     selectedYear: Int,
     selectedSemester: String,
     yearOptions: List<Int>,
@@ -714,7 +724,8 @@ private fun TimetableScreenContent(
         }
     }
 
-    Box(
+    EventPreviewHost(
+        events = eventPreviews,
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
@@ -1339,6 +1350,7 @@ private fun TimetableEventDayPager(
                     text = positioned.event.title,
                     textColor = PureWhite,
                     onClick = { onEventClick(positioned.event.eventId) },
+                    eventId = positioned.event.eventId,
                     relativeToDay = true
                 )
             }
@@ -1458,10 +1470,12 @@ private fun TimetableBlockLabel(
     text: String,
     textColor: Color,
     onClick: (() -> Unit)?,
+    eventId: Long? = null,
     relativeToDay: Boolean = false
 ) {
     val clickModifier = if (onClick != null) {
-        Modifier.clickable(onClick = onClick)
+        if (eventId != null) Modifier.eventPreviewClickable(eventId, onClick)
+        else Modifier.clickable(onClick = onClick)
     } else {
         Modifier
     }

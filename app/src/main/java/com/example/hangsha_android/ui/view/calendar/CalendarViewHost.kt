@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.hangsha_android.ui.components.EventPreviewHost
+import com.example.hangsha_android.ui.view.event.toEventPreview
 import com.example.hangsha_android.ui.view.calendar.grid.CalendarGridView
 import com.example.hangsha_android.ui.view.calendar.day.CalendarDayView
 import com.example.hangsha_android.ui.view.calendar.list.CalendarListView
@@ -73,14 +75,21 @@ internal fun CalendarViewHost(
         }
 
         CalendarViewMode.CALENDAR -> {
-            CalendarTemporalViewHost(
-                period = period,
-                anchorDate = anchorDate,
-                page = page,
-                onDateClick = onDateClick,
-                onEventClick = onEventClick,
-                modifier = modifier
-            )
+            val previews = remember(page.eventsByDate, organizationNames, eventTypeNames) {
+                page.eventsByDate.values.flatten().distinctBy { it.id }.associate { event ->
+                    event.id to event.toEventPreview(organizationNames, eventTypeNames)
+                }
+            }
+            EventPreviewHost(events = previews, modifier = modifier) {
+                CalendarTemporalViewHost(
+                    period = period,
+                    anchorDate = anchorDate,
+                    page = page,
+                    onDateClick = onDateClick,
+                    onEventClick = onEventClick,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }

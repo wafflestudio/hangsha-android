@@ -442,6 +442,7 @@ fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
             CalendarScreen(
                 uiState = calendarUiState,
+                onCalendarPeriodChange = { calendarViewModel.setPeriod(it) },
                 onPeriodSelected = { calendarViewModel.showPeriod(it) },
                 onViewModeChange = { calendarViewModel.setViewMode(it) },
                 onSearchClick = { navController.navigate(HangshaDestinations.Search.route) },
