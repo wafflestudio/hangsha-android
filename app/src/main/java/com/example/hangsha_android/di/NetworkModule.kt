@@ -3,6 +3,7 @@ package com.example.hangsha_android.di
 import com.example.hangsha_android.BuildConfig
 import com.example.hangsha_android.data.local.AuthTokenStorage
 import com.example.hangsha_android.data.network.AuthTokenAuthenticator
+import com.example.hangsha_android.data.network.api.AppVersionApi
 import com.example.hangsha_android.data.network.api.AuthApi
 import com.example.hangsha_android.data.network.api.BookmarkApi
 import com.example.hangsha_android.data.network.api.BugReportApi
@@ -116,6 +117,14 @@ object NetworkModule {
         @Named("app") retrofit: Retrofit
     ): ServerHealthApi {
         return retrofit.create(ServerHealthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppVersionApi(
+        @Named("auth") retrofit: Retrofit
+    ): AppVersionApi {
+        return retrofit.create(AppVersionApi::class.java)
     }
 
     @Provides
