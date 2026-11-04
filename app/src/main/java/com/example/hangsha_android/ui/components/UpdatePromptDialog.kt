@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -37,12 +40,12 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.hangsha_android.R
 import com.example.hangsha_android.ui.theme.HangshaTheme
 
-private val UpdateActionBlue = Color(0xFF4F80E8)
-
 /** 업데이트 가능 여부와 설치 실행은 호출하는 쪽에서 결정한다. */
 @Composable
 fun UpdatePromptDialog(
     isRequired: Boolean,
+    latestVersionName: String,
+    releaseNotes: String,
     onUpdateClick: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
@@ -56,6 +59,8 @@ fun UpdatePromptDialog(
     ) {
         UpdatePromptCard(
             isRequired = isRequired,
+            latestVersionName = latestVersionName,
+            releaseNotes = releaseNotes,
             onUpdateClick = onUpdateClick,
             onDismissRequest = onDismissRequest,
             modifier = modifier
@@ -66,6 +71,8 @@ fun UpdatePromptDialog(
 @Composable
 private fun UpdatePromptCard(
     isRequired: Boolean,
+    latestVersionName: String,
+    releaseNotes: String,
     onUpdateClick: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
@@ -86,6 +93,14 @@ private fun UpdatePromptCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            if (latestVersionName.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "버전 %s".format(latestVersionName),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(modifier = Modifier.height(15.dp))
             Text(
                 text = if (isRequired) {
@@ -97,10 +112,32 @@ private fun UpdatePromptCard(
                 lineHeight = 21.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            if (releaseNotes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "업데이트 내용",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = releaseNotes,
+                    modifier = Modifier
+                        .heightIn(max = 180.dp)
+                        .verticalScroll(rememberScrollState()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 21.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onUpdateClick) {
-                    Text(text = "업데이트", color = UpdateActionBlue)
+                    Text(
+                        text = "업데이트",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -132,7 +169,13 @@ private fun UpdateCardHeader(onCloseClick: (() -> Unit)?) {
 @Preview(name = "업데이트 안내", showBackground = true, widthDp = 390, heightDp = 720)
 @Composable
 private fun OptionalUpdatePromptPreview() {
-    HangshaTheme(darkTheme = false) { UpdatePromptPreviewContent(isRequired = false) }
+    HangshaTheme(darkTheme = false) {
+        UpdatePromptPreviewContent(
+            isRequired = false,
+            releaseNotes = "캘린더 성능을 개선하고 일부 오류를 수정했습니다.\n" +
+                "일정 탐색이 더 부드러워졌습니다."
+        )
+    }
 }
 
 @Preview(
@@ -144,14 +187,39 @@ private fun OptionalUpdatePromptPreview() {
 )
 @Composable
 private fun RequiredUpdatePromptPreview() {
-    HangshaTheme(darkTheme = true) { UpdatePromptPreviewContent(isRequired = true) }
+    HangshaTheme(darkTheme = true) {
+        UpdatePromptPreviewContent(
+            isRequired = true,
+            releaseNotes = "캘린더 성능을 개선하고 일부 오류를 수정했습니다.\n" +
+                "일정 탐색이 더 부드러워졌습니다."
+        )
+    }
+}
+
+@Preview(name = "긴 업데이트 내용", showBackground = true, widthDp = 320, heightDp = 640)
+@Composable
+private fun LongReleaseNotesUpdatePromptPreview() {
+    HangshaTheme(darkTheme = false) {
+        UpdatePromptPreviewContent(
+            isRequired = false,
+            releaseNotes = "캘린더 성능을 개선했습니다.\n" +
+                "일부 기기에서 발생하던 표시 오류를 수정했습니다.\n" +
+                "업데이트 안내 화면의 가독성을 개선했습니다.\n" +
+                "기타 안정성 문제를 수정했습니다."
+        )
+    }
 }
 
 @Composable
-private fun UpdatePromptPreviewContent(isRequired: Boolean) {
+private fun UpdatePromptPreviewContent(
+    isRequired: Boolean,
+    releaseNotes: String
+) {
     PreviewScrim {
         UpdatePromptCard(
             isRequired = isRequired,
+            latestVersionName = "1.4.0",
+            releaseNotes = releaseNotes,
             onUpdateClick = {},
             onDismissRequest = {},
             modifier = Modifier.padding(horizontal = 24.dp)
@@ -166,7 +234,7 @@ private fun PreviewScrim(content: @Composable () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "행사 캘린더",
+            text = "행샤",
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.align(Alignment.TopStart).padding(24.dp)
         )
