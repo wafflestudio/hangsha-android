@@ -62,7 +62,7 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 22
+        versionCode = 23
         versionName = "1.4.1"
         buildConfigField(
             "String",
