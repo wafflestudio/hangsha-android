@@ -30,9 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.example.hangsha_android.ui.theme.Green50
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
+
+private val FilterSelectedGreen = Color(0xFF2FA64A)
 
 @Composable
 // 행사 종류 탭
@@ -181,11 +182,11 @@ private fun SelectionSquare(selected: Boolean) {
             .size(18.dp)
             .border(
                 1.dp,
-                if (selected) Green50 else MaterialTheme.colorScheme.primary,
+                if (selected) FilterSelectedGreen else MaterialTheme.colorScheme.primary,
                 RoundedCornerShape(2.dp)
             )
             .background(
-                color = if (selected) Green50 else Color.Transparent,
+                color = if (selected) FilterSelectedGreen else Color.Transparent,
                 shape = RoundedCornerShape(2.dp)
             ),
         contentAlignment = Alignment.Center
