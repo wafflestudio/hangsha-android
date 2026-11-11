@@ -18,3 +18,7 @@ val Cream10 = Color(0xFFF8F3E8)
 val Ink60 = Color(0xFF5E615B)
 val Ink90 = Color(0xFF1A1D1A)
 val Ink100 = Color(0xFF101311)
+
+// 라이트·다크 테마에서 공통으로 사용하는 주요 실행 버튼 색상이다.
+val ActionYellow = Color(0xFFF7CE46)
+val OnActionYellow = Ink90

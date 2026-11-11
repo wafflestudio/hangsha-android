@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +42,8 @@ import com.example.hangsha_android.data.repository.model.CategoryKey
 import com.example.hangsha_android.ui.components.HangshaConstrainedContent
 import com.example.hangsha_android.ui.components.HangshaContentWidth
 import com.example.hangsha_android.ui.theme.Ink100
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
 // 관심사 설정 화면 구성
 @Composable
@@ -194,8 +197,8 @@ fun InterestPriorityScreen(
                     .height(44.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = ActionYellow,
+                    contentColor = OnActionYellow,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -204,7 +207,7 @@ fun InterestPriorityScreen(
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = LocalContentColor.current
                     )
                 } else {
                     Text(
