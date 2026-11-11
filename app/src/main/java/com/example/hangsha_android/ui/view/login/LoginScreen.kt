@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,8 +26,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +60,7 @@ fun OpeningScreen(
     onSignUpClick: () -> Unit,
     onGuestContinueClick: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -68,7 +73,7 @@ fun OpeningScreen(
                 .offset(y = (-18).dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            HangshaBrand()
+            HangshaBrand(isDarkTheme = isDarkTheme)
             Spacer(modifier = Modifier.height(36.dp))
             OpeningButton(
                 text = "로그인",
@@ -136,8 +141,7 @@ fun OpeningScreen(
                 enabled = !loginUiState.isAnyLoginLoading,
                 containerColor = AuthYellow,
                 contentColor = AuthBlack,
-                borderColor = AuthYellow,
-                shadowElevation = 2.dp
+                borderColor = AuthYellow
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -146,7 +150,7 @@ fun OpeningScreen(
                     enabled = !loginUiState.isAnyLoginLoading,
                     onClick = onGuestContinueClick
                 ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isDarkTheme) AuthDarkSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.sp,
@@ -232,18 +236,41 @@ fun LoginScreen(
     }
 }
 
+// 로고 그림은 유지하고 다크모드에서 오른쪽 글자만 밝게 표시한다.
 @Composable
-private fun HangshaBrand() {
-    Image(
-        painter = painterResource(id = R.drawable.logo_with_text),
-        contentDescription = "항샤 로고",
+private fun HangshaBrand(isDarkTheme: Boolean) {
+    val logoPainter = painterResource(id = R.drawable.logo_with_text)
+    Box(
         modifier = Modifier
             .width(170.dp)
-            .height(86.dp),
-        contentScale = ContentScale.Fit
-    )
+            .height(86.dp)
+    ) {
+        Image(
+            painter = logoPainter,
+            contentDescription = "항샤 로고",
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Fit
+        )
+        if (isDarkTheme) {
+            Image(
+                painter = logoPainter,
+                contentDescription = null,
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawWithContent {
+                        // 원본 이미지의 가로 55% 지점은 그림과 글자 사이의 투명한 여백이다.
+                        clipRect(left = size.width * 0.55f) {
+                            this@drawWithContent.drawContent()
+                        }
+                    },
+                contentScale = ContentScale.Fit,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
+            )
+        }
+    }
 }
 
+// 로그인 선택 버튼을 표시하고 다크모드에서는 그림자를 생략한다.
 @Composable
 private fun OpeningButton(
     text: String,
@@ -254,7 +281,7 @@ private fun OpeningButton(
     containerColor: Color? = null,
     contentColor: Color? = null,
     borderColor: Color? = null,
-    shadowElevation: Dp = 2.dp,
+    shadowElevation: Dp = if (isSystemInDarkTheme()) 0.dp else 2.dp,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val resolvedContainerColor = containerColor ?: MaterialTheme.colorScheme.surface
