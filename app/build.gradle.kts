@@ -129,6 +129,13 @@ android {
             )
             manifestPlaceholders["kakaoNativeAppKey"] = releaseKakaoNativeAppKey
         }
+
+        // R8이 적용된 release 설정을 로컬 테스트용 키로 서명한다.
+        create("releaseLocal") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
