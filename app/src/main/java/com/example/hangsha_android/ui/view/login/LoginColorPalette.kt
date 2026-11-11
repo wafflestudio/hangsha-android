@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.Color
 
 internal val AuthBlack = Color(0xFF000000)
 internal val AuthWhite = Color(0xFFFFFFFF)
-internal val AuthYellow = Color(0xFFF7CE46)
 internal val AuthDarkSecondaryText = Color(0xFFC6C6C6)
 internal val GoogleBlue = Color(0xFF4285F4)
 internal val KakaoYellow = Color(0xFFFEE500)

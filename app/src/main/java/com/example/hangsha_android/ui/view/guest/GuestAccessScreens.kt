@@ -28,8 +28,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
 
+// 로그인이 필요한 기능을 안내하고 로그인 화면으로 이동하는 버튼을 표시한다.
 @Composable
 fun LoginRequiredScreen(
     title: String,
@@ -74,8 +77,8 @@ fun LoginRequiredScreen(
                 onClick = onLoginClick,
                 shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = ActionYellow,
+                    contentColor = OnActionYellow
                 )
             ) {
                 Icon(

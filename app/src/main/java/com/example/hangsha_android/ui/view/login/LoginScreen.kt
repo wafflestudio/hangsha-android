@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.R
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
 private val AuthContentWidth = 252.dp
 private val AuthButtonHeight = 34.dp
@@ -139,9 +141,9 @@ fun OpeningScreen(
                 text = "회원가입",
                 onClick = onSignUpClick,
                 enabled = !loginUiState.isAnyLoginLoading,
-                containerColor = AuthYellow,
-                contentColor = AuthBlack,
-                borderColor = AuthYellow
+                containerColor = ActionYellow,
+                contentColor = OnActionYellow,
+                borderColor = ActionYellow
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -379,6 +381,7 @@ private fun AuthTextField(
     }
 }
 
+// 이메일 로그인 실행 버튼과 진행 상태를 공통 강조색으로 표시한다.
 @Composable
 private fun SubmitButton(
     text: String,
@@ -393,19 +396,19 @@ private fun SubmitButton(
             .height(AuthButtonHeight),
         enabled = enabled,
         shape = AuthRoundShape,
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        color = ActionYellow,
+        contentColor = OnActionYellow
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                LoginProgressIndicator(size = 16.dp, color = MaterialTheme.colorScheme.onPrimary)
+                LoginProgressIndicator(size = 16.dp, color = OnActionYellow)
             } else {
                 Text(
                     text = text,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = OnActionYellow,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp

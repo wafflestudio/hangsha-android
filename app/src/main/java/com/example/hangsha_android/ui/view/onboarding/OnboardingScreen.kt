@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +42,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 import coil.compose.AsyncImage
 import com.example.hangsha_android.R
 
@@ -245,6 +248,7 @@ private fun OnboardingTextField(
     }
 }
 
+// 프로필 설정 버튼의 활성 상태와 진행 표시를 그린다.
 @Composable
 private fun OnboardingSubmitButton(
     onClick: () -> Unit,
@@ -258,8 +262,8 @@ private fun OnboardingSubmitButton(
             .height(OnboardingButtonHeight),
         enabled = enabled,
         shape = OnboardingRoundShape,
-        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+        color = if (enabled) ActionYellow else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (enabled) OnActionYellow else MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -270,7 +274,7 @@ private fun OnboardingSubmitButton(
             } else {
                 Text(
                     text = "프로필 설정하기",
-                    color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (enabled) OnActionYellow else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp
@@ -280,11 +284,12 @@ private fun OnboardingSubmitButton(
     }
 }
 
+// 버튼의 현재 글자색으로 프로필 저장 진행 상태를 표시한다.
 @Composable
 private fun OnboardingProgressIndicator(size: Dp) {
     CircularProgressIndicator(
         modifier = Modifier.size(size),
-        color = MaterialTheme.colorScheme.onPrimary,
+        color = LocalContentColor.current,
         strokeWidth = 2.dp
     )
 }
