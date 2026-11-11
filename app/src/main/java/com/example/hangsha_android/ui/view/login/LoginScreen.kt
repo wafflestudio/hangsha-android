@@ -36,7 +36,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.R
@@ -45,6 +44,8 @@ private val AuthContentWidth = 252.dp
 private val AuthButtonHeight = 34.dp
 private val AuthFieldHeight = 34.dp
 private val AuthRoundShape = CircleShape
+
+// 브랜드 로고와 로그인 방식별 버튼을 첫 화면에 표시한다.
 @Composable
 fun OpeningScreen(
     loginUiState: LoginUiState,
@@ -80,11 +81,17 @@ fun OpeningScreen(
                 onClick = onGoogleLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isGoogleLoginLoading,
+                containerColor = GoogleBlue,
+                contentColor = AuthWhite,
+                borderColor = GoogleBlue,
                 leadingIcon = {
                     Image(
                         painter = painterResource(id = R.drawable.ic_google_logo),
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(AuthWhite, CircleShape)
+                            .padding(4.dp)
                     )
                 }
             )
@@ -94,12 +101,14 @@ fun OpeningScreen(
                 onClick = onKakaoLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isKakaoLoginLoading,
+                containerColor = KakaoYellow,
+                contentColor = AuthBlack.copy(alpha = 0.85f),
+                borderColor = KakaoYellow,
                 leadingIcon = {
-                    SocialBadge(
-                        text = "TALK",
-                        containerColor = AuthBlack,
-                        contentColor = KakaoYellow,
-                        fontSize = 6.sp
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_kakao_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             )
@@ -109,12 +118,14 @@ fun OpeningScreen(
                 onClick = onNaverLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isNaverLoginLoading,
+                containerColor = NaverGreen,
+                contentColor = AuthWhite,
+                borderColor = NaverGreen,
                 leadingIcon = {
-                    SocialBadge(
-                        text = "N",
-                        containerColor = NaverGreen,
-                        contentColor = AuthWhite,
-                        fontSize = 16.sp
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_naver_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             )
@@ -288,30 +299,6 @@ private fun OpeningButton(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SocialBadge(
-    text: String,
-    containerColor: Color,
-    contentColor: Color,
-    fontSize: TextUnit
-) {
-    Box(
-        modifier = Modifier
-            .size(22.dp)
-            .background(containerColor, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = contentColor,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.sp,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
