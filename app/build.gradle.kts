@@ -62,8 +62,8 @@ android {
         applicationId = "com.wafflestudio.hangsha_android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 21
-        versionName = "1.4"
+        versionCode = 23
+        versionName = "1.4.1"
         buildConfigField(
             "String",
             "GOOGLE_SERVER_CLIENT_ID",
@@ -109,7 +109,8 @@ android {
         }
 
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
