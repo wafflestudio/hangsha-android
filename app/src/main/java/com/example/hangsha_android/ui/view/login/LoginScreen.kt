@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,8 +26,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -36,15 +40,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hangsha_android.R
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
 private val AuthContentWidth = 252.dp
 private val AuthButtonHeight = 34.dp
 private val AuthFieldHeight = 34.dp
 private val AuthRoundShape = CircleShape
+
+// 브랜드 로고와 로그인 방식별 버튼을 첫 화면에 표시한다.
 @Composable
 fun OpeningScreen(
     loginUiState: LoginUiState,
@@ -55,6 +62,7 @@ fun OpeningScreen(
     onSignUpClick: () -> Unit,
     onGuestContinueClick: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -67,7 +75,7 @@ fun OpeningScreen(
                 .offset(y = (-18).dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            HangshaBrand()
+            HangshaBrand(isDarkTheme = isDarkTheme)
             Spacer(modifier = Modifier.height(36.dp))
             OpeningButton(
                 text = "로그인",
@@ -80,11 +88,17 @@ fun OpeningScreen(
                 onClick = onGoogleLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isGoogleLoginLoading,
+                containerColor = GoogleBlue,
+                contentColor = AuthWhite,
+                borderColor = GoogleBlue,
                 leadingIcon = {
                     Image(
                         painter = painterResource(id = R.drawable.ic_google_logo),
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(AuthWhite, CircleShape)
+                            .padding(4.dp)
                     )
                 }
             )
@@ -94,12 +108,14 @@ fun OpeningScreen(
                 onClick = onKakaoLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isKakaoLoginLoading,
+                containerColor = KakaoYellow,
+                contentColor = AuthBlack.copy(alpha = 0.85f),
+                borderColor = KakaoYellow,
                 leadingIcon = {
-                    SocialBadge(
-                        text = "TALK",
-                        containerColor = AuthBlack,
-                        contentColor = KakaoYellow,
-                        fontSize = 6.sp
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_kakao_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             )
@@ -109,12 +125,14 @@ fun OpeningScreen(
                 onClick = onNaverLoginClick,
                 enabled = !loginUiState.isAnyLoginLoading,
                 isLoading = loginUiState.isNaverLoginLoading,
+                containerColor = NaverGreen,
+                contentColor = AuthWhite,
+                borderColor = NaverGreen,
                 leadingIcon = {
-                    SocialBadge(
-                        text = "N",
-                        containerColor = NaverGreen,
-                        contentColor = AuthWhite,
-                        fontSize = 16.sp
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_naver_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             )
@@ -123,10 +141,9 @@ fun OpeningScreen(
                 text = "회원가입",
                 onClick = onSignUpClick,
                 enabled = !loginUiState.isAnyLoginLoading,
-                containerColor = AuthYellow,
-                contentColor = AuthBlack,
-                borderColor = AuthYellow,
-                shadowElevation = 2.dp
+                containerColor = ActionYellow,
+                contentColor = OnActionYellow,
+                borderColor = ActionYellow
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -135,7 +152,7 @@ fun OpeningScreen(
                     enabled = !loginUiState.isAnyLoginLoading,
                     onClick = onGuestContinueClick
                 ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isDarkTheme) AuthDarkSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.sp,
@@ -221,18 +238,41 @@ fun LoginScreen(
     }
 }
 
+// 로고 그림은 유지하고 다크모드에서 오른쪽 글자만 밝게 표시한다.
 @Composable
-private fun HangshaBrand() {
-    Image(
-        painter = painterResource(id = R.drawable.logo_with_text),
-        contentDescription = "항샤 로고",
+private fun HangshaBrand(isDarkTheme: Boolean) {
+    val logoPainter = painterResource(id = R.drawable.logo_with_text)
+    Box(
         modifier = Modifier
             .width(170.dp)
-            .height(86.dp),
-        contentScale = ContentScale.Fit
-    )
+            .height(86.dp)
+    ) {
+        Image(
+            painter = logoPainter,
+            contentDescription = "항샤 로고",
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.Fit
+        )
+        if (isDarkTheme) {
+            Image(
+                painter = logoPainter,
+                contentDescription = null,
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawWithContent {
+                        // 원본 이미지의 가로 55% 지점은 그림과 글자 사이의 투명한 여백이다.
+                        clipRect(left = size.width * 0.55f) {
+                            this@drawWithContent.drawContent()
+                        }
+                    },
+                contentScale = ContentScale.Fit,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
+            )
+        }
+    }
 }
 
+// 로그인 선택 버튼을 표시하고 다크모드에서는 그림자를 생략한다.
 @Composable
 private fun OpeningButton(
     text: String,
@@ -243,7 +283,7 @@ private fun OpeningButton(
     containerColor: Color? = null,
     contentColor: Color? = null,
     borderColor: Color? = null,
-    shadowElevation: Dp = 2.dp,
+    shadowElevation: Dp = if (isSystemInDarkTheme()) 0.dp else 2.dp,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val resolvedContainerColor = containerColor ?: MaterialTheme.colorScheme.surface
@@ -288,30 +328,6 @@ private fun OpeningButton(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SocialBadge(
-    text: String,
-    containerColor: Color,
-    contentColor: Color,
-    fontSize: TextUnit
-) {
-    Box(
-        modifier = Modifier
-            .size(22.dp)
-            .background(containerColor, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = contentColor,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.sp,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
@@ -365,6 +381,7 @@ private fun AuthTextField(
     }
 }
 
+// 이메일 로그인 실행 버튼과 진행 상태를 공통 강조색으로 표시한다.
 @Composable
 private fun SubmitButton(
     text: String,
@@ -379,19 +396,19 @@ private fun SubmitButton(
             .height(AuthButtonHeight),
         enabled = enabled,
         shape = AuthRoundShape,
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        color = ActionYellow,
+        contentColor = OnActionYellow
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                LoginProgressIndicator(size = 16.dp, color = MaterialTheme.colorScheme.onPrimary)
+                LoginProgressIndicator(size = 16.dp, color = OnActionYellow)
             } else {
                 Text(
                     text = text,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = OnActionYellow,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp

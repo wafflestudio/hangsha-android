@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,6 +32,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.hangsha_android.ui.view.event.eventTypeFilterColor
 import com.example.hangsha_android.ui.view.event.eventTypeLabel
+
+private val FilterSelectedGreen = Color(0xFF2FA64A)
 
 @Composable
 // 행사 종류 탭
@@ -172,17 +175,31 @@ private fun FilterChecklistRow(
 }
 
 @Composable
-// 체크 사각형 UI
+// 선택한 필터를 초록색 사각형과 흰색 체크로 표시한다.
 private fun SelectionSquare(selected: Boolean) {
     Box(
         modifier = Modifier
-            .size(14.dp)
-            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
-            .background(
-                color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                shape = RoundedCornerShape(2.dp)
+            .size(18.dp)
+            .border(
+                1.dp,
+                if (selected) FilterSelectedGreen else MaterialTheme.colorScheme.primary,
+                RoundedCornerShape(2.dp)
             )
-    )
+            .background(
+                color = if (selected) FilterSelectedGreen else Color.Transparent,
+                shape = RoundedCornerShape(2.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (selected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
 }
 
 @Composable

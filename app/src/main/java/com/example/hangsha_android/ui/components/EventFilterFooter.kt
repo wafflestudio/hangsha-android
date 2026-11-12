@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,7 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
+// 필터 초기화와 공통 강조색을 쓰는 행사 보기 버튼을 표시한다.
 @Composable
 fun EventFilterFooter(
     resultCount: Int?,
@@ -65,8 +69,8 @@ fun EventFilterFooter(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = ActionYellow,
+                    contentColor = OnActionYellow,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -74,7 +78,7 @@ fun EventFilterFooter(
                 if (isCountLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = LocalContentColor.current,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(6.dp))

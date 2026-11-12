@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +57,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.window.Dialog
 import java.time.Instant
 import kotlinx.coroutines.delay
+import com.example.hangsha_android.ui.theme.ActionYellow
+import com.example.hangsha_android.ui.theme.OnActionYellow
 
 private val SignUpContentWidth = 280.dp
 private val SignUpFieldHeight = 37.dp
@@ -175,6 +178,7 @@ fun SignUpScreen(
     }
 }
 
+// 이메일 입력과 인증번호 확인 단계를 표시한다.
 @Composable
 private fun EmailVerificationContent(
     uiState: SignUpUiState,
@@ -218,7 +222,7 @@ private fun EmailVerificationContent(
                 errorMessage?.let { InlineVerificationError(it) }
             } else {
                 Spacer(modifier = Modifier.height(20.dp))
-                VerificationButton(text = if (resendSeconds > 0) "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30 (${resendSeconds}\uCD08)" else "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30", onClick = onSendVerificationCodeClick, enabled = resendSeconds == 0 && !uiState.isVerificationCodeSending, isLoading = uiState.isVerificationCodeSending, color = if (resendSeconds == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+                VerificationButton(text = if (resendSeconds > 0) "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30 (${resendSeconds}\uCD08)" else "\uC778\uC99D\uBC88\uD638 \uB2E4\uC2DC \uBC1B\uAE30", onClick = onSendVerificationCodeClick, enabled = resendSeconds == 0 && !uiState.isVerificationCodeSending, isLoading = uiState.isVerificationCodeSending)
                 Spacer(modifier = Modifier.height(25.dp))
                 Text(text = "\uC774\uBA54\uC77C\uB85C \uC628 \uC778\uC99D\uBC88\uD638\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694!", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(24.dp))
@@ -279,11 +283,30 @@ private fun VerificationCodeBoxes(code: String, onCodeChanged: (String) -> Unit,
     )
 }
 
+// 이메일 인증 버튼의 활성 상태와 진행 표시를 공통 버튼 색상으로 그린다.
 @Composable
-private fun VerificationButton(text: String, onClick: () -> Unit, enabled: Boolean = true, isLoading: Boolean = false, color: Color? = null) {
-    val resolvedColor = color ?: MaterialTheme.colorScheme.primary
-    Surface(onClick = onClick, enabled = enabled && !isLoading, modifier = Modifier.fillMaxWidth().height(SignUpButtonHeight), shape = SignUpRoundShape, color = resolvedColor, contentColor = MaterialTheme.colorScheme.onPrimary) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { if (isLoading) SignUpProgressIndicator(16.dp) else Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
+private fun VerificationButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    isLoading: Boolean = false
+) {
+    val showActiveColors = enabled || isLoading
+    Surface(
+        onClick = onClick,
+        enabled = enabled && !isLoading,
+        modifier = Modifier.fillMaxWidth().height(SignUpButtonHeight),
+        shape = SignUpRoundShape,
+        color = if (showActiveColors) ActionYellow else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (showActiveColors) OnActionYellow else MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (isLoading) {
+                SignUpProgressIndicator(16.dp)
+            } else {
+                Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+        }
     }
 }
 
@@ -313,6 +336,7 @@ private fun SignUpPrivacyPolicyAgreement(
     }
 }
 
+// 개인정보 안내와 확인 버튼을 표시한다.
 @Composable
 private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
     Dialog(onDismissRequest = onDismissRequest) {
@@ -353,7 +377,7 @@ private fun PrivacyPolicyDialog(onDismissRequest: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 PrivacyPolicyBody("※ 귀하는 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다. 다만, 필수 항목에 대한 동의를 거부하는 경우 회원가입 및 서비스 이용이 제한될 수 있습니다.")
                 Spacer(modifier = Modifier.height(20.dp))
-                Surface(onClick = onDismissRequest, modifier = Modifier.fillMaxWidth().height(40.dp), shape = SignUpRoundShape, color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
+                Surface(onClick = onDismissRequest, modifier = Modifier.fillMaxWidth().height(40.dp), shape = SignUpRoundShape, color = ActionYellow, contentColor = OnActionYellow) {
                     Box(contentAlignment = Alignment.Center) { Text("확인", fontSize = 14.sp, fontWeight = FontWeight.Medium) }
                 }
             }
@@ -496,6 +520,7 @@ private fun SignUpErrorPill(text: String) {
     }
 }
 
+// 계정 생성 버튼과 진행 상태를 공통 강조색으로 표시한다.
 @Composable
 private fun SignUpSubmitButton(
     onClick: () -> Unit,
@@ -508,8 +533,8 @@ private fun SignUpSubmitButton(
             .height(SignUpButtonHeight),
         enabled = !isLoading,
         shape = SignUpRoundShape,
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        color = ActionYellow,
+        contentColor = OnActionYellow
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -520,7 +545,7 @@ private fun SignUpSubmitButton(
             } else {
                 Text(
                     text = "계정 생성",
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = OnActionYellow,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.sp
@@ -530,11 +555,12 @@ private fun SignUpSubmitButton(
     }
 }
 
+// 버튼의 현재 글자색으로 회원가입 진행 상태를 표시한다.
 @Composable
 private fun SignUpProgressIndicator(size: Dp) {
     CircularProgressIndicator(
         modifier = Modifier.size(size),
-        color = MaterialTheme.colorScheme.onPrimary,
+        color = LocalContentColor.current,
         strokeWidth = 2.dp
     )
 }
